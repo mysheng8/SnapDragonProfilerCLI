@@ -1,0 +1,19 @@
+﻿using System;
+
+namespace QGLPlugin
+{
+	// Token: 0x02000016 RID: 22
+	internal enum VkColorComponentFlagBits
+	{
+		// Token: 0x040002A7 RID: 679
+		VK_COLOR_COMPONENT_R_BIT = 1,
+		// Token: 0x040002A8 RID: 680
+		VK_COLOR_COMPONENT_G_BIT,
+		// Token: 0x040002A9 RID: 681
+		VK_COLOR_COMPONENT_B_BIT = 4,
+		// Token: 0x040002AA RID: 682
+		VK_COLOR_COMPONENT_A_BIT = 8,
+		// Token: 0x040002AB RID: 683
+		VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM = 2147483647
+	}
+}

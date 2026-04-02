@@ -1,0 +1,39 @@
+[
+  {
+    "WorkflowName": "Roofline",
+    "Rules": [
+      {
+        "RuleName": "OperationIntensity",
+        "SuccessEvent": "10",
+        "ErrorMessage": "The operation intensity is low indicating a memory bound kernel. Look into improving data load/store.",
+        "ErrorType": "Warning",
+        "RuleExpressionType": "LambdaExpression",
+        "Expression": "input1.OperationIntensity > input2.OperationIntensity"
+      },
+      {
+        "RuleName": "RegisterSpilling",
+        "SuccessEvent": "20",
+        "ErrorMessage": "ERROR: Register spilling is occuring in this kernel! See section 7.1.4 of the Adreno OpenCL Programming Guide for solutions.",
+        "ErrorType": "Error",
+        "RuleExpressionType": "LambdaExpression",
+        "Expression": "input1.RegisterSpilling == false"
+      },
+      {
+        "RuleName": "LowAluUtil",
+        "SuccessEvent": "30",
+        "ErrorMessage": "Low ALU utilization may indicate a memory bound kernel. Look into improving data load/store.",
+        "ErrorType": "Warning",
+        "RuleExpressionType": "LambdaExpression",
+        "Expression": "input1.AluUtilization > 25"
+      },
+      {
+        "RuleName": "LowL2Percent",
+        "SuccessEvent": "40",
+        "ErrorMessage": "Low L2 value may indicate poor cache usage. Look into improving data load/store. Look at tuning the workgroup size.",
+        "ErrorType": "Warning",
+        "RuleExpressionType": "LambdaExpression",
+        "Expression": "input1.PercentL2 > 25"
+      }
+    ]
+  }
+]

@@ -1,0 +1,139 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{250BB78C-53A6-4643-B384-0FA8EFF22575}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>QGLPlugin</RootNamespace>
+    <AssemblyName>QGLPlugin</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CairoSharp">
+      <HintPath>C:\Program Files\Qualcomm\Snapdragon Profiler\CairoSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="GdkSharp" />
+    <Reference Include="GLibSharp" />
+    <Reference Include="GtkSharp" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>C:\Program Files\Qualcomm\Snapdragon Profiler\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="SDPClientFramework">
+      <HintPath>C:\Program Files\Qualcomm\Snapdragon Profiler\SDPClientFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="SDPCoreWrapper">
+      <HintPath>C:\Program Files\Qualcomm\Snapdragon Profiler\SDPCoreWrapper.dll</HintPath>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>..\..\..\..\dnSpy-net-win64\bin\System.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>..\..\..\..\dnSpy-net-win64\bin\System.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BvhBuildFlags.cs" />
+    <Compile Include="CaptureViewMgr.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="DataExplorerViewMgr.cs" />
+    <Compile Include="DataSourcesViewMgr.cs" />
+    <Compile Include="DebugMarkerInfo.cs" />
+    <Compile Include="DescSetBindings.cs" />
+    <Compile Include="IShaderProfile.cs" />
+    <Compile Include="IShaderStage.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiQueueSubmitTimings\IQGLApiQueueSubmitTimingProxy.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiQueueSubmitTimings\QGLApiQueueSubmitTiming.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiQueueSubmitTimings\QGLApiTraceQueueSubmitTimingGateway.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiTracePackets\IQGLApiTracePacketProxy.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiTracePackets\QGLApiTracePacket.cs" />
+    <Compile Include="ModelObjectGateways\QGLApiTracePackets\QGLApiTracePacketGateway.cs" />
+    <Compile Include="ParentBoundInfo.cs" />
+    <Compile Include="PerfHintMgr.cs" />
+    <Compile Include="PipelineShaderSources.cs" />
+    <Compile Include="PixelHistoryViewMgr.cs" />
+    <Compile Include="ProfilerShaderStage.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QGLModel.cs" />
+    <Compile Include="QGLPlugin.cs" />
+    <Compile Include="ResourcesViewMgr.cs" />
+    <Compile Include="ScreenCaptureViewMgr.cs" />
+    <Compile Include="ShaderInfo.cs" />
+    <Compile Include="ShaderModuleGateway.cs" />
+    <Compile Include="ShaderProfileGateway.cs" />
+    <Compile Include="ShaderViewMgr.cs" />
+    <Compile Include="SnapshotViewMgr.cs" />
+    <Compile Include="SpirvCross.cs" />
+    <Compile Include="SpirvDis.cs" />
+    <Compile Include="TableNames.cs" />
+    <Compile Include="TensorHelper.cs" />
+    <Compile Include="VertexDataViewMgr.cs" />
+    <Compile Include="VkAccelerationStructureBuildType.cs" />
+    <Compile Include="VkAccelerationStructureType.cs" />
+    <Compile Include="VkAPITreeModelBuilder.cs" />
+    <Compile Include="VkBlendFactor.cs" />
+    <Compile Include="VkBlendOp.cs" />
+    <Compile Include="VkBool32.cs" />
+    <Compile Include="VkBoundInfo.cs" />
+    <Compile Include="VkCapture.cs" />
+    <Compile Include="VkColorComponentFlagBits.cs" />
+    <Compile Include="VkCompareOp.cs" />
+    <Compile Include="VkComponentSwizzle.cs" />
+    <Compile Include="VkCullModeFlagBits.cs" />
+    <Compile Include="VkDebugMarkers.cs" />
+    <Compile Include="VkDescriptorType.cs" />
+    <Compile Include="VkDynamicState.cs" />
+    <Compile Include="VkFormats.cs" />
+    <Compile Include="VkFrontFace.cs" />
+    <Compile Include="VkGeometryInstanceFlagBits.cs" />
+    <Compile Include="VkHelper.cs" />
+    <Compile Include="VkImageAspectFlagBits.cs" />
+    <Compile Include="VkImageViewType.cs" />
+    <Compile Include="VkLogicOp.cs" />
+    <Compile Include="VkMetricsCapturedModel.cs" />
+    <Compile Include="VkPolygonMode.cs" />
+    <Compile Include="VkPrimitiveTopology.cs" />
+    <Compile Include="VkSampleCountFlagBits.cs" />
+    <Compile Include="VkShaderStageFlagBits.cs" />
+    <Compile Include="VkSnapshotModel.cs" />
+    <Compile Include="VkStencilOp.cs" />
+    <Compile Include="VkTensorStructureType.cs" />
+    <Compile Include="VkTensorTilingARM.cs" />
+    <Compile Include="VkTensorUsageFlagBitsARM.cs" />
+    <Compile Include="VkVertexInputRate.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\replay_dark.png" />
+    <EmbeddedResource Include="Resources\replay_light.png" />
+    <EmbeddedResource Include="Resources\replay_none.png" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

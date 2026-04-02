@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UIDesc xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Version>1.5</Version>
+    <!-- this file should be alphabetized - dock window name, layout name -->
+    <DockingWindows>
+        <DockWindowDesc>
+            <Name>Buffer Viewer</Name>
+            <ViewSettings>
+                <TypeName>BufferViewer</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+             <Name>Connect</Name>
+             <ViewSettings>
+                <TypeName>ConnectionView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Data Explorer</Name>
+            <ViewSettings>
+                <TypeName>DataExplorerView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Debug Marker</Name>
+            <ViewSettings>
+                <TypeName>DebugMarkerView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Drawcall Data</Name>
+            <ViewSettings>
+                <TypeName>DrawCallDataView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Frame Statistics</Name>
+            <ViewSettings>
+                <TypeName>FrameStatsView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>GL Context State</Name>
+            <ViewSettings>
+                <TypeName>Context</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Image Preview</Name>
+            <ViewSettings>
+                <TypeName>ImageView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Inspector</Name>
+            <ViewSettings>
+                <TypeName>Inspector</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Mini Explorer</Name>
+            <ViewSettings>
+                <TypeName>DataExplorerView</TypeName>
+                <TypeParam>2</TypeParam>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Options</Name>
+            <ViewSettings>
+                <TypeName>Options</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Pixel History</Name>
+            <ViewSettings>
+                <TypeName>PixelHistoryView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Program Inspector</Name>
+            <ViewSettings>
+                <TypeName>ProgramView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Resources</Name>
+            <ViewSettings>
+                <TypeName>ResourcesView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Roofline Analyzer</Name>
+            <ViewSettings>
+                <TypeName>RooflineView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Shader Analyzer</Name>
+            <ViewSettings>
+                <TypeName>ShaderAnalyzerView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Source Viewer</Name>
+            <ViewSettings>
+                <TypeName>SourceView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Start Page</Name>
+            <ViewSettings>
+                <TypeName>WelcomeScreenView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Tensor View</Name>
+            <ViewSettings>
+                <TypeName>TensorView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+        <DockWindowDesc>
+            <Name>Viewer 3D</Name>
+            <ViewSettings>
+                <TypeName>Viewer3DView</TypeName>
+            </ViewSettings>
+        </DockWindowDesc>
+    </DockingWindows>
+    <CurrentLayout>Realtime</CurrentLayout>
+    <DefaultLayout>Realtime</DefaultLayout>
+    <DockingXml><![CDATA[<layouts>
+        <layout name="Capture" width="1085" height="676" size="1085" prefSize="1085" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+            <group size="1085" prefSize="1085" defaultHorSize="904.166666666667" defaultVerSize="1000" type="Horizontal">
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                    <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="500" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Shader Analyzer" visible="False" status="Dockable" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Debug Marker" visible="False" status="Dockable" />
+                    </group>
+                </group>
+                <group size="868" prefSize="868" defaultHorSize="600" defaultVerSize="1000" type="Vertical">
+                    <group size="471" prefSize="471" defaultHorSize="600" defaultVerSize="681.844380403458" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Viewer 3D" visible="False" status="Dockable" />
+                    </group>
+                    <group size="202" prefSize="202" defaultHorSize="600" defaultVerSize="292.219020172911" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Data Explorer" visible="False" status="Dockable" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Source Viewer" visible="False" status="Dockable" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Buffer Viewer" visible="False" status="Dockable" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Roofline Analyzer" visible="False" status="Floating" floatX="50" floatY="50" floatWidth="800" floatHeight="600" />
+                    </group>
+                </group>
+                <group size="214" prefSize="214" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                    <group size="403" prefSize="403" defaultHorSize="200" defaultVerSize="584.438040345821" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="200" defaultVerSize="200" id="Options" visible="False" status="Dockable" autoHideSize="232" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Inspector" visible="False" status="Dockable" autoHideSize="228" />
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Resources" visible="False" status="Dockable" autoHideSize="228" />
+                    </group>
+                </group>
+            </group>
+        </layout>
+        <layout name="Connect" hidden="True" width="1000" height="800" size="1000" prefSize="1000" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+            <group size="1000" prefSize="1000" defaultHorSize="1000" defaultVerSize="1000" type="Horizontal">
+                <group size="471" prefSize="471" defaultHorSize="800" defaultVerSize="681.844380403458" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Connect" visible="True" visibleByDefault="True" status="Dockable" />
+                </group>
+            </group>
+        </layout>
+    <layout name="CPU Sampling" width="1200" height="694" size="1200" prefSize="1200" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+      <group size="1000" prefSize="1000" defaultHorSize="1200" defaultVerSize="1000" type="Horizontal">
+          <group size="600" prefSize="600" defaultHorSize="1200" defaultVerSize="1000" type="Vertical">
+              <group size="700" prefSize="700" defaultHorSize="1200" defaultVerSize="700" type="Tabbed" currentTabPage="0">
+                  <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+              </group>
+              <group size="300" prefSize="300" defaultHorSize="1200" defaultVerSize="300" type="Horizontal">
+                  <group size="700" prefSize="700" defaultHorSize="900" defaultVerSize="300" type="Tabbed" currentTabPage="0">
+                      <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Data Explorer" visible="False" status="Dockable" />
+                  </group>
+                  <group size="300" prefSize="300" defaultHorSize="300" defaultVerSize="300" type="Tabbed" currentTabPage="0">
+                      <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Inspector" visible="False" status="Dockable" />
+                      <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Options" visible="False" status="Dockable" />
+                  </group>
+              </group>
+          </group>
+      </group>
+  </layout>
+    <layout name="Insight" internal="True" width="1200" height="694" size="1200" prefSize="1200" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+        <group size="1000" prefSize="1000" defaultHorSize="1000" defaultVerSize="1000" type="Horizontal">
+            <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="500" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Mini Explorer" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Program Inspector" visible="False" status="Dockable" />
+                </group>
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="500" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Shader Analyzer" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Options" visible="False" status="Dockable" />
+                </group>
+            </group>
+            <group size="600" prefSize="600" defaultHorSize="600" defaultVerSize="1000" type="Vertical">
+                <group size="700" prefSize="700" defaultHorSize="600" defaultVerSize="700" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+                </group>
+                <group size="300" prefSize="300" defaultHorSize="600" defaultVerSize="300" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Data Explorer" visible="False" status="Dockable" />
+                </group>
+            </group>
+            <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                <group size="600" prefSize="600" defaultHorSize="200" defaultVerSize="600" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Resources" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Frame Statistics" visible="False" status="Dockable" />
+                </group>
+                <group size="400" prefSize="400" defaultHorSize="200" defaultVerSize="400" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Inspector" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Image Preview" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Drawcall Data" visible="False" status="Dockable" />
+                </group>
+            </group>
+        </group>
+    </layout>
+	<layout name="Guide" hidden="True" width="1085" height="676" size="1085" prefSize="1085" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+            <group size="1085" prefSize="1085" defaultHorSize="904.166666666667" defaultVerSize="1000" type="Horizontal">
+                <group size="868" prefSize="868" defaultHorSize="600" defaultVerSize="1000" type="Vertical">
+                    <group size="471" prefSize="471" defaultHorSize="600" defaultVerSize="681.844380403458" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+                    </group>
+                </group>
+                <group size="214" prefSize="214" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                    <group size="403" prefSize="403" defaultHorSize="200" defaultVerSize="584.438040345821" type="Tabbed" currentTabPage="0">
+                        <item size="0" prefSize="0" defaultHorSize="200" defaultVerSize="200" id="Options" visible="False" status="Dockable" autoHideSize="232" />
+                    </group>
+                </group>
+            </group>
+        </layout>
+    <layout name="Realtime" width="1085" height="676" size="1085" prefSize="1085" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+        <group size="1000" prefSize="1000" defaultHorSize="1000" defaultVerSize="1000" type="Horizontal">
+            <group size="868" prefSize="868" defaultHorSize="800" defaultVerSize="1000" type="Vertical">
+                <group size="471" prefSize="471" defaultHorSize="800" defaultVerSize="681.844380403458" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+                </group>
+            </group>
+            <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Tabbed">
+                    <item size="0" prefSize="0" defaultHorSize="200" defaultVerSize="1000" id="Options" visible="False" status="Dockable" autoHideSize="232" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Inspector" visible="False" status="Dockable" />
+                </group>
+            </group>
+        </group>
+    </layout>
+    <layout name="Snapshot" width="1200" height="694" size="1200" prefSize="1200" defaultHorSize="-1" defaultVerSize="-1" type="Horizontal">
+        <group size="1000" prefSize="1000" defaultHorSize="1000" defaultVerSize="1000" type="Horizontal">
+            <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="500" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Shader Analyzer" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Pixel History" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Program Inspector" visible="False" status="Dockable" />
+                </group>
+            </group>
+            <group size="600" prefSize="600" defaultHorSize="600" defaultVerSize="1000" type="Vertical">
+                <group size="700" prefSize="700" defaultHorSize="600" defaultVerSize="700" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Start Page" visible="True" visibleByDefault="True" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Viewer 3D" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Tensor View" visible="False" status="Dockable" />
+                </group>
+                <group size="300" prefSize="300" defaultHorSize="600" defaultVerSize="300" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Data Explorer" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Buffer Viewer" visible="False" status="Dockable" />
+                </group>
+            </group>
+            <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="1000" type="Vertical">
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="600" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Resources" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Frame Statistics" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="GL Context State" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Options" visible="False" status="Dockable" />
+                </group>
+                <group size="200" prefSize="200" defaultHorSize="200" defaultVerSize="400" type="Tabbed" currentTabPage="0">
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Image Preview" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Inspector" visible="False" status="Dockable" />
+                    <item size="0" prefSize="0" defaultHorSize="0" defaultVerSize="0" id="Drawcall Data" visible="False" status="Dockable" />
+                </group>
+            </group>
+        </group>
+    </layout>
+</layouts>]]></DockingXml>
+</UIDesc>

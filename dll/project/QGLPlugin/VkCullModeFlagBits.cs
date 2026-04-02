@@ -1,0 +1,19 @@
+﻿using System;
+
+namespace QGLPlugin
+{
+	// Token: 0x0200000E RID: 14
+	internal enum VkCullModeFlagBits
+	{
+		// Token: 0x04000212 RID: 530
+		VK_CULL_MODE_NONE,
+		// Token: 0x04000213 RID: 531
+		VK_CULL_MODE_FRONT_BIT,
+		// Token: 0x04000214 RID: 532
+		VK_CULL_MODE_BACK_BIT,
+		// Token: 0x04000215 RID: 533
+		VK_CULL_MODE_FRONT_AND_BACK,
+		// Token: 0x04000216 RID: 534
+		VK_CULL_MODE_FLAG_BITS_MAX_ENUM = 2147483647
+	}
+}

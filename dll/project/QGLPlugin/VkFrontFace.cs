@@ -1,0 +1,21 @@
+﻿using System;
+
+namespace QGLPlugin
+{
+	// Token: 0x0200000F RID: 15
+	internal enum VkFrontFace
+	{
+		// Token: 0x04000218 RID: 536
+		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		// Token: 0x04000219 RID: 537
+		VK_FRONT_FACE_CLOCKWISE,
+		// Token: 0x0400021A RID: 538
+		VK_FRONT_FACE_BEGIN_RANGE = 0,
+		// Token: 0x0400021B RID: 539
+		VK_FRONT_FACE_END_RANGE,
+		// Token: 0x0400021C RID: 540
+		VK_FRONT_FACE_RANGE_SIZE,
+		// Token: 0x0400021D RID: 541
+		VK_FRONT_FACE_MAX_ENUM = 2147483647
+	}
+}

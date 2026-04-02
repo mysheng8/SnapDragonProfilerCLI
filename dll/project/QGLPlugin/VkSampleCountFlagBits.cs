@@ -1,0 +1,25 @@
+﻿using System;
+
+namespace QGLPlugin
+{
+	// Token: 0x02000010 RID: 16
+	internal enum VkSampleCountFlagBits
+	{
+		// Token: 0x0400021F RID: 543
+		VK_SAMPLE_COUNT_1_BIT = 1,
+		// Token: 0x04000220 RID: 544
+		VK_SAMPLE_COUNT_2_BIT,
+		// Token: 0x04000221 RID: 545
+		VK_SAMPLE_COUNT_4_BIT = 4,
+		// Token: 0x04000222 RID: 546
+		VK_SAMPLE_COUNT_8_BIT = 8,
+		// Token: 0x04000223 RID: 547
+		VK_SAMPLE_COUNT_16_BIT = 16,
+		// Token: 0x04000224 RID: 548
+		VK_SAMPLE_COUNT_32_BIT = 32,
+		// Token: 0x04000225 RID: 549
+		VK_SAMPLE_COUNT_64_BIT = 64,
+		// Token: 0x04000226 RID: 550
+		VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM = 2147483647
+	}
+}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SDPCLI": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

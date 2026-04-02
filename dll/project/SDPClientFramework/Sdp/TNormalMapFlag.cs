@@ -1,0 +1,17 @@
+﻿using System;
+
+namespace Sdp
+{
+	// Token: 0x0200017D RID: 381
+	public enum TNormalMapFlag
+	{
+		// Token: 0x040005DD RID: 1501
+		Q_FLAG_NORMALMAP_NONE,
+		// Token: 0x040005DE RID: 1502
+		Q_FLAG_NORMALMAP_ROBERTSCROSS,
+		// Token: 0x040005DF RID: 1503
+		Q_FLAG_NORMALMAP_SOBEL,
+		// Token: 0x040005E0 RID: 1504
+		Q_FLAG_NORMALMAP_PREWITTGRADIENT
+	}
+}

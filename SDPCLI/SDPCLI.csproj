@@ -1,0 +1,105 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+    <DebuggerSupport>true</DebuggerSupport>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 每次 build 自动将 config.ini 同步到输出目录 -->
+    <None Update="config.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Reference Include="SDPClientFramework">
+      <HintPath>..\dll\SDPClientFramework.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <Reference Include="SDPCoreWrapper">
+      <HintPath>..\dll\SDPCoreWrapper.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <Reference Include="QGLPlugin">
+      <HintPath>plugins\QGLPlugin.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>plugins\Newtonsoft.Json.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\dll\SDPCore.dll">
+      <Link>SDPCore.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- Copy all native dependencies from dll directory -->
+    <None Include="..\dll\*.dll" Exclude="..\dll\SDPClientFramework.dll;..\dll\SDPCoreWrapper.dll;..\dll\SDPCore.dll">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <None Include="config.ini">
+      <Link>config.ini</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Deploy service/android plugins after build (matching official Snapdragon Profiler structure) -->
+  <Target Name="DeployAndroidPlugins" AfterTargets="Build">
+    <Message Text="=== Deploying Android Service Files ===" Importance="high" />
+    <Message Text="Copying android/ to $(OutDir)service/android/" Importance="high" />
+    
+    <!-- Copy entire android directory to output/service/android/ (matching official structure) -->
+    <ItemGroup>
+      <AndroidFiles Include="android\**\*.*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(AndroidFiles)" 
+          DestinationFiles="@(AndroidFiles->'$(OutDir)service\android\%(RecursiveDir)%(Filename)%(Extension)')" 
+          SkipUnchangedFiles="true" />
+    
+    <Message Text="✓ Android service files deployed to service/android/" Importance="high" />
+  </Target>
+
+  <!-- Deploy plugins directory after build (for processor plugins and data plugins) -->
+  <Target Name="DeployPlugins" AfterTargets="Build">
+    <Message Text="=== Deploying Plugins ===" Importance="high" />
+    <Message Text="Copying plugins/ to $(OutDir)plugins/" Importance="high" />
+    
+    <!-- Copy entire plugins directory to output/plugins/ -->
+    <ItemGroup>
+      <PluginFiles Include="plugins\**\*.*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(PluginFiles)" 
+          DestinationFiles="@(PluginFiles->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')" 
+          SkipUnchangedFiles="true" />
+    
+    <Message Text="✓ Plugins deployed to plugins/" Importance="high" />
+  </Target>
+</Project>

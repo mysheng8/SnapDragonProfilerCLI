@@ -1,0 +1,21 @@
+﻿using System;
+
+namespace TextureConverter
+{
+	// Token: 0x02000005 RID: 5
+	public enum TScaleFilterFlag
+	{
+		// Token: 0x0400006E RID: 110
+		Q_FLAG_SCALEFILTER_DEFAULT,
+		// Token: 0x0400006F RID: 111
+		Q_FLAG_SCALEFILTER_NEAREST,
+		// Token: 0x04000070 RID: 112
+		Q_FLAG_SCALEFILTER_MEAN,
+		// Token: 0x04000071 RID: 113
+		Q_FLAG_SCALEFILTER_BILINEAR,
+		// Token: 0x04000072 RID: 114
+		Q_FLAG_SCALEFILTER_BICUBIC,
+		// Token: 0x04000073 RID: 115
+		Q_FLAG_SCALEFILTER_KAISER
+	}
+}

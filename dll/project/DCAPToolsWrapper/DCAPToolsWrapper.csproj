@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{397A333C-E1F4-4C5E-970A-231386593974}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>DCAPToolsWrapper</RootNamespace>
+    <AssemblyName>DCAPToolsWrapper</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Adapter.cs" />
+    <Compile Include="ApiCallType.cs" />
+    <Compile Include="AtomicCounterBufferData.cs" />
+    <Compile Include="AttributeData.cs" />
+    <Compile Include="BlockType.cs" />
+    <Compile Include="BufferVariableData.cs" />
+    <Compile Include="CaptureFileReader.cs" />
+    <Compile Include="CompressionAlgorithm.cs" />
+    <Compile Include="Compressor.cs" />
+    <Compile Include="DataReader.cs" />
+    <Compile Include="DataWriter.cs" />
+    <Compile Include="DCAPCompressConsumer.cs" />
+    <Compile Include="DCAPConsumer.cs" />
+    <Compile Include="DCAPFileProcessor.cs" />
+    <Compile Include="DCAPStatus.cs" />
+    <Compile Include="DCAPStripConsumer.cs" />
+    <Compile Include="Decoder.cs" />
+    <Compile Include="EGLAdapter.cs" />
+    <Compile Include="EGLDecoder.cs" />
+    <Compile Include="EGLImageData.cs" />
+    <Compile Include="EGLImagePlaneData.cs" />
+    <Compile Include="FrameDelim.cs" />
+    <Compile Include="FrameEntry.cs" />
+    <Compile Include="FrameSubBlockType.cs" />
+    <Compile Include="GLAdapter.cs" />
+    <Compile Include="GLDecoder.cs" />
+    <Compile Include="libDCAP.cs" />
+    <Compile Include="libDCAPPINVOKE.cs" />
+    <Compile Include="MetadataBlockType.cs" />
+    <Compile Include="MetadataCommand.cs" />
+    <Compile Include="MetadataStateDesc.cs" />
+    <Compile Include="MetadataText.cs" />
+    <Compile Include="MetaHandler.cs" />
+    <Compile Include="OmitData.cs" />
+    <Compile Include="PointerData.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QCTPixelFormat.cs" />
+    <Compile Include="ShaderStorageBlockData.cs" />
+    <Compile Include="StdioReader.cs" />
+    <Compile Include="StdioWriter.cs" />
+    <Compile Include="SWIGTYPE_p_Data__BlockEventHandler.cs" />
+    <Compile Include="SWIGTYPE_p_Data__BlockHeader.cs" />
+    <Compile Include="SWIGTYPE_p_Data__FileHeader.cs" />
+    <Compile Include="SWIGTYPE_p_Data__FunctionCallDesc.cs" />
+    <Compile Include="SWIGTYPE_p_Data__MetadataDesc.cs" />
+    <Compile Include="SWIGTYPE_p_Data__MethodCallDesc.cs" />
+    <Compile Include="SWIGTYPE_p_Data__SubBlockHeader.cs" />
+    <Compile Include="SWIGTYPE_p_p_unsigned_char.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_Data__CaptureFileReader__FrameEntry_.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_Data__FrameEntry_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_unsigned_int_t.cs" />
+    <Compile Include="SWIGTYPE_p_uint16_t.cs" />
+    <Compile Include="SWIGTYPE_p_unsigned_long_long.cs" />
+    <Compile Include="TokenAdapterWrapper.cs" />
+    <Compile Include="UniformBlockData.cs" />
+    <Compile Include="UniformData.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

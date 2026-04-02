@@ -1,0 +1,25 @@
+﻿using System;
+
+namespace Sdp
+{
+	// Token: 0x020001D0 RID: 464
+	public enum LaunchApplicationDialogParam
+	{
+		// Token: 0x040006AF RID: 1711
+		PERF_HINTS_ENABLE,
+		// Token: 0x040006B0 RID: 1712
+		EXECUTABLE_PATH,
+		// Token: 0x040006B1 RID: 1713
+		WORKING_DIRECTORY,
+		// Token: 0x040006B2 RID: 1714
+		COMMAND_LINE_ARGUMENTS,
+		// Token: 0x040006B3 RID: 1715
+		INTENT_ARGUMENTS,
+		// Token: 0x040006B4 RID: 1716
+		RENDERING_APIS,
+		// Token: 0x040006B5 RID: 1717
+		ENVIRONMENT_VARIABLES,
+		// Token: 0x040006B6 RID: 1718
+		OPTIONS
+	}
+}

@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{9B92DF00-F452-4E49-9FB6-2403B6C07986}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>SDPCoreWrapper</RootNamespace>
+    <AssemblyName>SDPCoreWrapper</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AppPermissions.cs" />
+    <Compile Include="AppStartResponse.cs" />
+    <Compile Include="AppStartSettings.cs" />
+    <Compile Include="BinaryData.cs" />
+    <Compile Include="BinaryDataPair.cs" />
+    <Compile Include="BufferKey.cs" />
+    <Compile Include="CancelCapture.cs" />
+    <Compile Include="Capture.cs" />
+    <Compile Include="CaptureManager.cs" />
+    <Compile Include="CaptureMetric.cs" />
+    <Compile Include="CaptureModel.cs" />
+    <Compile Include="CaptureProperties.cs" />
+    <Compile Include="CaptureSettings.cs" />
+    <Compile Include="CaptureState.cs" />
+    <Compile Include="CaptureStream.cs" />
+    <Compile Include="CaptureStreamKey.cs" />
+    <Compile Include="Client.cs" />
+    <Compile Include="ClientDelegate.cs" />
+    <Compile Include="CommandMsg.cs" />
+    <Compile Include="CommonObject.cs" />
+    <Compile Include="CoreObject.cs" />
+    <Compile Include="CustomDataBuffer.cs" />
+    <Compile Include="DataMessage.cs" />
+    <Compile Include="DataModel.cs" />
+    <Compile Include="DataProvider.cs" />
+    <Compile Include="Device.cs" />
+    <Compile Include="DeviceAttributes.cs" />
+    <Compile Include="DeviceCommands.cs" />
+    <Compile Include="DeviceConnectionState.cs" />
+    <Compile Include="DeviceConnectionType.cs" />
+    <Compile Include="DeviceDelegate.cs" />
+    <Compile Include="DeviceList.cs" />
+    <Compile Include="DeviceManager.cs" />
+    <Compile Include="DeviceManagerDelegate.cs" />
+    <Compile Include="DeviceModel.cs" />
+    <Compile Include="DeviceProperties.cs" />
+    <Compile Include="DeviceSettings.cs" />
+    <Compile Include="ICPStringPairMessage.cs" />
+    <Compile Include="IDList.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="LogLevel.cs" />
+    <Compile Include="MessageType.cs" />
+    <Compile Include="Metric.cs" />
+    <Compile Include="MetricCategory.cs" />
+    <Compile Include="MetricCategoryDelegate.cs" />
+    <Compile Include="MetricCategoryList.cs" />
+    <Compile Include="MetricCategoryModel.cs" />
+    <Compile Include="MetricCategoryProperties.cs" />
+    <Compile Include="MetricDelegate.cs" />
+    <Compile Include="MetricIDList.cs" />
+    <Compile Include="MetricList.cs" />
+    <Compile Include="MetricManager.cs" />
+    <Compile Include="MetricManagerDelegate.cs" />
+    <Compile Include="MetricModel.cs" />
+    <Compile Include="MetricProperties.cs" />
+    <Compile Include="MetricState.cs" />
+    <Compile Include="Model.cs" />
+    <Compile Include="ModelObject.cs" />
+    <Compile Include="ModelObjectData.cs" />
+    <Compile Include="ModelObjectDataList.cs" />
+    <Compile Include="NetCommandDelegate.cs" />
+    <Compile Include="NetworkManager.cs" />
+    <Compile Include="NetworkManagerDelegate.cs" />
+    <Compile Include="Option.cs" />
+    <Compile Include="OptionBinary.cs" />
+    <Compile Include="OptionBool.cs" />
+    <Compile Include="OptionCategory.cs" />
+    <Compile Include="OptionColor.cs" />
+    <Compile Include="OptionDouble.cs" />
+    <Compile Include="OptionEnum.cs" />
+    <Compile Include="OptionFloat.cs" />
+    <Compile Include="OptionInt32.cs" />
+    <Compile Include="OptionInt64.cs" />
+    <Compile Include="OptionList.cs" />
+    <Compile Include="OptionString.cs" />
+    <Compile Include="OptionStruct.cs" />
+    <Compile Include="OptionStructData.cs" />
+    <Compile Include="OptionStructDef.cs" />
+    <Compile Include="OptionUInt32.cs" />
+    <Compile Include="OptionUInt64.cs" />
+    <Compile Include="Process.cs" />
+    <Compile Include="ProcessAdded.cs" />
+    <Compile Include="ProcessIcon.cs" />
+    <Compile Include="ProcessList.cs" />
+    <Compile Include="ProcessManager.cs" />
+    <Compile Include="ProcessMetricLink.cs" />
+    <Compile Include="ProcessModel.cs" />
+    <Compile Include="ProcessorPluginMgr.cs" />
+    <Compile Include="ProcessProperties.cs" />
+    <Compile Include="ProcessProviderLink.cs" />
+    <Compile Include="ProcessRemoved.cs" />
+    <Compile Include="ProcessState.cs" />
+    <Compile Include="ProcessWarnings.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProviderDesc.cs" />
+    <Compile Include="ProviderList.cs" />
+    <Compile Include="ReplyDataNetAddress.cs" />
+    <Compile Include="ReplyDataProviderInfo.cs" />
+    <Compile Include="ReplyMetric.cs" />
+    <Compile Include="ReplyMetricAvailable.cs" />
+    <Compile Include="ReplyMetricCategory.cs" />
+    <Compile Include="ReplyMetricCategoryAvailable.cs" />
+    <Compile Include="ReplyMetricCategoryTotal.cs" />
+    <Compile Include="ReplyMetricStatus.cs" />
+    <Compile Include="ReplyMetricTotal.cs" />
+    <Compile Include="ReplyOption.cs" />
+    <Compile Include="ReplyOptionAttribute.cs" />
+    <Compile Include="ReplyOptionCategory.cs" />
+    <Compile Include="ReplyOptionSet.cs" />
+    <Compile Include="ReportBufferRegistered.cs" />
+    <Compile Include="ReportCaptureComplete.cs" />
+    <Compile Include="ReportCustomData.cs" />
+    <Compile Include="ReportCustomDataAttribute.cs" />
+    <Compile Include="ReportCustomDataBind.cs" />
+    <Compile Include="ReportDeviceMemoryLow.cs" />
+    <Compile Include="RequestCustomData.cs" />
+    <Compile Include="RequestDataNetAddress.cs" />
+    <Compile Include="RequestDataProviderInfo.cs" />
+    <Compile Include="RequestMetricCategories.cs" />
+    <Compile Include="RequestMetricEnable.cs" />
+    <Compile Include="RequestMetricHidden.cs" />
+    <Compile Include="RequestMetrics.cs" />
+    <Compile Include="RequestMetricStatus.cs" />
+    <Compile Include="RequestOptionCategories.cs" />
+    <Compile Include="RequestOptionReset.cs" />
+    <Compile Include="RequestOptions.cs" />
+    <Compile Include="RequestProcessStatus.cs" />
+    <Compile Include="SDPCore.cs" />
+    <Compile Include="SDPCoreInterop.cs" />
+    <Compile Include="SDPCorePINVOKE.cs" />
+    <Compile Include="SDPDataType.cs" />
+    <Compile Include="SDPPlugin.cs" />
+    <Compile Include="SDPProcessorPlugin.cs" />
+    <Compile Include="SDPVersion.cs" />
+    <Compile Include="SessionManager.cs" />
+    <Compile Include="SessionManagerDelegate.cs" />
+    <Compile Include="SessionModel.cs" />
+    <Compile Include="SessionSettings.cs" />
+    <Compile Include="StartCapture.cs" />
+    <Compile Include="StartCaptureTimeTOD.cs" />
+    <Compile Include="StopCapture.cs" />
+    <Compile Include="StopCaptureTimeTOD.cs" />
+    <Compile Include="StringList.cs" />
+    <Compile Include="SWIGTYPE_p_float.cs" />
+    <Compile Include="SWIGTYPE_p_f_unsigned_int_q_const__p_q_const__SDP__DataProvi.cs" />
+    <Compile Include="SWIGTYPE_p_f_unsigned_int_unsigned_int_q_const__p_q_const__S.cs" />
+    <Compile Include="SWIGTYPE_p_int.cs" />
+    <Compile Include="SWIGTYPE_p_long_long.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__CaptureManagerDelegate.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__DeviceType.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__NetCommand.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__NetCommandClient.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__NetCommandServer.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__Net__Message.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__ProcessManagerDelegate.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__RegisteredBufferProvider.cs" />
+    <Compile Include="SWIGTYPE_p_SDP__Thread.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_fF_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_fSDP__BinaryDataPair_RF_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_fSDP__Metric_const_R_unsigned.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_funsigned_int_const_R_unsigne.2.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_funsigned_int_const_R_unsigne.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_funsigned_int_SDP__DataProvid.cs" />
+    <Compile Include="SWIGTYPE_p_std__functionT_void_funsigned_int_unsigned_int_SD.cs" />
+    <Compile Include="SWIGTYPE_p_std__mapT_std__string_std__string_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__recursive_mutex.cs" />
+    <Compile Include="SWIGTYPE_p_std__string.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_long_long_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_SDP__OptionCategory_p_t.cs" />
+    <Compile Include="SWIGTYPE_p_std__vectorT_std__shared_ptrT_CoreUtils__Logger__.cs" />
+    <Compile Include="SWIGTYPE_p_uint8_t.cs" />
+    <Compile Include="SWIGTYPE_p_unsigned_int.cs" />
+    <Compile Include="SWIGTYPE_p_unsigned_long_long.cs" />
+    <Compile Include="SWIGTYPE_p_Utils__VectorIteratorT_SDP__DeviceList_t.cs" />
+    <Compile Include="ThreadList.cs" />
+    <Compile Include="ThreadModel.cs" />
+    <Compile Include="Void_Double_Fn.cs" />
+    <Compile Include="Void_UInt_Fn.cs" />
+    <Compile Include="Void_UInt_Int_Fn.cs" />
+    <Compile Include="Void_UInt_Int_Int_Fn.cs" />
+    <Compile Include="Void_UInt_String_Fn.cs" />
+    <Compile Include="Void_UInt_UInt_Fn.cs" />
+    <Compile Include="Void_UInt_UInt_UInt_Fn.cs" />
+    <Compile Include="Void_UInt_UInt_UInt_UInt_Fn.cs" />
+    <Compile Include="Void_UInt_UInt_UInt_UInt_UInt_UInt_Fn.cs" />
+    <Compile Include="Void_UInt_UInt_UInt_VoidPtr_UInt_VoidPtr_Fn.cs" />
+    <Compile Include="Void_Void_Fn.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

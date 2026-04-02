@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch SDPCLI (Console)",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net472/SDPCLI.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/bin/Debug/net472",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": false,
+      "requireExactSource": false,
+      "enableStepFiltering": false,
+      "symbolOptions": {
+        "searchPaths": [
+          "${workspaceFolder}/bin/Debug/net472"
+        ],
+        "searchMicrosoftSymbolServer": false
+      }
+    },
+    {
+      "name": "Launch SDPCLI (External Console)",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net472/SDPCLI.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/bin/Debug/net472",
+      "console": "externalTerminal",
+      "stopAtEntry": false,
+      "justMyCode": false
+    }
+  ]
+}

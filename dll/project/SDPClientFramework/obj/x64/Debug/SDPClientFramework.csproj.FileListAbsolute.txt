@@ -1,0 +1,2 @@
+D:\snapdragon\dll\project\SDPClientFramework\obj\x64\Debug\SDPClientFramework.csproj.AssemblyReference.cache
+D:\snapdragon\dll\project\SDPClientFramework\obj\x64\Debug\SDPClientFramework.csproj.CoreCompileInputs.cache
