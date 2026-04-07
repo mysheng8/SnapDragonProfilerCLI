@@ -166,10 +166,12 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             if (withM.Count > 0)
             {
                 var allSorted = withM.OrderBy(d => d.DrawCallNumber).ToList();
-                var xLabels = allSorted.Select(d => $"\"{d.DrawCallNumber}\"");
-                var yVals   = allSorted.Select(d => d.Metrics!.Clocks.ToString());
+                var yVals    = allSorted.Select(d => d.Metrics!.Clocks.ToString());
                 long chartMax = allSorted.Max(d => d.Metrics!.Clocks);
+                // Category x-axis preserves every bar; labelFontSize:0 hides overlapping labels
+                var xLabels = allSorted.Select(d => $"\"{d.DrawCallNumber}\"");
                 sb.AppendLine("```mermaid");
+                sb.AppendLine($"%%{{init: {{\"xyChart\": {{\"width\": 1600, \"height\": 420, \"xAxis\": {{\"labelFontSize\": 1, \"labelPadding\": 0}}}}}}}}}}}}");
                 sb.AppendLine("xychart-beta");
                 sb.AppendLine($"    title \"GPU Clocks per DrawCall ({withM.Count} DCs)\"");
                 sb.AppendLine($"    x-axis [{string.Join(", ", xLabels)}]");
@@ -293,6 +295,60 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             }
             sb.AppendLine();
 
+            // ── 4.1b Per-Category Top 5 tables ───────────────────────────────
+            sb.AppendLine("---\n");
+            sb.AppendLine("## 4.1b  各分类 Top 5 DrawCalls\n");
+            foreach (var catGroup in catGroups)
+            {
+                var catWithM = catGroup.Where(d => d.Metrics != null)
+                                       .OrderByDescending(d => d.Metrics!.Clocks)
+                                       .Take(5).ToList();
+                if (catWithM.Count == 0) continue;
+                sb.AppendLine($"### {catGroup.Key}\n");
+                // Compute active columns for this category
+                double catAvgClocks = catGroup
+                    .Where(d => d.Metrics != null).Average(d => (double)d.Metrics!.Clocks);
+                sb.AppendLine("| Rank | DC | Detail | Clocks | %ShaderBusy | Fragments | ReadMB | WriteMB |");
+                sb.AppendLine("|-----:|-----|--------|-------:|------------:|----------:|-------:|--------:|");
+                int catRank = 0;
+                foreach (var dc in catWithM)
+                {
+                    var m = dc.Metrics!;
+                    string busyStr = $"{m.ShadersBusyPct:F1}%";
+                    string fragStr = $"{m.FragmentsShaded:N0}";
+                    string readStr = $"{m.ReadTotalBytes / 1048576.0:F2}";
+                    string wrtStr  = $"{m.WriteTotalBytes / 1048576.0:F2}";
+                    double ratio   = m.Clocks / Math.Max(catAvgClocks, 1.0);
+                    sb.AppendLine($"| {++catRank} | {dc.DrawCallNumber} | {dc.Label.Detail} | "
+                        + $"{m.Clocks:N0} ({ratio:F1}×) | {busyStr} | {fragStr} | {readStr} | {wrtStr} |");
+                }
+                sb.AppendLine();
+            }
+
+            // ── 3D Mesh Preview section ──────────────────────────────────────
+            string meshDir = Path.Combine(outputDir, "meshes");
+            if (Directory.Exists(meshDir))
+            {
+                var objFiles = Directory.GetFiles(meshDir, "*.obj").OrderBy(f => f).ToList();
+                if (objFiles.Count > 0)
+                {
+                    sb.AppendLine("---\n");
+                    sb.AppendLine("## 3D Mesh Preview\n");
+                    sb.AppendLine("> 交互式查看器（需要浏览器打开，不支持直接在 Markdown 渲染）");
+                    sb.AppendLine();
+                    sb.AppendLine($"**[🔗 Open interactive 3D Viewer](meshes/viewer.html)**\n");
+                    sb.AppendLine("| Rank | DrawCall | OBJ |");
+                    sb.AppendLine("|-----:|----------|-----|");
+                    int meshRank = 0;
+                    foreach (var f in objFiles)
+                    {
+                        string fname = Path.GetFileName(f);
+                        string dcId  = fname.Replace("drawcall_", "").Replace(".obj", "");
+                        sb.AppendLine($"| {++meshRank} | DC {dcId} | [{fname}](meshes/{fname}) |");
+                    }
+                    sb.AppendLine();
+                }
+            }
             // ── 4.2 Category statistics ───────────────────────────────────────
             sb.AppendLine("---\n");
             sb.AppendLine("## 4.2  Category Statistics\n");
@@ -308,17 +364,29 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             sb.AppendLine($"> **全局平均:** Clocks={globalAvgClocks:N0}  Read={globalAvgRead/1048576.0:F2}MB  Write={globalAvgWrite/1048576.0:F2}MB  Fragments={globalAvgFrags:N0}  ShaderBusy={globalAvgBusy:F1}%");
             sb.AppendLine();
 
-            // ── 4.3 Bottleneck analysis ───────────────────────────────────────
+            // ── 4.3 Per-category analysis (top 5 per category, no suggestions) ───
             sb.AppendLine("---\n");
-            sb.AppendLine("## 4.3  Top 5 Bottleneck Analysis\n");
-            if (useLlm)
-                sb.AppendLine($"> 瓶颈结论由 LLM ({config.Get("LlmModel", "")}) 生成\n");
+            sb.AppendLine("## 4.3  各分类 Top 5 详细分析\n");
 
-            foreach (var (dc, rank) in top5.Select((d, i) => (d, i + 1)))
+            foreach (var catGroup in catGroups)
             {
+                var catDcs = catGroup.Where(d => d.Metrics != null)
+                                     .OrderByDescending(d => d.Metrics!.Clocks)
+                                     .Take(5).ToList();
+                if (catDcs.Count == 0) continue;
+
+                double catAvgClocksAnalysis = catGroup
+                    .Where(d => d.Metrics != null).Average(d => (double)d.Metrics!.Clocks);
+
+                sb.AppendLine($"### {catGroup.Key}\n");
+
+                foreach (var (dc, rank) in catDcs.Select((d, i) => (d, i + 1)))
+                {
+                sb.AppendLine($"#### #{rank}  DC {dc.DrawCallNumber}  {dc.Label.Detail}\n");
                 var m = dc.Metrics!;
-                sb.AppendLine($"### #{rank}  DC {dc.DrawCallNumber}  [{dc.Label.Category}] {dc.Label.Detail}\n");
-                sb.AppendLine($"**Clocks:** {m.Clocks:N0}  ({m.Clocks / Math.Max(globalAvgClocks, 1):F1}× 全局均值)\n");
+                sb.AppendLine($"**Clocks:** {m.Clocks:N0}  "
+                    + $"({m.Clocks / Math.Max(globalAvgClocks, 1):F1}× 全局均值 "
+                    + $"/ {m.Clocks / Math.Max(catAvgClocksAnalysis, 1):F1}× 分类均值)\n");
 
                 var sigs = BuildOutlierSignals(m,
                     globalAvgClocks, globalAvgFrags, globalAvgBusy,
@@ -328,19 +396,6 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 sb.AppendLine("**异常指标：**\n");
                 if (sigs.Count == 0) sb.AppendLine("- *(无明显单项超标，综合型开销)*");
                 else foreach (var s in sigs) sb.AppendLine(s);
-                sb.AppendLine();
-
-                sb.AppendLine("**瓶颈结论：**\n");
-                string conclusion = useLlm
-                    ? GetLlmBottleneckConclusion(dc, m, sigs,
-                          globalAvgClocks, globalAvgFrags, globalAvgBusy,
-                          globalAvgFInstr, globalAvgStall, globalAvgL1,
-                          globalAvgRead, globalAvgWrite,
-                          Path.Combine(outputDir, "shaders"))
-                    : GetRuleBasedConclusion(sigs);
-                // wrap each line as blockquote
-                foreach (var line in conclusion.Split('\n'))
-                    sb.AppendLine(string.IsNullOrWhiteSpace(line) ? "" : $"> {line.Trim()}");
                 sb.AppendLine();
 
                 // ── Shaders ───────────────────────────────────────────────────
@@ -374,6 +429,14 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                             sb.AppendLine();
                         }
                     }
+                }
+
+                // ── Mesh OBJ link ─────────────────────────────────────────────
+                string dcObjPath = Path.Combine(outputDir, "meshes", $"drawcall_{dc.DrawCallNumber}.obj");
+                if (File.Exists(dcObjPath))
+                {
+                    sb.AppendLine($"**3D Mesh：** [drawcall_{dc.DrawCallNumber}.obj](meshes/drawcall_{dc.DrawCallNumber}.obj)" +
+                                  $"  ｜  [Open in viewer](meshes/viewer.html)\n");
                 }
 
                 // ── Textures ──────────────────────────────────────────────────
@@ -411,7 +474,8 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                         sb.AppendLine($"- {link}");
                     sb.AppendLine();
                 }
-            }
+                } // end foreach dc in catDcs
+            } // end foreach catGroup
 
             // ── Final summary ──────────────────────────────────────────────────
             sb.AppendLine("---\n");

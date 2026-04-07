@@ -40,7 +40,9 @@ namespace SnapdragonProfilerCLI.Services.Analysis
         public DrawCallAnalysisReport AnalyzeAllDrawCalls(string dbPath, uint captureId, int? cmdBufferFilter = null)
         {
             _logger.Info($"Analyzing DrawCalls for Capture ID: {captureId}" +
-                (cmdBufferFilter > 0 ? $", CommandBuffer={cmdBufferFilter}" : ""));
+                (cmdBufferFilter == null ? "" :
+                 cmdBufferFilter == 0   ? ", CommandBuffer=AUTO" :
+                 $", CommandBuffer={cmdBufferFilter}"));
 
             var drawCallIds = _dbQuery.GetDrawCallIds(captureId, cmdBufferFilter);
 

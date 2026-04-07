@@ -27,7 +27,8 @@ namespace SnapdragonProfilerCLI
     class CliClientDelegate : ClientDelegate
     {
         private ManualResetEvent? captureCompleteEvent;
-        private ManualResetEvent? dataProcessedEvent;  // Signal when all data processed
+        private ManualResetEvent? dataProcessedEvent;   // Signal when SDK initial API data (bufferID=2) is ready
+        private ManualResetEvent? _importCompleteEvent;  // Signal when ImportCapture device replay finishes (bufferID=1)
         private uint lastCompletedProviderId = 0;
         private uint lastCompletedCaptureId = 0;
         private Capture? realtimeCapture;  // Background realtime capture for process monitoring
@@ -40,6 +41,9 @@ namespace SnapdragonProfilerCLI
 
         // 方案C：只有当前期望的 captureId 收到 API data (BufferID=2) 时才 Set dataProcessedEvent
         private volatile uint _expectedCaptureIdForSignal = 0;
+
+        // Target app package name — only this process gets verbose logging in OnProcessAdded/Removed
+        private string? _targetPackageName;
 
         public void SetExpectedCaptureId(uint captureId)
         {
@@ -76,6 +80,16 @@ namespace SnapdragonProfilerCLI
         public void SetDataProcessedEvent(ManualResetEvent evt)
         {
             dataProcessedEvent = evt;
+        }
+
+        public void SetImportCompleteEvent(ManualResetEvent evt)
+        {
+            _importCompleteEvent = evt;
+        }
+
+        public void SetTargetPackageName(string packageName)
+        {
+            _targetPackageName = packageName;
         }
 
         public override void OnClientConnected()
@@ -260,16 +274,24 @@ namespace SnapdragonProfilerCLI
                 }
             }
 
-            // Signal only when the expected capture's API data (BufferID=2) is fully received.
-            // BufferID=2 always carries the complete API stream (Number of apis > 0).
-            // BufferID=1 is an empty terminator (Number of apis = 0) — ignore it.
+            // bufferID=2: complete API stream (Number of apis > 0) — SDK initial processing done
             if (bufferCategory == SDPCore.BUFFER_TYPE_VULKAN_SNAPSHOT_PROCESSED_API_DATA
                 && bufferID == 2
                 && _expectedCaptureIdForSignal != 0
                 && captureID == _expectedCaptureIdForSignal)
             {
-                AppLogger.Info("Delegate", $"  ✓ API data ready for capture {captureID} — signaling");
+                AppLogger.Info("Delegate", $"  ✓ API data ready for capture {captureID} — signaling dataProcessed");
                 dataProcessedEvent?.Set();
+            }
+
+            // bufferID=1: empty trailing event (Number of apis = 0) — ImportCapture device-side replay complete
+            if (bufferCategory == SDPCore.BUFFER_TYPE_VULKAN_SNAPSHOT_PROCESSED_API_DATA
+                && bufferID == 1
+                && _expectedCaptureIdForSignal != 0
+                && captureID == _expectedCaptureIdForSignal)
+            {
+                AppLogger.Info("Delegate", $"  ✓ ImportCapture replay done for capture {captureID} (bufferID=1) — signaling importComplete");
+                _importCompleteEvent?.Set();
             }
         }
         
@@ -305,11 +327,7 @@ namespace SnapdragonProfilerCLI
         
         public override void OnProcessAdded(uint pid)
         {
-            // Called when ProcessManager discovers a new process
-            // This runs asynchronously in SDPCore's event thread
-            AppLogger.Info("Delegate", $">>> [OnProcessAdded CALLBACK] PID={pid} <<<");
-            
-            // Forward to SdpApp.EventsManager for QGLPlugin and other subscribers
+            // Forward to SdpApp.EventsManager for QGLPlugin and other subscribers (always required)
             try
             {
                 var args = new Sdp.ProcessEventArgs { PID = pid };
@@ -319,95 +337,73 @@ namespace SnapdragonProfilerCLI
             {
                 AppLogger.Warn("Delegate", $"Failed to raise ProcessAdded event: {ex.Message}");
             }
-            
+
             try
             {
                 Process? proc = ProcessManager.Get().GetProcess(pid);
-                if (proc != null && proc.IsValid())
+                if (proc == null || !proc.IsValid()) return;
+
+                ProcessProperties props = proc.GetProperties();
+                string processName = props.name;
+                discoveredProcesses.TryAdd(pid, processName);
+
+                // Only log details for the target app
+                bool isTarget = !string.IsNullOrEmpty(_targetPackageName) && processName.Contains(_targetPackageName);
+                if (!isTarget)
                 {
-                    ProcessProperties props = proc.GetProperties();
-                    string processName = props.name;
-                    ProcessState state = props.state;
-                    
-                    // Add to discovered processes dictionary (thread-safe)
-                    bool added = discoveredProcesses.TryAdd(pid, processName);
-                    AppLogger.Info("Delegate", $"[Process Added] PID={pid}, Name={processName}, State={state}");
-                    if (added)
+                    AppLogger.Debug("Delegate", $"[ProcessAdded] PID={pid} Name={processName}");
+                    return;
+                }
+
+                AppLogger.Info("Delegate", $">>> [OnProcessAdded] TARGET PID={pid} Name={processName} State={props.state} <<<");
+
+                if (props.state != ProcessState.ProcessRunning)
+                    AppLogger.Warn("Delegate", $"  Process state: {props.state} (NOT ProcessRunning)");
+
+                try
+                {
+                    MetricIDList linkedMetrics = proc.GetLinkedMetrics();
+                    if (linkedMetrics.Count == 0)
                     {
-                        AppLogger.Debug("Delegate", $"  Added to discovered processes dictionary (total: {discoveredProcesses.Count})");
-                    }
-                    
-                    // CRITICAL: Check linked metrics and state (explains why processes disappear)
-                    AppLogger.Debug("Delegate", "=== Process Viability Check (GUI Logic) ===");
-                    
-                    // Check 1: Process State
-                    if (state != ProcessState.ProcessRunning)
-                    {
-                        AppLogger.Warn("Delegate", $"  Process state: {state} (NOT ProcessRunning) → GUI would REJECT");
+                        AppLogger.Warn("Delegate", "  [No linked metrics] Process hasn't used GPU APIs yet");
                     }
                     else
                     {
-                        AppLogger.Debug("Delegate", $"  Process state: {state} (ProcessRunning - OK)");
-                    }
-                    
-                    // Check 2: Linked Metrics
-                    try
-                    {
-                        MetricIDList linkedMetrics = proc.GetLinkedMetrics();
-                        AppLogger.Debug("Delegate", $"  Linked Metrics: {linkedMetrics.Count}");
-                        
-                        if (linkedMetrics.Count == 0)
+                        bool supportsSnapshot = false;
+                        foreach (uint metricId in linkedMetrics)
                         {
-                            AppLogger.Warn("Delegate", "  [No linked metrics] Process hasn't used GPU APIs yet — GUI would skip it");
-                        }
-                        else
-                        {
-                            bool supportsSnapshot = false;
-                            foreach (uint metricId in linkedMetrics)
+                            try
                             {
-                                try
+                                Metric metric = MetricManager.Get().GetMetric(metricId);
+                                if (metric != null && metric.IsValid())
                                 {
-                                    Metric metric = MetricManager.Get().GetMetric(metricId);
-                                    if (metric != null && metric.IsValid())
-                                    {
-                                        MetricProperties mp = metric.GetProperties();
-                                        AppLogger.Debug("Delegate", $"    - {mp.name} (ID: {mp.id}, Mask: 0x{mp.captureTypeMask:X})");
-                                        if ((mp.captureTypeMask & 0x04) != 0)
-                                            supportsSnapshot = true;
-                                    }
+                                    MetricProperties mp = metric.GetProperties();
+                                    AppLogger.Debug("Delegate", $"    - {mp.name} (Mask: 0x{mp.captureTypeMask:X})");
+                                    if ((mp.captureTypeMask & 0x04) != 0) supportsSnapshot = true;
                                 }
-                                catch { }
                             }
-                            
-                            if (supportsSnapshot)
-                                AppLogger.Info("Delegate", "  ✓ Process supports Snapshot capture");
-                            else
-                                AppLogger.Warn("Delegate", "  ? No metrics support Snapshot capture");
+                            catch { }
                         }
-                    }
-                    catch (Exception lmEx)
-                    {
-                        AppLogger.Warn("Delegate", $"  Error checking linked metrics: {lmEx.Message}");
+                        if (supportsSnapshot)
+                            AppLogger.Info("Delegate", "  ✓ Target process supports Snapshot capture");
+                        else
+                            AppLogger.Warn("Delegate", "  ? No metrics support Snapshot capture");
                     }
                 }
-                else
+                catch (Exception lmEx)
                 {
-                    AppLogger.Warn("Delegate", $"[Process Added] PID={pid} - details unavailable");
+                    AppLogger.Warn("Delegate", $"  Error checking linked metrics: {lmEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.Error("Delegate", $"[Process Added] PID={pid} - error: {ex.Message}");
+                AppLogger.Error("Delegate", $"[ProcessAdded] PID={pid} error: {ex.Message}");
             }
         }
         
         public override void OnProcessRemoved(uint pid)
         {
-            // Called when ProcessManager detects a process has terminated
-            discoveredProcesses.TryRemove(pid, out _);
-            AppLogger.Info("Delegate", $"[Process Removed] PID={pid}");
-            
-            // Forward to SdpApp.EventsManager for QGLPlugin and other subscribers
+            // Forward to SdpApp.EventsManager for QGLPlugin and other subscribers (always required)
             try
             {
                 var args = new Sdp.ProcessEventArgs { PID = pid };
@@ -417,6 +413,15 @@ namespace SnapdragonProfilerCLI
             {
                 AppLogger.Warn("Delegate", $"Failed to raise ProcessRemoved event: {ex.Message}");
             }
+
+            bool wasTarget = discoveredProcesses.TryRemove(pid, out string? removedName)
+                             && !string.IsNullOrEmpty(_targetPackageName)
+                             && (removedName?.Contains(_targetPackageName) ?? false);
+
+            if (wasTarget)
+                AppLogger.Info("Delegate", $"[ProcessRemoved] TARGET process removed: PID={pid} Name={removedName}");
+            else
+                AppLogger.Debug("Delegate", $"[ProcessRemoved] PID={pid}");
         }
         
         /// <summary>

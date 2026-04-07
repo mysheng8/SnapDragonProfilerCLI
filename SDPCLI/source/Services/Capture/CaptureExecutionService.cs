@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using QGLPlugin;
 
@@ -27,6 +28,12 @@ namespace SnapdragonProfilerCLI.Services.Capture
         /// Read this back into Application after calling StartCapture.
         /// </summary>
         public global::Capture? CurrentCapture { get; private set; }
+
+        /// <summary>
+        /// Names of all metrics that were successfully activated during StartCapture.
+        /// Populated only after StartCapture returns true.
+        /// </summary>
+        public List<string> ActivatedMetricNames { get; } = new List<string>();
 
         public CaptureExecutionService(
             SDPClient sdpClient,
@@ -237,69 +244,87 @@ namespace SnapdragonProfilerCLI.Services.Capture
                     }
 
                     Console.WriteLine($"✓ Found primary metric: {metricName}");
-                    bool enableMetrics = _config.GetBool("EnableMetrics", true);
+
+                    // ── Required metrics (always activated) ───────────────────
+                    string requiredRaw = _config.Get("MetricsRequired", "Vulkan Snapshot,OpenGL Snapshot");
+                    var required = new System.Collections.Generic.HashSet<string>(
+                        requiredRaw.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0),
+                        StringComparer.OrdinalIgnoreCase);
+
+                    // ── Optional metrics whitelist ────────────────────────────
+                    bool enableOptional = _config.GetBool("EnableOptionalMetrics", true);
+                    string whitelistRaw = _config.Get("MetricsWhitelist", "");
+                    // null whitelist = no restriction (activate all optional)
+                    System.Collections.Generic.HashSet<string>? whitelist =
+                        (!enableOptional)
+                            ? new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase) // empty = skip all optional
+                            : string.IsNullOrWhiteSpace(whitelistRaw)
+                                ? null  // null = activate all snapshot-capable optional
+                                : new System.Collections.Generic.HashSet<string>(
+                                    whitelistRaw.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0),
+                                    StringComparer.OrdinalIgnoreCase);
+
+                    if (!enableOptional)
+                        Console.WriteLine("\n⚠ EnableOptionalMetrics=false — activating required metrics only");
+                    else if (whitelist != null)
+                        Console.WriteLine($"\nActivating metrics (required + {whitelist.Count}-item whitelist)...");
+                    else
+                        Console.WriteLine("\nActivating all snapshot-capable metrics...");
 
                     MetricList allMetrics = metricManager.GetAllMetrics();
                     int snapshotMetricCount = 0;
                     int activatedCount = 0;
 
-                    if (enableMetrics)
+                    foreach (Metric metric in allMetrics)
                     {
-                        Console.WriteLine("\nActivating additional metrics that support Snapshot...");
+                        if (metric == null || !metric.IsValid()) continue;
 
-                        foreach (Metric metric in allMetrics)
+                        MetricProperties props = metric.GetProperties();
+                        bool supportsSnapshot = (props.captureTypeMask & 0x04) != 0;
+                        if (!supportsSnapshot) continue;
+
+                        snapshotMetricCount++;
+                        if (props.hidden) continue;
+
+                        bool isRequired  = required.Contains(props.name);
+                        bool inWhitelist = whitelist == null || whitelist.Contains(props.name);
+
+                        if (!isRequired && !inWhitelist) continue;
+
+                        try
                         {
-                            if (metric != null && metric.IsValid())
+                            IDList activeProcesses = metric.GetActiveProcesses(4);
+                            if (activeProcesses.Count > 0)
                             {
-                                MetricProperties props = metric.GetProperties();
-                                bool supportsSnapshot = (props.captureTypeMask & 0x04) != 0;
-
-                                if (supportsSnapshot)
+                                foreach (uint activePid in activeProcesses)
                                 {
-                                    snapshotMetricCount++;
-
-                                    if (props.hidden)
-                                        continue;
-
-                                    try
-                                    {
-                                        IDList activeProcesses = metric.GetActiveProcesses(4);
-                                        if (activeProcesses.Count > 0)
-                                        {
-                                            foreach (uint activePid in activeProcesses)
-                                            {
-                                                if (activePid != processPid)
-                                                    metric.Deactivate(activePid, 4);
-                                            }
-                                        }
-
-                                        bool activated = metric.Activate(processPid, 4);
-                                        if (activated)
-                                        {
-                                            activatedMetrics.Add(metric);
-                                            activatedCount++;
-                                            Console.WriteLine($"  ✓ {props.name} (ID: {props.id})");
-                                        }
-                                    }
-                                    catch (Exception activateEx)
-                                    {
-                                        Console.WriteLine($"  ⚠ Failed to activate {props.name}: {activateEx.Message}");
-                                    }
+                                    if (activePid != processPid)
+                                        metric.Deactivate(activePid, 4);
                                 }
                             }
+
+                            bool activated = metric.Activate(processPid, 4);
+                            if (activated)
+                            {
+                                activatedMetrics.Add(metric);
+                                activatedCount++;
+                                string tag = isRequired ? "[R]" : "[W]";
+                                Console.WriteLine($"  ✓ {tag} {props.name} (ID: {props.id})");
+                                ActivatedMetricNames.Add(props.name);
+                            }
                         }
-
-                        Console.WriteLine($"\n✓ Activated {activatedCount} metrics (out of {snapshotMetricCount} snapshot-capable)");
-
-                        if (activatedCount == 0)
+                        catch (Exception activateEx)
                         {
-                            Console.WriteLine("ERROR: No metrics activated - cannot capture data");
-                            return false;
+                            Console.WriteLine($"  ⚠ Failed to activate {props.name}: {activateEx.Message}");
                         }
                     }
-                    else
+
+                    Console.WriteLine($"\n✓ Activated {activatedCount} metrics (snapshot-capable: {snapshotMetricCount})");
+
+                    if (activatedCount == 0)
                     {
-                        Console.WriteLine("\n⚠ Metrics disabled by config (EnableMetrics=false) — skipping activation");
+                        Console.WriteLine("ERROR: No metrics activated — cannot capture data");
+                        return false;
                     }
 
                     // Record activated metrics to CaptureMetrics table

@@ -97,7 +97,7 @@ namespace SnapdragonProfilerCLI
         /// <param name="captureId">Capture ID (optional, default 3)</param>
         /// <param name="drawCallId">DrawCall ID for shader extraction (e.g. "10" or "1.0.10")</param>
         /// <param name="pipelineId">Pipeline ID for shader extraction</param>
-        public void Run(string? modeArg = null, string? sdpPath = null, string? resourceId = null, string? outputPath = null, string? captureId = null, string? drawCallId = null, string? pipelineId = null)
+        public void Run(string? modeArg = null, string? sdpPath = null, string? resourceId = null, string? outputPath = null, string? captureId = null, string? drawCallId = null, string? pipelineId = null, string? maxDrawCalls = null)
         {
             // Create logger instance
             ILogger logger = new Logging.ContextLogger("Analysis");
@@ -134,10 +134,15 @@ namespace SnapdragonProfilerCLI
                     modeInput = "5";
                     Console.WriteLine("\n=== Snapdragon Profiler CLI - DrawCall Analysis ===");
                 }
+                else if (modeLower == "extract-mesh" || modeLower == "mesh")
+                {
+                    modeInput = "6";
+                    Console.WriteLine("\n=== Snapdragon Profiler CLI - Mesh Extraction Mode ===");
+                }
                 else
                 {
                     Console.WriteLine($"\nError: Invalid mode '{modeArg}'");
-                    Console.WriteLine("Valid modes: capture, analysis, extract-texture, extract-shader");
+                    Console.WriteLine("Valid modes: capture, analysis, extract-texture, extract-shader, extract-mesh");
                     return;
                 }
             }
@@ -151,7 +156,8 @@ namespace SnapdragonProfilerCLI
                 Console.WriteLine("  3. Texture Extraction - Extract textures from .sdp file");
                 Console.WriteLine("  4. Shader Extraction - Extract shaders from .sdp file");
                 Console.WriteLine("  5. DrawCall Analysis - Extract shader + textures of a specific DrawCall");
-                Console.Write("\nEnter mode number (1/2/3/4/5): ");
+                Console.WriteLine("  6. Mesh Extraction - Reconstruct 3D mesh from vertex/index buffers");
+                Console.Write("\nEnter mode number (1/2/3/4/5/6): ");
                 modeInput = SafeReadLine("1");
             }
             
@@ -200,6 +206,26 @@ namespace SnapdragonProfilerCLI
             else if (modeInput == "4")
             {
                 mode = new ShaderExtractionMode(sdpPath, drawCallId, pipelineId, outputPath, captureId, config);
+            }
+            else if (modeInput == "6")
+            {
+                // Resolve SDP path: try testPath first (same as AnalysisMode), then WorkingDirectory
+                string meshRoot = config.Get("WorkingDirectory", AppDomain.CurrentDomain.BaseDirectory);
+                string meshSdp  = sdpPath ?? "";
+                if (!string.IsNullOrWhiteSpace(meshSdp) && !Path.IsPathRooted(meshSdp))
+                {
+                    string fromTest = Path.GetFullPath(Path.Combine(testPath, meshSdp));
+                    string fromRoot = Path.GetFullPath(Path.Combine(meshRoot, meshSdp));
+                    meshSdp = File.Exists(fromTest) ? fromTest : fromRoot;
+                }
+                // Resolve output relative to SDP directory (same convention as DrawCallAnalysisMode)
+                string sdpDir     = string.IsNullOrWhiteSpace(meshSdp) ? meshRoot : (Path.GetDirectoryName(meshSdp) ?? meshRoot);
+                string meshOutput = ResolvePath(outputPath, sdpDir);
+                mode = new MeshExtractionMode(
+                    string.IsNullOrWhiteSpace(meshSdp) ? sdpPath : meshSdp,
+                    drawCallId,
+                    string.IsNullOrWhiteSpace(meshOutput) ? outputPath : meshOutput,
+                    captureId, maxDrawCalls);
             }
             else if (modeInput == "5")
             {

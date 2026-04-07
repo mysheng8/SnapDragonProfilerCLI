@@ -62,13 +62,17 @@ namespace SnapdragonProfilerCLI.Modes
                 if (selectedFile == null) return;
             }
 
-            // AnalysisCmdBufferIndex: 1-based CB filter for analysis mode (0 or -1 = all)
-            int cmdBufIdx = config.GetInt("AnalysisCmdBufferIndex", 1);
-            int? cmdBufferFilter = cmdBufIdx > 0 ? (int?)cmdBufIdx : null;
-            if (cmdBufferFilter.HasValue)
-                logger.Info($"  CommandBuffer filter: {cmdBufferFilter} (set AnalysisCmdBufferIndex=0 to analyse all)");
+            // AnalysisCmdBufferIndex: -1=all, 0=auto (most-DC CB), N>=1=specific
+            int cmdBufIdx = config.GetInt("AnalysisCmdBufferIndex", 0);
+            int? cmdBufferFilter = cmdBufIdx >= 1 ? (int?)cmdBufIdx
+                                 : cmdBufIdx == 0 ? (int?)0
+                                 : null; // -1 = all
+            if (cmdBufIdx == -1)
+                logger.Info("  CommandBuffer filter: ALL (AnalysisCmdBufferIndex=-1)");
+            else if (cmdBufIdx == 0)
+                logger.Info("  CommandBuffer filter: AUTO (will select CmdBufferIdx with most DCs)");
             else
-                logger.Info($"  CommandBuffer filter: ALL");
+                logger.Info($"  CommandBuffer filter: {cmdBufferFilter} (specific)");
 
             string? metricsCSV = config.Get("AnalysisMetricsCSV", "");
             if (!string.IsNullOrWhiteSpace(metricsCSV))

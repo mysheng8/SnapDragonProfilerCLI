@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -38,6 +39,10 @@ namespace SnapdragonProfilerCLI.Modes
         private readonly ManualResetEvent _captureCompleteEvent = new ManualResetEvent(false);
         private readonly ManualResetEvent _dataProcessedEvent   = new ManualResetEvent(false);
         private readonly ManualResetEvent _importCompleteEvent  = new ManualResetEvent(false);
+
+        // Session summary tracking
+        private readonly List<SessionSummaryService.CaptureEntry> _captureEntries = new();
+        private List<string> _activatedMetricNames = new();
 
         private static readonly ContextLogger _log = new ContextLogger("Capture");
 
@@ -110,6 +115,7 @@ namespace SnapdragonProfilerCLI.Modes
                 _targetPackageName = appService.TargetPackageName;
                 _targetProcessPid  = appService.TargetProcessPid;
                 _renderingAPI      = appService.RenderingAPI;
+                ((CliClientDelegate?)_clientDelegate)?.SetTargetPackageName(_targetPackageName ?? "");
 
                 bool initialDiscovery = appService.WaitForProcess();
                 _verifiedProcessPid  = appService.VerifiedProcessPid;
@@ -152,6 +158,7 @@ namespace SnapdragonProfilerCLI.Modes
                         // Reset events before starting so stale signals from the previous
                         // capture don't cause WaitOne() to return immediately with the old captureId.
                         _captureCompleteEvent.Reset();
+                        _importCompleteEvent.Reset();
                         ((CliClientDelegate?)_clientDelegate)?.ResetDataProcessedCount();
 
                         var capSvc = new CaptureExecutionService(
@@ -165,6 +172,9 @@ namespace SnapdragonProfilerCLI.Modes
                             continue;
                         }
                         _currentCapture = capSvc.CurrentCapture;
+                        // Capture metric names once (same set for all captures in a session)
+                        if (_activatedMetricNames.Count == 0 && capSvc.ActivatedMetricNames.Count > 0)
+                            _activatedMetricNames = capSvc.ActivatedMetricNames;
 
                         Console.WriteLine("\nCapture in progress...");
                         bool completed = _captureCompleteEvent.WaitOne(TimeSpan.FromSeconds(30));
@@ -191,7 +201,7 @@ namespace SnapdragonProfilerCLI.Modes
                         Console.WriteLine($"Capture sub-directory: {captureSubDir}");
 
                         _log.Info($"[Replay] Starting ReplayAndGetBuffers for captureId={captureId}");
-                        BinaryDataPair? dsbBuffer = ReplayAndGetBuffers(captureId);
+                        BinaryDataPair? dsbBuffer = ReplayAndGetBuffers(captureId, _importCompleteEvent);
                         _log.Info($"[Replay] ReplayAndGetBuffers returned: {(dsbBuffer != null ? dsbBuffer.size + " bytes" : "null")}");
 
                         if (dsbBuffer != null)
@@ -213,6 +223,19 @@ namespace SnapdragonProfilerCLI.Modes
 
                         // 置 null 确保下次 ENTER 创建新的 Capture 对象，SDK 分配新 captureId
                         _currentCapture = null;
+
+                        _captureEntries.Add(new SessionSummaryService.CaptureEntry(captureId, captureSubDir));
+
+                        // Wait for ImportCapture's device-side replay to finish (bufferID=1).
+                        // This prevents the next capture's metrics from being collected while
+                        // the replay is still running on device (which causes empty DrawCallMetrics).
+                        Console.WriteLine("\nWaiting for device replay to complete (safe to capture after this)...");
+                        _log.Info($"[Capture] Waiting for ImportCapture replay completion (bufferID=1) — timeout=60s");
+                        bool importDone = _importCompleteEvent.WaitOne(TimeSpan.FromSeconds(60));
+                        if (!importDone)
+                            _log.Warning("[Capture] ImportCapture trailing event not received within 60s — proceeding anyway");
+                        else
+                            _log.Info("[Capture] ImportCapture device replay confirmed complete");
 
                         _log.Info($"[Capture] === Capture Complete === data saved to: {captureSubDir}");
                         Console.WriteLine("\n=== Capture Complete ===");
@@ -237,6 +260,32 @@ namespace SnapdragonProfilerCLI.Modes
                 string? finalSessionPath = _sdpClient?.SessionManager?.GetSessionPath();
                 if (finalSessionPath != null)
                 {
+                    // Write session_summary.json before archiving
+                    try
+                    {
+                        string renderingApiStr = _renderingAPI switch
+                        {
+                            16 => "Vulkan",
+                            8  => "OpenGL",
+                            2  => "DirectX12",
+                            1  => "DirectX11",
+                            4  => "OpenCL",
+                            _  => "Unknown",
+                        };
+                        string appPackage  = _config.Get("PackageName",    "") ?? "";
+                        string appActivity = _config.Get("ActivityName",   "") ?? "";
+                        new SessionSummaryService().Write(
+                            finalSessionPath,
+                            _connectedDevice,
+                            _config,
+                            renderingApiStr,
+                            appPackage,
+                            appActivity,
+                            _activatedMetricNames,
+                            _captureEntries);
+                    }
+                    catch (Exception sumEx) { Console.WriteLine(" Warning: Could not write session summary: " + sumEx.Message); }
+
                     try { new SessionArchiveService().CreateSessionArchive(finalSessionPath); }
                     catch (Exception archEx) { Console.WriteLine(" Warning: Could not create session archive: " + archEx.Message); }
                 }
@@ -292,6 +341,7 @@ namespace SnapdragonProfilerCLI.Modes
                 var simpleDelegate = new CliClientDelegate();
                 simpleDelegate.SetCaptureCompleteEvent(_captureCompleteEvent);
                 simpleDelegate.SetDataProcessedEvent(_dataProcessedEvent);
+                simpleDelegate.SetImportCompleteEvent(_importCompleteEvent);
 
                 string logLevelStr = _config.Get("LogLevel", "DEBUG").ToUpper();
                 LogLevel logLevel = logLevelStr == "INFO"  ? LogLevel.LOG_INFO
@@ -374,7 +424,7 @@ namespace SnapdragonProfilerCLI.Modes
             }
         }
 
-        private BinaryDataPair? ReplayAndGetBuffers(uint captureId)
+        private BinaryDataPair? ReplayAndGetBuffers(uint captureId, ManualResetEvent importCompleteEvent)
         {
             Console.WriteLine("\n=== Replaying Snapshot Data ===");
             _log.Info($"[ImportCapture] Entering ReplayAndGetBuffers captureId={captureId}");
@@ -455,7 +505,19 @@ namespace SnapdragonProfilerCLI.Modes
                     _log.Warning($"[ImportCapture] DB polling timed out — last row count: {lastRows}");
                     Console.WriteLine(" DB polling timed out (last: " + lastRows + " rows)");
                 }
-                Thread.Sleep(2000);
+
+                // Wait for bufferID=1 (ImportCapture trailing event) before fetching DSBbuffer.
+                // DSB is only available in the plugin cache after ImportCapture's device-side
+                // replay fires OnDataProcessed(bufferID=1). Without this wait the DB polling
+                // stabilises too fast (e.g. 0-row table) and GetCachedSnapshotDsbBuffer returns
+                // null, producing no CSVs (observed in snapshot_3 of 2026-04-07T16-16-40).
+                _log.Info("[ImportCapture] Waiting for ImportCapture trailing event (bufferID=1) — DSB available after this");
+                Console.WriteLine("Waiting for device replay complete (DSB ready)...");
+                bool dsbReady = importCompleteEvent.WaitOne(TimeSpan.FromSeconds(60));
+                if (!dsbReady)
+                    _log.Warning("[ImportCapture] importCompleteEvent timeout (60s) — DSB may be null");
+                else
+                    _log.Info("[ImportCapture] importCompleteEvent fired — DSB should be cached");
 
                 _log.Info($"[ImportCapture] Getting cached buffers for captureId={captureId}");
                 Console.WriteLine("\n[DEBUG] Getting buffers - session=" + sessionPath + "  captureId=" + captureId);

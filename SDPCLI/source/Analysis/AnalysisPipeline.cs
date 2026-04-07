@@ -22,6 +22,7 @@ namespace SnapdragonProfilerCLI.Analysis
         private readonly Services.Analysis.ReportGenerationService reportService;
         private readonly Services.Analysis.DrawCallLabelService labelService;
         private readonly Services.Analysis.MetricsCsvService metricsService;
+        private readonly Services.Analysis.CaptureReportService captureReportService;
         private readonly Config config;
         private readonly ILogger logger;
 
@@ -43,6 +44,7 @@ namespace SnapdragonProfilerCLI.Analysis
             this.reportService        = reportService;
             this.labelService         = labelService;
             this.metricsService       = metricsService;
+            this.captureReportService = new Services.Analysis.CaptureReportService(logger);
             this.config               = config;
             this.logger               = logger;
         }
@@ -242,10 +244,66 @@ namespace SnapdragonProfilerCLI.Analysis
                 string labeledCsv = reportService.GenerateLabeledMetricsCsv(report, captureOutDir);
                 logger.Info($"  → CSV: {labeledCsv}");
 
+                // ── Step 3.5: Extract meshes for top-5 GPU-cost DrawCalls ────
+                string meshBaseDir = System.IO.Path.Combine(captureOutDir, "meshes");
+
+                if (onlyReport)
+                {
+                    logger.Info("\nStep 3.5: Mesh extraction — SKIPPED (AnalysisOnlyGenerateReport=true)");
+                }
+                else if (System.IO.Directory.Exists(meshBaseDir))
+                {
+                    logger.Info($"\nStep 3.5: Mesh extraction — SKIPPED (meshes/ already exists → {meshBaseDir})");
+                }
+                else
+                {
+                    logger.Info("\nStep 3.5: Extracting meshes for top-5 DrawCalls by GPU Clocks...");
+                    System.IO.Directory.CreateDirectory(meshBaseDir);
+
+                    // Pick top-5 by GPU Clocks; fall back to first 5 DCs when no metrics available
+                    var withMetrics = report.DrawCallResults.Where(d => d.Metrics != null).ToList();
+                    var top5 = withMetrics.Count > 0
+                        ? withMetrics.OrderByDescending(d => d.Metrics!.Clocks).Take(5).ToList()
+                        : report.DrawCallResults.Take(5).ToList();
+
+                    var meshExt = new Tools.MeshExtractor(dbPath, (int)captureId);
+                    int meshOk = 0;
+                    foreach (var dc in top5)
+                    {
+                        string objPath = System.IO.Path.Combine(meshBaseDir, $"drawcall_{dc.DrawCallNumber}.obj");
+                        logger.Info($"  Extracting DC {dc.DrawCallNumber} → {System.IO.Path.GetFileName(objPath)}");
+                        if (meshExt.ExtractMesh(dc.DrawCallNumber, objPath))
+                            meshOk++;
+                    }
+                    logger.Info($"  → Meshes: {meshOk}/{top5.Count} OBJ files written → {meshBaseDir}");
+                }
+
+                // Always (re)generate viewer.html if meshes/ dir has any OBJ files
+                if (System.IO.Directory.Exists(meshBaseDir))
+                {
+                    var objFiles = System.IO.Directory.GetFiles(meshBaseDir, "*.obj");
+                    if (objFiles.Length > 0)
+                    {
+                        GenerateMeshViewerHtml(meshBaseDir, objFiles.Select(System.IO.Path.GetFileName).ToList());
+                        logger.Info($"  → Viewer: {System.IO.Path.Combine(meshBaseDir, "viewer.html")}");
+                    }
+                }
+
                 // ── Step 4: Summary report ────────────────────────────────────
                 logger.Info("\nStep 4: Generating summary...");
                 string summaryMd = reportService.GenerateSummaryReport(report, captureOutDir);
                 logger.Info($"  → Summary: {summaryMd}");
+
+                // ── Step 5: Compact report.json ───────────────────────────────
+                logger.Info("\nStep 5: Generating report.json...");
+                try
+                {
+                    captureReportService.GenerateReport(report, captureOutDir, summaryMd);
+                }
+                catch (Exception reportEx)
+                {
+                    logger.Info($"  ⚠ report.json generation failed: {reportEx.Message}");
+                }
 
                 logger.Info("\n=== Analysis Complete ===");
             }
@@ -258,6 +316,141 @@ namespace SnapdragonProfilerCLI.Analysis
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static void GenerateMeshViewerHtml(string meshDir, List<string> objFiles)
+        {
+            // Embed OBJ file contents inline so viewer.html works when opened as file://
+            // (XHR is blocked by browsers for local files, so OBJLoader.load() fails)
+            var objDataEntries = new System.Text.StringBuilder();
+            foreach (var fname in objFiles)
+            {
+                string fullPath = System.IO.Path.Combine(meshDir, fname);
+                if (!System.IO.File.Exists(fullPath)) continue;
+                string content = System.IO.File.ReadAllText(fullPath, System.Text.Encoding.UTF8);
+                // Escape for JS template literal: backslash and backtick
+                content = content.Replace("\\", "\\\\").Replace("`", "\\`");
+                objDataEntries.AppendLine($"OBJ_DATA[\"{fname}\"] = `{content}`;");
+            }
+
+            string fileList = string.Join(", ", objFiles.Select(f => $"\"{f}\""));
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("<!DOCTYPE html>");
+            sb.AppendLine("<html><head><meta charset=\"utf-8\">");
+            sb.AppendLine("<title>Mesh Viewer — SDPCLI</title>");
+            sb.AppendLine("<style>");
+            sb.AppendLine("  * { box-sizing: border-box; margin: 0; padding: 0; }");
+            sb.AppendLine("  body { background: #12121f; display: flex; height: 100vh; font-family: monospace; }");
+            sb.AppendLine("  #sidebar { width: 180px; background: #1a1a30; color: #ccc; padding: 12px; overflow-y: auto; flex-shrink: 0; }");
+            sb.AppendLine("  #sidebar h3 { font-size: 11px; color: #778; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }");
+            sb.AppendLine("  .dc-btn { display: block; width: 100%; margin: 3px 0; padding: 7px 8px; background: #252540;");
+            sb.AppendLine("    color: #aac; border: 1px solid #333; cursor: pointer; font-size: 11px; text-align: left;");
+            sb.AppendLine("    border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }");
+            sb.AppendLine("  .dc-btn:hover { background: #333360; border-color: #556; }");
+            sb.AppendLine("  .dc-btn.active { background: #3a3a80; border-color: #88aaff; color: #fff; }");
+            sb.AppendLine("  #controls { padding: 10px 0; border-top: 1px solid #2a2a45; margin-top: 10px; }");
+            sb.AppendLine("  #controls button { padding: 5px 8px; background: #252540; color: #aac; border: 1px solid #333;");
+            sb.AppendLine("    cursor: pointer; font-size: 10px; border-radius: 3px; margin: 2px 0; width: 100%; }");
+            sb.AppendLine("  #controls button:hover { background: #333360; }");
+            sb.AppendLine("  #canvas-wrap { flex: 1; position: relative; }");
+            sb.AppendLine("  #canvas-wrap canvas { width: 100% !important; height: 100% !important; }");
+            sb.AppendLine("  #info { position: absolute; bottom: 10px; left: 12px; color: #667; font-size: 10px; pointer-events: none; }");
+            sb.AppendLine("  #status { position: absolute; top: 12px; left: 12px; color: #88aaff; font-size: 11px;");
+            sb.AppendLine("    background: rgba(0,0,0,.55); padding: 4px 10px; border-radius: 3px; pointer-events: none; }");
+            sb.AppendLine("</style></head><body>");
+            sb.AppendLine("<div id=\"sidebar\">");
+            sb.AppendLine("  <h3>Draw Calls</h3>");
+            sb.AppendLine("  <div id=\"btnlist\"></div>");
+            sb.AppendLine("  <div id=\"controls\">");
+            sb.AppendLine("    <button id=\"btnWire\">Wireframe: OFF</button>");
+            sb.AppendLine("    <button id=\"btnReset\">Reset Camera</button>");
+            sb.AppendLine("  </div>");
+            sb.AppendLine("</div>");
+            sb.AppendLine("<div id=\"canvas-wrap\">");
+            sb.AppendLine("  <div id=\"status\">Loading…</div>");
+            sb.AppendLine("  <div id=\"info\">Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan</div>");
+            sb.AppendLine("</div>");
+            sb.AppendLine("<script src=\"https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js\"></script>");
+            sb.AppendLine("<script src=\"https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js\"></script>");
+            sb.AppendLine("<script src=\"https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js\"></script>");
+            // Inline OBJ data — must come AFTER OBJLoader script so the variable exists
+            sb.AppendLine("<script>");
+            sb.AppendLine($"const FILES=[{fileList}];");
+            sb.AppendLine("const OBJ_DATA={};");
+            sb.Append(objDataEntries);
+            sb.AppendLine("</script>");
+            sb.AppendLine("<script>");
+            sb.AppendLine("const wrap=document.getElementById('canvas-wrap');");
+            sb.AppendLine("const status=document.getElementById('status');");
+            sb.AppendLine("const renderer=new THREE.WebGLRenderer({antialias:true});");
+            sb.AppendLine("renderer.setPixelRatio(devicePixelRatio); renderer.setClearColor(0x12121f);");
+            sb.AppendLine("wrap.appendChild(renderer.domElement);");
+            sb.AppendLine("const scene=new THREE.Scene();");
+            sb.AppendLine("const camera=new THREE.PerspectiveCamera(45,1,0.001,100000);");
+            sb.AppendLine("const controls=new THREE.OrbitControls(camera,renderer.domElement);");
+            sb.AppendLine("controls.enableDamping=true; controls.dampingFactor=0.08;");
+            sb.AppendLine("const ambient=new THREE.AmbientLight(0xffffff,0.5); scene.add(ambient);");
+            sb.AppendLine("const dir1=new THREE.DirectionalLight(0xffffff,0.9); dir1.position.set(1,2,2); scene.add(dir1);");
+            sb.AppendLine("const dir2=new THREE.DirectionalLight(0x6688ff,0.4); dir2.position.set(-1,-1,-1); scene.add(dir2);");
+            sb.AppendLine("const grid=new THREE.GridHelper(4,20,0x333355,0x222233); scene.add(grid);");
+            sb.AppendLine("let currentObj=null, wireframe=false;");
+            sb.AppendLine("let initCamPos=new THREE.Vector3(), initTarget=new THREE.Vector3();");
+            sb.AppendLine("function loadFile(filename){");
+            sb.AppendLine("  status.textContent='Loading '+filename+'…';");
+            sb.AppendLine("  if(currentObj){scene.remove(currentObj);currentObj=null;}");
+            sb.AppendLine("  const raw=OBJ_DATA[filename];");
+            sb.AppendLine("  if(!raw){status.textContent='No data for '+filename;return;}");
+            sb.AppendLine("  try{");
+            sb.AppendLine("    const obj=new THREE.OBJLoader().parse(raw);");
+            sb.AppendLine("    const box=new THREE.Box3().setFromObject(obj);");
+            sb.AppendLine("    const center=box.getCenter(new THREE.Vector3());");
+            sb.AppendLine("    const size=box.getSize(new THREE.Vector3());");
+            sb.AppendLine("    const maxDim=Math.max(size.x,size.y,size.z,0.001);");
+            sb.AppendLine("    const scale=2.0/maxDim;");
+            sb.AppendLine("    obj.position.sub(center.multiplyScalar(scale));");
+            sb.AppendLine("    obj.scale.setScalar(scale);");
+            sb.AppendLine("    const mat=new THREE.MeshStandardMaterial({color:0x88aacc,metalness:0.15,roughness:0.7,side:THREE.DoubleSide,wireframe:wireframe});");
+            sb.AppendLine("    obj.traverse(c=>{if(c.isMesh)c.material=mat;});");
+            sb.AppendLine("    scene.add(obj); currentObj=obj;");
+            sb.AppendLine("    let verts=0; obj.traverse(c=>{if(c.isMesh)verts+=c.geometry.attributes.position.count;});");
+            sb.AppendLine("    initCamPos.set(0,size.y*scale*0.8,maxDim*scale*2.5);");
+            sb.AppendLine("    initTarget.set(0,0,0);");
+            sb.AppendLine("    camera.position.copy(initCamPos); controls.target.copy(initTarget); controls.update();");
+            sb.AppendLine("    status.textContent=filename+' | '+verts.toLocaleString()+' vertices';");
+            sb.AppendLine("  }catch(e){status.textContent='Parse error: '+(e.message||e);}");
+            sb.AppendLine("}");
+            sb.AppendLine("// Sidebar buttons");
+            sb.AppendLine("const btnList=document.getElementById('btnlist');");
+            sb.AppendLine("let activeBtn=null;");
+            sb.AppendLine("FILES.forEach(f=>{");
+            sb.AppendLine("  const b=document.createElement('button');");
+            sb.AppendLine("  b.className='dc-btn'; b.title=f;");
+            sb.AppendLine("  b.textContent=f.replace('drawcall_','DC ').replace('.obj','');");
+            sb.AppendLine("  b.onclick=()=>{if(activeBtn)activeBtn.classList.remove('active');b.classList.add('active');activeBtn=b;loadFile(f);};");
+            sb.AppendLine("  btnList.appendChild(b);");
+            sb.AppendLine("});");
+            sb.AppendLine("// Wireframe toggle");
+            sb.AppendLine("document.getElementById('btnWire').onclick=function(){");
+            sb.AppendLine("  wireframe=!wireframe; this.textContent='Wireframe: '+(wireframe?'ON':'OFF');");
+            sb.AppendLine("  if(currentObj)currentObj.traverse(c=>{if(c.isMesh)c.material.wireframe=wireframe;});");
+            sb.AppendLine("};");
+            sb.AppendLine("document.getElementById('btnReset').onclick=()=>{");
+            sb.AppendLine("  camera.position.copy(initCamPos); controls.target.copy(initTarget); controls.update();");
+            sb.AppendLine("};");
+            sb.AppendLine("// Resize");
+            sb.AppendLine("function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}");
+            sb.AppendLine("window.addEventListener('resize',resize); resize();");
+            sb.AppendLine("// Animate");
+            sb.AppendLine("(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera);})();");
+            sb.AppendLine("// Auto-load first");
+            sb.AppendLine("if(FILES.length>0)btnList.querySelector('button').click();");
+            sb.AppendLine("</script></body></html>");
+
+            System.IO.File.WriteAllText(
+                System.IO.Path.Combine(meshDir, "viewer.html"),
+                sb.ToString(),
+                System.Text.Encoding.UTF8);
+        }
 
         private string? ResolveSpirvCrossPath()
         {

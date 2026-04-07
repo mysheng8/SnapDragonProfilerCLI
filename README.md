@@ -65,7 +65,7 @@ Before doing anything, agents MUST:
 
 1. Read `README.md`
 2. Read `docs/context/INDEX.md` (Context Index)
-3. Read `/INDEX.md` (Code Index at repository root)
+3. Read `docs/index/INDEX.md` (Code Index at repository root)
 4. Identify relevant context and modules
 5. Only then proceed
 

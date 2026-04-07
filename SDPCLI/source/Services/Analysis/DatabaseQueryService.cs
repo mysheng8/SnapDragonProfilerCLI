@@ -66,7 +66,9 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     if (drawCallNumbers.Count > 0)
                     {
                         logger.Debug($"Got {drawCallNumbers.Count} DrawCalls from DrawCallParameters" +
-                            (cmdBufferFilter > 0 ? $" (CmdBuffer={cmdBufferFilter})" : ""));
+                            (cmdBufferFilter == null ? "" :
+                             cmdBufferFilter == 0    ? " (CmdBuffer=AUTO)" :
+                             $" (CmdBuffer={cmdBufferFilter})"));
                         return drawCallNumbers;
                     }
                 }
@@ -168,22 +170,52 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             var ids = new List<string>();
 
             // Detect which columns are present (schema may vary between legacy and new SDPs)
-            bool hasCaptureIdCol  = false;
-            bool hasCmdBufferCol  = false;
+            bool hasCaptureIdCol = false;
+            bool hasCmdBufferCol = false;
             using (var probe = new SQLiteCommand("PRAGMA table_info(DrawCallParameters)", conn))
             using (var pr = probe.ExecuteReader())
             {
                 while (pr.Read())
                 {
                     string col = pr["name"].ToString() ?? "";
-                    if (col == "CaptureID")   hasCaptureIdCol = true;
+                    if (col == "CaptureID")    hasCaptureIdCol = true;
                     if (col == "CmdBufferIdx") hasCmdBufferCol = true;
                 }
             }
 
+            // ── Resolve which CmdBufferIdx to filter on ─────────────────────────────
+            // cmdBufferFilter == null  (-1 in config) → no CB filter (analyse all)
+            // cmdBufferFilter == 0     ( 0 in config) → AUTO: pick CB with most DCs
+            // cmdBufferFilter >= 1     (N  in config) → specific CB
+            int resolvedCmdBuf = -1; // -1 means "no CB filter"
+            if (cmdBufferFilter == 0 && hasCmdBufferCol)
+            {
+                string captureWhere = hasCaptureIdCol ? $"WHERE CaptureID={captureId}" : "";
+                string autoSql = $@"
+                    SELECT CmdBufferIdx
+                    FROM DrawCallParameters
+                    {captureWhere}
+                    GROUP BY CmdBufferIdx
+                    ORDER BY COUNT(*) DESC
+                    LIMIT 1";
+                using (var ac = new SQLiteCommand(autoSql, conn))
+                {
+                    var scalar = ac.ExecuteScalar();
+                    if (scalar != null && scalar != DBNull.Value)
+                        resolvedCmdBuf = Convert.ToInt32(scalar);
+                }
+                logger.Debug($"  Auto-detected primary CmdBufferIdx={resolvedCmdBuf}");
+            }
+            else if (cmdBufferFilter >= 1)
+            {
+                resolvedCmdBuf = cmdBufferFilter.Value;
+            }
+            // cmdBufferFilter == null → resolvedCmdBuf stays -1 (no filter)
+            // ────────────────────────────────────────────────────────────────────────
+
             var conditions = new List<string>();
             if (hasCaptureIdCol)                          conditions.Add($"CaptureID={captureId}");
-            if (cmdBufferFilter > 0 && hasCmdBufferCol)   conditions.Add($"CmdBufferIdx={cmdBufferFilter}");
+            if (resolvedCmdBuf >= 0 && hasCmdBufferCol)   conditions.Add($"CmdBufferIdx={resolvedCmdBuf}");
 
             string where = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
             string sql   = $"SELECT DrawCallApiID FROM DrawCallParameters{where} ORDER BY rowid";
