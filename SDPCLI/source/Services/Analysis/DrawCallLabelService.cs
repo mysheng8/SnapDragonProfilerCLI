@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,7 +35,12 @@ namespace SnapdragonProfilerCLI.Services.Analysis
         public IReadOnlyList<string> AllowedCategories => _allowedCategories;
 
         // ── Per-pipeline LLM cache (many DCs share the same pipeline) ─────────
-        private readonly Dictionary<uint, DrawCallLabel> _llmCache = new Dictionary<uint, DrawCallLabel>();
+        // ConcurrentDictionary: safe for parallel Step 2 labeling.
+        // Race condition on first call for same pipeline is acceptable — worst case two
+        // threads make the same LLM call; the later writer simply overwrites with an
+        // equivalent result (same pipeline → same shader → same label).
+        private readonly ConcurrentDictionary<uint, DrawCallLabel> _llmCache =
+            new ConcurrentDictionary<uint, DrawCallLabel>();
 
         // ── Fallback keyword rules ────────────────────────────────────────────
         private static readonly (string[] keywords, string category, string detailHint)[] Rules =
@@ -95,7 +101,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     return cached;
                 }
 
-                string shaderCode = LoadShaderCode(shaderBaseDir, dc.DrawCallNumber);
+                string shaderCode = LoadShaderCode(shaderBaseDir, dc.PipelineID);
 
                 // Empty shader — skip LLM, use rule-based fallback
                 if (shaderCode.Contains("(empty shader"))
@@ -250,14 +256,19 @@ namespace SnapdragonProfilerCLI.Services.Analysis
 
         // ── Shader file loading ───────────────────────────────────────────────
 
-        private string LoadShaderCode(string shaderBaseDir, string drawCallNumber)
+        /// <summary>
+        /// Load decompiled shader source for the given pipeline from the flat shared
+        /// shaders folder (pipeline_{pipelineId}_{stage}.hlsl / .glsl).
+        /// Matches the layout written by AnalysisPipeline Step 1.5.
+        /// </summary>
+        private string LoadShaderCode(string shaderBaseDir, uint pipelineId)
         {
-            string dcDir = Path.Combine(shaderBaseDir, "dc_" + drawCallNumber);
-            if (!Directory.Exists(dcDir))
+            if (!Directory.Exists(shaderBaseDir))
                 return "(shader directory not found - shaders may not have been extracted yet)";
 
-            var files = Directory.GetFiles(dcDir, "*.hlsl")
-                .Concat(Directory.GetFiles(dcDir, "*.glsl"))
+            // Flat layout: pipeline_{pipelineId}_{stage}.hlsl / .glsl
+            var files = Directory.GetFiles(shaderBaseDir, $"pipeline_{pipelineId}_*.hlsl")
+                .Concat(Directory.GetFiles(shaderBaseDir, $"pipeline_{pipelineId}_*.glsl"))
                 .OrderBy(f => f)
                 .ToList();
 

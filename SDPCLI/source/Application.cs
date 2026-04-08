@@ -258,8 +258,8 @@ namespace SnapdragonProfilerCLI
         private static string ResolvePath(string? path, string basePath)
         {
             if (string.IsNullOrWhiteSpace(path)) return "";
-            if (Path.IsPathRooted(path)) return path;
-            return Path.GetFullPath(Path.Combine(basePath, path));
+            if (Path.IsPathRooted(path)) return path!;
+            return Path.GetFullPath(Path.Combine(basePath, path!));
         }
     }
 }

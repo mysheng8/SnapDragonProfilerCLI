@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using SnapdragonProfilerCLI.Models;
 using SnapdragonProfilerCLI.Modes;
 
@@ -63,7 +66,7 @@ namespace SnapdragonProfilerCLI.Analysis
                 string? dbPath = sdpFileService.FindDatabasePath(sdpPath);
                 if (string.IsNullOrEmpty(dbPath))
                     throw new Exception("sdp.db not found in .sdp file");
-                dbQueryService.OpenDatabase(dbPath);
+                dbQueryService.OpenDatabase(dbPath!);
 
                 // ── Pre-compute session paths ────────────────────────────────────
                 string sdpName    = System.IO.Path.GetFileNameWithoutExtension(sdpPath);
@@ -87,91 +90,114 @@ namespace SnapdragonProfilerCLI.Analysis
                 logger.Info($"  Capture output: {captureOutDir}");
 
                 // ── Step 1.5: Extract shaders and textures ────────────────────
-                string shaderBaseDir  = System.IO.Path.Combine(captureOutDir, "shaders");
-                string textureBaseDir = System.IO.Path.Combine(captureOutDir, "textures");
-
-                bool shadersExist  = System.IO.Directory.Exists(shaderBaseDir);
-                bool texturesExist = System.IO.Directory.Exists(textureBaseDir);
+                // Shared across ALL snapshots in this session — placed at sessionDir level
+                // so that assets shared between multiple captures are only written once.
+                string shaderBaseDir  = System.IO.Path.Combine(sessionDir, "shaders");
+                string textureBaseDir = System.IO.Path.Combine(sessionDir, "textures");
 
                 if (onlyReport)
                 {
                     logger.Info("\nStep 1.5: Extraction — SKIPPED (AnalysisOnlyGenerateReport=true)");
                 }
-                else if (shadersExist && texturesExist)
-                {
-                    logger.Info("\nStep 1.5: Skipping extraction — shaders/ and textures/ already exist.");
-                }
                 else
                 {
-                    logger.Info("\nStep 1.5: Extracting shaders and textures...");
+                    logger.Info("\nStep 1.5: Extracting shaders and textures in parallel (shared, per-file dedup)...");
+                    System.IO.Directory.CreateDirectory(shaderBaseDir);
+                    System.IO.Directory.CreateDirectory(textureBaseDir);
 
-                    // Shaders - one folder per DC named dc_{DrawCallNumber}, skips if already exists
-                    if (!shadersExist)
+                    // Pre-compute unique pipeline IDs and texture IDs (single-threaded, safe)
+                    var uniquePipelines = report.DrawCallResults
+                        .Where(dc => dc.PipelineID != 0)
+                        .Select(dc => dc.PipelineID)
+                        .Distinct().ToList();
+                    var allTexIds = report.DrawCallResults
+                        .SelectMany(dc => dc.TextureIDs.Select(id => (ulong)id))
+                        .Distinct().ToList();
+
+                    string  shaderFmt      = config.Get("ShaderOutputFormat", "hlsl").Trim().ToLower();
+                    string? spirvCrossPath = ResolveSpirvCrossPath();
+
+                    // Shader extraction — each pipeline gets its own ShaderExtractor (own SQLite connection).
+                    // ShaderExtractor is not thread-safe across instances, but each instance is independent.
+                    // Files are named pipeline_{id}_{stage}.* — unique per pipeline, no write conflicts.
+                    int shaderOkCount = 0;
+                    var shaderTask = Task.Run(() =>
                     {
-                        string  shaderFmt      = config.Get("ShaderOutputFormat", "hlsl").Trim().ToLower();
-                        string? spirvCrossPath = ResolveSpirvCrossPath();
-                        int     shaderOkCount  = 0, shaderTotal = 0;
-                        foreach (var dc in report.DrawCallResults)
-                        {
-                            if (dc.PipelineID == 0) continue;
-                            shaderTotal++;
-                            string dcDir = System.IO.Path.Combine(shaderBaseDir, "dc_" + dc.DrawCallNumber);
-                            if (System.IO.Directory.Exists(dcDir)) { shaderOkCount++; continue; }
-                            var shExt = new Tools.ShaderExtractor(dbPath, (int)captureId)
+                        Parallel.ForEach(
+                            uniquePipelines,
+                            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                            pipelineId =>
                             {
-                                SpirvCrossPath     = spirvCrossPath,
-                                ShaderOutputFormat = shaderFmt
-                            };
-                            if (shExt.ExtractShadersForPipeline(dc.PipelineID, dcDir)) shaderOkCount++;
-                        }
-                        logger.Info($"  \u2192 Shaders: {shaderOkCount}/{shaderTotal} DCs extracted \u2192 {shaderBaseDir}");
-                    }
-                    else
-                    {
-                        logger.Info($"  → Shaders: already exist, skipped → {shaderBaseDir}");
-                    }
+                                if (System.IO.Directory.GetFiles(shaderBaseDir,
+                                        $"pipeline_{pipelineId}_*.spv").Length > 0)
+                                {
+                                    Interlocked.Increment(ref shaderOkCount);
+                                    return;
+                                }
+                                var shExt = new Tools.ShaderExtractor(dbPath, (int)captureId)
+                                {
+                                    SpirvCrossPath     = spirvCrossPath,
+                                    ShaderOutputFormat = shaderFmt
+                                };
+                                if (shExt.ExtractShadersForPipeline(pipelineId, shaderBaseDir))
+                                    Interlocked.Increment(ref shaderOkCount);
+                            });
+                    });
 
-                    // Textures – one extraction per unique TextureID across all DCs
-                    if (!texturesExist)
+                    // Texture extraction — each texture gets its own TextureExtractor (own SQLite connection).
+                    // MaxDegreeOfParallelism=4: conservative limit for native Qonvert DLL concurrency.
+                    // Increase via config key "TextureExtractionDegree" if your system handles more.
+                    int texParallelDegree = config.GetInt("TextureExtractionDegree", 4);
+                    int texOk = 0, texSkipped = 0;
+                    var textureTask = Task.Run(() =>
                     {
-                        System.IO.Directory.CreateDirectory(textureBaseDir);
-                        var allTexIds = report.DrawCallResults
-                            .SelectMany(dc => dc.TextureIDs.Select(id => (ulong)id))
-                            .Distinct().ToList();
-                        var texExt = new Tools.TextureExtractor(dbPath, (int)captureId);
-                        int texOk = 0;
-                        foreach (var texId in allTexIds)
-                        {
-                            string texFile = System.IO.Path.Combine(textureBaseDir, $"texture_{texId}.png");
-                            if (texExt.ExtractTexture(texId, texFile)) texOk++;
-                        }
-                        logger.Info($"  → Textures: {texOk}/{allTexIds.Count} extracted → {textureBaseDir}");
-                    }
-                    else
-                    {
-                        logger.Info($"  → Textures: already exist, skipped → {textureBaseDir}");
-                    }
+                        Parallel.ForEach(
+                            allTexIds,
+                            new ParallelOptions { MaxDegreeOfParallelism = texParallelDegree },
+                            texId =>
+                            {
+                                string texFile = System.IO.Path.Combine(textureBaseDir, $"texture_{texId}.png");
+                                if (System.IO.File.Exists(texFile))
+                                {
+                                    Interlocked.Increment(ref texOk);
+                                    Interlocked.Increment(ref texSkipped);
+                                    return;
+                                }
+                                var texExt = new Tools.TextureExtractor(dbPath, (int)captureId);
+                                if (texExt.ExtractTexture(texId, texFile))
+                                    Interlocked.Increment(ref texOk);
+                            });
+                    });
+
+                    Task.WaitAll(shaderTask, textureTask);
+                    logger.Info($"  → Shaders: {shaderOkCount}/{uniquePipelines.Count} unique pipelines extracted → {shaderBaseDir}");
+                    logger.Info($"  → Textures: {texOk}/{allTexIds.Count} ready ({texSkipped} already existed) → {textureBaseDir}");
                 }
 
                 // ── Step 2: Label each DC ────────────────────────────────────
                 if (onlyReport)
                 {
-                    logger.Info("\nStep 2: Labeling — SKIPPED, reloading from existing CSV...");
-                    LoadLabelsFromCsv(report, captureOutDir);
+                    logger.Info("\nStep 2: Labeling — SKIPPED, reloading from existing analysis output...");
+                    LoadLabelsFromAnalysis(report, captureOutDir);
                 }
                 else
                 {
-                logger.Info("\nStep 2: Labeling DrawCalls...");
+                logger.Info("\nStep 2: Labeling DrawCalls (parallel)...");
                 int labelCount = 0;
-                var categorySummary = new Dictionary<string, int>();
-                foreach (var dc in report.DrawCallResults)
-                {
-                    dc.Label = labelService.Label(dc, shaderBaseDir);
-                    categorySummary.TryGetValue(dc.Label.Category, out int n);
-                    categorySummary[dc.Label.Category] = n + 1;
-                    labelCount++;
-                    logger.Info($"  [{labelCount}/{report.DrawCallResults.Count}] DC {dc.DrawCallNumber,-12} [{dc.Label.Category}] {dc.Label.Detail}");
-                }
+                // LlmMaxConcurrentRequests limits parallel LLM HTTP calls; rule-based path is CPU-only
+                // and can safely run at full core count.
+                int llmMaxConcurrent = config.GetInt("LlmMaxConcurrentRequests", 8);
+                var categorySummary  = new ConcurrentDictionary<string, int>();
+                Parallel.ForEach(
+                    report.DrawCallResults,
+                    new ParallelOptions { MaxDegreeOfParallelism = llmMaxConcurrent },
+                    dc =>
+                    {
+                        dc.Label = labelService.Label(dc, shaderBaseDir);
+                        categorySummary.AddOrUpdate(dc.Label.Category, 1, (_, v) => v + 1);
+                        int n = Interlocked.Increment(ref labelCount);
+                        logger.Info($"  [{n}/{report.DrawCallResults.Count}] DC {dc.DrawCallNumber,-12} [{dc.Label.Category}] {dc.Label.Detail}");
+                    });
                 logger.Info($"  → Labeled {labelCount} DCs:");
                 foreach (var kv in categorySummary.OrderByDescending(x => x.Value))
                     logger.Info($"    {kv.Key}: {kv.Value}");
@@ -214,7 +240,7 @@ namespace SnapdragonProfilerCLI.Analysis
 
                     if (!string.IsNullOrEmpty(resolvedMetrics))
                     {
-                        metrics = metricsService.LoadMetrics(resolvedMetrics);
+                        metrics = metricsService.LoadMetrics(resolvedMetrics!);
                         logger.Info($"  → Loaded {metrics.Count} metric rows from: {resolvedMetrics}");
 
                         // Join metrics to DrawCallResults.
@@ -240,9 +266,11 @@ namespace SnapdragonProfilerCLI.Analysis
                     }
                 }
 
-                // Export labeled + metrics CSV to captureOutDir
-                string labeledCsv = reportService.GenerateLabeledMetricsCsv(report, captureOutDir);
-                logger.Info($"  → CSV: {labeledCsv}");
+                // Export labeled + metrics JSON to captureOutDir
+                // JSON annotates each DC with the shader and texture file paths it references.
+                string labeledJson = reportService.GenerateLabeledMetricsJson(
+                    report, captureOutDir, shaderBaseDir, textureBaseDir);
+                logger.Info($"  → JSON: {labeledJson}");
 
                 // ── Step 3.5: Extract meshes for top-5 GPU-cost DrawCalls ────
                 string meshBaseDir = System.IO.Path.Combine(captureOutDir, "meshes");
@@ -503,44 +531,83 @@ namespace SnapdragonProfilerCLI.Analysis
         }
 
         /// <summary>
-        /// Reload Category + Detail labels from the most recent DrawCallAnalysis_*.csv in sessionDir.
+        /// Reload Category + Detail labels from the most recent DrawCallAnalysis output in captureOutDir.
+        /// Tries JSON first (new format), falls back to CSV (legacy) for backward compatibility.
         /// Called when AnalysisOnlyGenerateReport=true to skip LLM labeling.
         /// </summary>
-        private void LoadLabelsFromCsv(DrawCallAnalysisReport report, string sessionDir)
+        private void LoadLabelsFromAnalysis(DrawCallAnalysisReport report, string captureOutDir)
         {
-            // Find the most recently written DrawCallAnalysis_*.csv (not Summary)
-            string? csvPath = null;
-            if (System.IO.Directory.Exists(sessionDir))
+            var labelMap = new Dictionary<string, (string Cat, string Det)>();
+
+            // ── Try JSON first ────────────────────────────────────────────────
+            string? jsonPath = null;
+            if (System.IO.Directory.Exists(captureOutDir))
             {
-                csvPath = System.IO.Directory.GetFiles(sessionDir, "DrawCallAnalysis_*.csv")
+                jsonPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.json")
                     .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
                     .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
                     .FirstOrDefault();
             }
 
-            if (csvPath == null)
+            if (jsonPath != null)
             {
-                logger.Info("  ⚠ No existing DrawCallAnalysis_*.csv found — labels will be empty.");
-                return;
+                logger.Info($"  Loading labels from: {System.IO.Path.GetFileName(jsonPath)}");
+                try
+                {
+                    string text = System.IO.File.ReadAllText(jsonPath, System.Text.Encoding.UTF8);
+                    var root    = Newtonsoft.Json.Linq.JObject.Parse(text);
+                    var arr     = root["drawcalls"] as Newtonsoft.Json.Linq.JArray;
+                    if (arr != null)
+                    {
+                        foreach (var token in arr)
+                        {
+                            string? dcId = token["dc_id"]?.ToString();
+                            string? cat  = token["category"]?.ToString();
+                            string? det  = token["detail"]?.ToString();
+                            if (!string.IsNullOrEmpty(dcId))
+                                labelMap[dcId!] = (cat ?? "", det ?? "");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Info($"  ⚠ Failed to parse JSON labels: {ex.Message} — falling back to CSV.");
+                    jsonPath = null;
+                }
             }
 
-            logger.Info($"  Loading labels from: {System.IO.Path.GetFileName(csvPath)}");
-
-            // CSV header: DrawCall,Category,Detail,...
-            var labelMap = new Dictionary<string, (string Cat, string Det)>();
-            bool firstLine = true;
-            foreach (var raw in System.IO.File.ReadAllLines(csvPath))
+            // ── Fallback: legacy CSV ──────────────────────────────────────────
+            if (jsonPath == null && labelMap.Count == 0)
             {
-                if (firstLine) { firstLine = false; continue; }  // skip header
-                if (string.IsNullOrWhiteSpace(raw)) continue;
-                // Simple split — values are quoted by Q() helper (no embedded commas)
-                var cols = raw.Split(',');
-                if (cols.Length < 3) continue;
-                string dc  = cols[0].Trim().Trim('"');
-                string cat = cols[1].Trim().Trim('"');
-                string det = cols[2].Trim().Trim('"');
-                if (!string.IsNullOrEmpty(dc))
-                    labelMap[dc] = (cat, det);
+                string? csvPath = null;
+                if (System.IO.Directory.Exists(captureOutDir))
+                {
+                    csvPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.csv")
+                        .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
+                        .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
+                        .FirstOrDefault();
+                }
+
+                if (csvPath == null)
+                {
+                    logger.Info("  ⚠ No existing DrawCallAnalysis_*.json or *.csv found — labels will be empty.");
+                    return;
+                }
+
+                logger.Info($"  Loading labels from (legacy CSV): {System.IO.Path.GetFileName(csvPath)}");
+                bool firstLine = true;
+                foreach (var raw in System.IO.File.ReadAllLines(csvPath))
+                {
+                    if (firstLine) { firstLine = false; continue; }
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    var cols = raw.Split(',');
+                    if (cols.Length < 3) continue;
+                    string dc  = cols[0].Trim().Trim('"');
+                    string cat = cols[1].Trim().Trim('"');
+                    string det = cols[2].Trim().Trim('"');
+                    if (!string.IsNullOrEmpty(dc))
+                        labelMap[dc] = (cat, det);
+                }
             }
 
             int matched = 0;

@@ -292,7 +292,7 @@ namespace SnapdragonProfilerCLI.Modes
                 // ── 8. 生成 Markdown 诊断报告（包含实际文件链接） ──────────────
                 Console.WriteLine("\n[Step 7] Generating diagnostic report...");
                 string mdContent = BuildMarkdownReport(
-                    dcInfo, _sdpPath, captureId, textureLimit, displayId,
+                    dcInfo, _sdpPath!, captureId, textureLimit, displayId,
                     shaderOutput, textureOutput, snapshotPath);
                 File.WriteAllText(reportPath, mdContent, Encoding.UTF8);
                 Console.WriteLine($"  ✓ Report: {Path.GetFullPath(reportPath)}");

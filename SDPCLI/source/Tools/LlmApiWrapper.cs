@@ -13,19 +13,28 @@ namespace SnapdragonProfilerCLI.Tools
     /// Provides a single <see cref="Chat"/> method that sends a prompt and returns the response text.
     /// This class has no knowledge of draw calls, shaders, or categories — callers own the prompt.
     ///
+    /// Built-in ring-pool cache (<see cref="LlmResponseCache"/>):
+    ///   Before every HTTP call the cache is checked by SHA-256(prompt).
+    ///   Cache hits are returned instantly with zero network cost.
+    ///   Responses are persisted to disk and survive process restarts.
+    ///
     /// Config keys:
     ///   LlmApiEndpoint    — full chat/completions URL
     ///   LlmApiKey         — Bearer API key
     ///   LlmModel          — model name (e.g. gpt-4o, deepseek-chat)
     ///   LlmTimeoutSeconds — HTTP timeout in seconds (default 60)
+    ///   LlmCacheEnabled   — enable/disable disk cache (default: true)
+    ///   LlmCacheSize      — ring-pool capacity in entries (default: 512)
+    ///   LlmCachePath      — path to llm_cache.json (default: WorkingDirectory/llm_cache.json)
     /// </summary>
-    public class LlmApiWrapper
+    public class LlmApiWrapper : IDisposable
     {
         private readonly string  _endpoint;
         private readonly string  _apiKey;
         private readonly string  _model;
         private readonly int     _timeoutSeconds;
         private readonly ILogger _logger;
+        private readonly LlmResponseCache? _cache;
 
         /// <summary>Whether endpoint and API key are both configured.</summary>
         public bool   IsEnabled { get; }
@@ -46,20 +55,45 @@ namespace SnapdragonProfilerCLI.Tools
             _timeoutSeconds  = config.GetInt("LlmTimeoutSeconds",  60);
             _maxOutputTokens = config.GetInt("LlmMaxOutputTokens", 800);
             IsEnabled        = !string.IsNullOrEmpty(_endpoint) && !string.IsNullOrEmpty(_apiKey);
+
+            // Build ring-pool response cache when LLM is configured
+            bool cacheEnabled = config.GetBool("LlmCacheEnabled", true);
+            if (IsEnabled && cacheEnabled)
+            {
+                int    cacheSize = config.GetInt("LlmCacheSize", 512);
+                string workDir   = config.Get("WorkingDirectory",
+                    AppDomain.CurrentDomain.BaseDirectory).Trim();
+                string cachePath = config.Get("LlmCachePath",
+                    Path.Combine(workDir, "llm_cache.json")).Trim();
+                _cache = new LlmResponseCache(cacheSize, cachePath, logger);
+                logger.Info($"  [LLM cache] ring pool capacity={cacheSize}  path={cachePath}");
+            }
         }
 
         /// <summary>
         /// Send a single-turn chat prompt and return the model's reply text.
+        /// Checks the ring-pool cache first; on miss, calls the API and stores the result.
         /// Returns null on any error (HTTP failure, JSON parse error, etc.).
-        /// The caller is responsible for building the full prompt and parsing the response.
         /// </summary>
         public string? Chat(string prompt)
         {
             LastError = null;
             if (!IsEnabled) { LastError = "LLM not configured"; return null; }
+
+            // ── L2 cache check (disk-persisted ring pool) ─────────────────────
+            if (_cache != null && _cache.TryGet(prompt, out string cached))
+            {
+                _logger.Info($"    [LLM] cache hit (key={LlmResponseCache.Hash(prompt)})");
+                return cached;
+            }
+
+            // ── Live API call ─────────────────────────────────────────────────
             try
             {
-                return CallApi(prompt);
+                string? response = CallApi(prompt);
+                if (response != null && _cache != null)
+                    _cache.Put(prompt, response);
+                return response;
             }
             catch (Exception ex)
             {
@@ -68,6 +102,8 @@ namespace SnapdragonProfilerCLI.Tools
                 return null;
             }
         }
+
+        public void Dispose() => _cache?.Dispose();
 
         // ── Private HTTP implementation ───────────────────────────────────────
 

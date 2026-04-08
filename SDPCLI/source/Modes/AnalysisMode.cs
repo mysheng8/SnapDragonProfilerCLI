@@ -48,7 +48,7 @@ namespace SnapdragonProfilerCLI.Modes
             // 如果命令行指定了 .sdp 文件，直接使用
             if (!string.IsNullOrEmpty(specifiedSdpPath))
             {
-                selectedFile = ResolveSdpPath(specifiedSdpPath);
+                selectedFile = ResolveSdpPath(specifiedSdpPath!);
                 if (selectedFile == null)
                 {
                     logger.Error("Specified SDP file not found");

@@ -281,7 +281,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             if (string.IsNullOrEmpty(formatName)) return false;
             // Matches D16_UNORM, D24_UNORM_S8_UINT, D32_SFLOAT, D32_SFLOAT_S8_UINT,
             // X8_D24_UNORM_PACK32, VK_FORMAT_D16_UNORM, etc.
-            return formatName.IndexOf("D16",   StringComparison.OrdinalIgnoreCase) >= 0
+            return formatName!.IndexOf("D16",   StringComparison.OrdinalIgnoreCase) >= 0
                 || formatName.IndexOf("D24",   StringComparison.OrdinalIgnoreCase) >= 0
                 || formatName.IndexOf("D32",   StringComparison.OrdinalIgnoreCase) >= 0
                 || formatName.IndexOf("DEPTH", StringComparison.OrdinalIgnoreCase) >= 0;

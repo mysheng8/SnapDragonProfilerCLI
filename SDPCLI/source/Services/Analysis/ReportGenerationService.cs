@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json;
 using SnapdragonProfilerCLI.Models;
 using SnapdragonProfilerCLI.Modes;
 
@@ -24,7 +25,119 @@ namespace SnapdragonProfilerCLI.Services.Analysis
         /// <summary>Inject LLM wrapper after construction (called from Application.cs).</summary>
         public void SetLlm(Tools.LlmApiWrapper llm) => _llm = llm;
 
-        // Step 3: labeled CSV
+        // Step 3: labeled JSON (replaces CSV)
+        // Each DC entry annotates the exact shader and texture file paths it uses.
+        // Relative paths from snapshot_{captureId}/ to session-level shared assets use "../../shaders/" etc.
+        public string GenerateLabeledMetricsJson(
+            DrawCallAnalysisReport report,
+            string captureOutDir,
+            string shaderBaseDir,
+            string textureBaseDir)
+        {
+            var drawcalls = new List<object>();
+            foreach (var dc in report.DrawCallResults)
+            {
+                var m        = dc.Metrics;
+                var colorRTs = dc.RenderTargets.Where(r => r.AttachmentType == "Color").ToList();
+                var depthRTs = dc.RenderTargets.Where(r =>
+                    r.AttachmentType == "Depth" ||
+                    r.AttachmentType == "Stencil" ||
+                    r.AttachmentType == "DepthStencil").ToList();
+                var firstRT  = dc.RenderTargets.FirstOrDefault();
+
+                // Shader files: enumerate files for this pipeline in the shared shaders folder
+                var shaderFiles = Directory.Exists(shaderBaseDir)
+                    ? Directory.GetFiles(shaderBaseDir, $"pipeline_{dc.PipelineID}_*")
+                        .OrderBy(f => f)
+                        .Select(f => "../../shaders/" + Path.GetFileName(f))
+                        .ToArray()
+                    : Array.Empty<string>();
+
+                // Shader stage metadata from the DC model
+                var shaderStages = dc.Shaders.Select(s => new
+                {
+                    stage       = s.ShaderStageName,
+                    module_id   = s.ShaderModuleID,
+                    entry_point = s.EntryPoint,
+                }).ToArray();
+
+                // Texture files: reference existing PNGs in shared textures folder
+                var textureFiles = dc.TextureIDs
+                    .Select(id =>
+                    {
+                        string fname = $"texture_{id}.png";
+                        return File.Exists(Path.Combine(textureBaseDir, fname))
+                            ? "../../textures/" + fname
+                            : null;
+                    })
+                    .Where(p => p != null)
+                    .ToArray();
+
+                object? metricsNode = m == null ? null : (object)new
+                {
+                    clocks                = m.Clocks,
+                    read_total_bytes      = m.ReadTotalBytes,
+                    write_total_bytes     = m.WriteTotalBytes,
+                    fragments_shaded      = m.FragmentsShaded,
+                    vertices_shaded       = m.VerticesShaded,
+                    shaders_busy_pct      = Math.Round(m.ShadersBusyPct,       2),
+                    tex_l1_miss_pct       = Math.Round(m.TexL1MissPct,         2),
+                    tex_l2_miss_pct       = Math.Round(m.TexL2MissPct,         2),
+                    tex_fetch_stall_pct   = Math.Round(m.TexFetchStallPct,     2),
+                    fragment_instructions = m.FragmentInstructions,
+                    vertex_instructions   = m.VertexInstructions,
+                    tex_mem_read_bytes    = m.TexMemReadBytes,
+                };
+
+                drawcalls.Add(new
+                {
+                    dc_id          = dc.DrawCallNumber,
+                    category       = dc.Label.Category,
+                    detail         = dc.Label.Detail,
+                    api_name       = dc.ApiName,
+                    pipeline_id    = dc.PipelineID,
+                    vertex_count   = dc.VertexCount,
+                    index_count    = dc.IndexCount,
+                    instance_count = dc.InstanceCount,
+                    shader_stages  = shaderStages,
+                    shader_files   = shaderFiles,
+                    texture_ids    = dc.TextureIDs,
+                    texture_files  = textureFiles,
+                    render_targets = new
+                    {
+                        color        = colorRTs.Select(r => r.AttachmentResourceID.ToString()).ToArray(),
+                        color_format = colorRTs.Select(r => r.FormatName).ToArray(),
+                        depth        = depthRTs.Select(r => r.AttachmentResourceID.ToString()).ToArray(),
+                        depth_format = depthRTs.Select(r => r.FormatName).ToArray(),
+                        width        = firstRT?.Width  ?? 0,
+                        height       = firstRT?.Height ?? 0,
+                    },
+                    metrics = metricsNode,
+                });
+            }
+
+            var root = new
+            {
+                schema_version  = "2.0",
+                generated_at    = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                total_drawcalls = report.DrawCallResults.Count,
+                drawcalls       = drawcalls,
+            };
+
+            var settings = new JsonSerializerSettings
+            {
+                Formatting        = Formatting.Indented,
+                NullValueHandling = NullValueHandling.Ignore,
+            };
+            string json = JsonConvert.SerializeObject(root, settings);
+            Directory.CreateDirectory(captureOutDir);
+            string path = Path.Combine(captureOutDir,
+                $"DrawCallAnalysis_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json");
+            File.WriteAllText(path, json, Encoding.UTF8);
+            return path;
+        }
+
+        // Step 3 (legacy): labeled CSV — kept for compatibility; prefer GenerateLabeledMetricsJson
         public string GenerateLabeledMetricsCsv(DrawCallAnalysisReport report, string outputDir)
         {
             var sb = new StringBuilder();
@@ -721,7 +834,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     }
                 }
 
-                string? resp = _llm!.Chat(p.ToString());
+                string? resp = _llm?.Chat(p.ToString());
                 if (!string.IsNullOrWhiteSpace(resp))
                     return resp.Trim();
 
@@ -796,7 +909,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                         p.AppendLine("     (无明显单项超标，综合型开销)");
                 }
 
-                string? resp = _llm!.Chat(p.ToString());
+                string? resp = _llm?.Chat(p.ToString());
                 if (!string.IsNullOrWhiteSpace(resp))
                     return resp.Trim();
 
@@ -826,6 +939,9 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             => GenerateSummaryReport(r, outputDir);
         public string GenerateCsvReport(DrawCallAnalysisReport r, string outputDir)
             => GenerateLabeledMetricsCsv(r, outputDir);
+        public string GenerateJsonReport(DrawCallAnalysisReport r, string captureOutDir,
+            string shaderBaseDir, string textureBaseDir)
+            => GenerateLabeledMetricsJson(r, captureOutDir, shaderBaseDir, textureBaseDir);
 
         private static string Q(string s) =>
             s.Contains(',') || s.Contains('"') ? $"\"{s.Replace("\"","\"\"") }\"" : s;
