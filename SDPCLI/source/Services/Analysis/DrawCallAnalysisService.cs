@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SnapdragonProfilerCLI.Data;
 using SnapdragonProfilerCLI.Models;
 using SnapdragonProfilerCLI.Modes;
 
@@ -9,26 +10,23 @@ namespace SnapdragonProfilerCLI.Services.Analysis
     /// <summary>
     /// Orchestrates full-capture DrawCall analysis.
     ///
-    /// Responsibility: enumerate all DrawCalls (via DatabaseQueryService),
+    /// Responsibility: enumerate all DrawCalls (via SdpDatabase.GetDrawCallIds),
     /// resolve each one's resources (via DrawCallQueryService), then aggregate
     /// results into a DrawCallAnalysisReport.
     ///
-    /// Layer position:  DatabaseQueryService (schema / enumeration)
+    /// Layer position:  SdpDatabase       (schema / enumeration)
     ///               →  DrawCallQueryService  (per-drawcall resolution)
     ///               →  DrawCallAnalysisService (orchestration)  ← this class
     /// </summary>
     public class DrawCallAnalysisService
     {
-        private readonly DatabaseQueryService _dbQuery;
         private readonly DrawCallQueryService _drawCallQuery;
         private readonly ILogger _logger;
 
         public DrawCallAnalysisService(
-            DatabaseQueryService dbQuery,
             DrawCallQueryService drawCallQuery,
             ILogger logger)
         {
-            _dbQuery       = dbQuery;
             _drawCallQuery = drawCallQuery;
             _logger        = logger;
         }
@@ -44,7 +42,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                  cmdBufferFilter == 0   ? ", CommandBuffer=AUTO" :
                  $", CommandBuffer={cmdBufferFilter}"));
 
-            var drawCallIds = _dbQuery.GetDrawCallIds(captureId, cmdBufferFilter);
+            var drawCallIds = new SdpDatabase(dbPath, captureId).GetDrawCallIds(cmdBufferFilter);
 
             if (drawCallIds.Count == 0)
             {

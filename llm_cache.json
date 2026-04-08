@@ -1,0 +1,2527 @@
+﻿{
+  "capacity": 512,
+  "write_head": 502,
+  "count": 502,
+  "slots": [
+    {
+      "key": "b0688167311495ce4cc034f25b06027b",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with heightfield and texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:41:27Z"
+    },
+    {
+      "key": "a038bbc58cc0d804a0c51b5f56432d52",
+      "response": "```json\n{\"category\":\"Scene\",\"detail\":\"Scene geometry with textures\"}\n```",
+      "ts": "2026-04-08T01:41:27Z"
+    },
+    {
+      "key": "e0de65930de41ccd1ce6ec923877ce8b",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:41:30Z"
+    },
+    {
+      "key": "570a2cf2fb11d7cf7011aa1cb53ce8bb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Standard scene geometry with textures\"\n}\n```",
+      "ts": "2026-04-08T01:41:36Z"
+    },
+    {
+      "key": "6d99c5609e3218a0a4ab29705abe611b",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch, data copy operation\"\n}\n```",
+      "ts": "2026-04-08T01:41:32Z"
+    },
+    {
+      "key": "abfff2a9031bb0375e7b29919136f9aa",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with baked shadows\"\n}\n```",
+      "ts": "2026-04-08T01:41:35Z"
+    },
+    {
+      "key": "c2ef2166e39e44be90fa6331ad0a80e0",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Shadow map, terrain parameters, instance buffer\"\n}\n```",
+      "ts": "2026-04-08T01:41:36Z"
+    },
+    {
+      "key": "ce8562c341e635d2341d08021ed3d590",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:41:37Z"
+    },
+    {
+      "key": "0029778bc2951b237031e59ddb6cad35",
+      "response": "```json\n{\"category\":\"Scene\",\"detail\":\"Scene geometry with textures and transforms\"}\n```",
+      "ts": "2026-04-08T01:41:42Z"
+    },
+    {
+      "key": "f854d943c84a7b097c63f0d21d38cb7c",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, texture sampling, color blend\"\n}\n```",
+      "ts": "2026-04-08T01:41:38Z"
+    },
+    {
+      "key": "d99afef083c678770487d43717e24a9e",
+      "response": "```json\n{\n  \"category\": \"UI\",\n  \"detail\": \"2D UI element rendering\"\n}\n```",
+      "ts": "2026-04-08T01:41:39Z"
+    },
+    {
+      "key": "e45982ff83e8b66c8dfd7ab783e1fe08",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Compute shader for skinned mesh\"\n}\n```",
+      "ts": "2026-04-08T01:41:40Z"
+    },
+    {
+      "key": "dfa04989cc03bc8337fd0a89ce9467ac",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:41:40Z"
+    },
+    {
+      "key": "0d425ceca59c9c24ff6440c559d015c3",
+      "response": "```json\n{\n  \"category\": \"UI\",\n  \"detail\": \"2D UI element rendering\"\n}\n```",
+      "ts": "2026-04-08T01:41:41Z"
+    },
+    {
+      "key": "94ea963f8b34ebf3ef1cdcdee59546e9",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, importance map calculation\"\n}\n```",
+      "ts": "2026-04-08T01:41:41Z"
+    },
+    {
+      "key": "ecfc6d5d1bccbb7a9191d4ba65902f0f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Standard scene geometry with textures\"\n}\n```",
+      "ts": "2026-04-08T01:41:42Z"
+    },
+    {
+      "key": "afc6abae88127cbf50102d84336f5313",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, reads textures, writes color\"\n}\n```",
+      "ts": "2026-04-08T01:41:44Z"
+    },
+    {
+      "key": "87809c3762ee8f8b71b96b63b23eaf99",
+      "response": "```json\n{\n  \"category\": \"UI\",\n  \"detail\": \"2D UI element rendering\"\n}\n```",
+      "ts": "2026-04-08T01:41:44Z"
+    },
+    {
+      "key": "40c4f156dca4de5fc7c25827095c41dd",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen skybox rendering pass\"\n}\n```",
+      "ts": "2026-04-08T01:41:45Z"
+    },
+    {
+      "key": "5e43f825d8b992e9505764e1f573ed3b",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for mesh deformation\"\n}\n```",
+      "ts": "2026-04-08T01:41:59Z"
+    },
+    {
+      "key": "517e16c79b3f61eeb86485e10cf1e5a6",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen blur using importance map\"\n}\n```",
+      "ts": "2026-04-08T01:41:46Z"
+    },
+    {
+      "key": "6f4bb15ef7736cc19541c14d565ece3d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Standard scene geometry rendering\"\n}\n```",
+      "ts": "2026-04-08T01:41:59Z"
+    },
+    {
+      "key": "8a391c5ece663c79b94d195c76195a4b",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, screen-space effect\"\n}\n```",
+      "ts": "2026-04-08T01:42:00Z"
+    },
+    {
+      "key": "a984e93cf24961e5cd63e959d046d716",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for mesh deformation\"\n}\n```",
+      "ts": "2026-04-08T01:42:01Z"
+    },
+    {
+      "key": "e1032798c971ee85478bded782e1b3b3",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with heightfield and color parameters\"\n}\n```",
+      "ts": "2026-04-08T01:42:02Z"
+    },
+    {
+      "key": "44e21dd4d2556b1af93bfa9eb98a1e34",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Indexed mesh, terrain parameters used\"\n}\n```",
+      "ts": "2026-04-08T01:42:03Z"
+    },
+    {
+      "key": "0a3542b8e51e2ffc5291bf60f99bebeb",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen sky rendering pass\"\n}\n```",
+      "ts": "2026-04-08T01:42:03Z"
+    },
+    {
+      "key": "ee30dcf353be4861b43419d0565cf5b6",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute mesh deformation pass\"\n}\n```",
+      "ts": "2026-04-08T01:42:04Z"
+    },
+    {
+      "key": "80f042d0fb414d3a4f053de87c09695a",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for importance map sum\"\n}\n```",
+      "ts": "2026-04-08T01:42:04Z"
+    },
+    {
+      "key": "f6e015c39f08028729dd6795b358d677",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with heightfield and shadow\"\n}\n```",
+      "ts": "2026-04-08T01:42:05Z"
+    },
+    {
+      "key": "77c7b905594f9f545e44074c43e6d6d9",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Depth-only RT, shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:42:06Z"
+    },
+    {
+      "key": "c9e069c3a01bfb88d4ae1b5a9d6b0ecb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and ambient textures\"\n}\n```",
+      "ts": "2026-04-08T01:42:07Z"
+    },
+    {
+      "key": "cca3f5ce74b94ad756eeef92a0e838f2",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:42:08Z"
+    },
+    {
+      "key": "35e2a7315228e715132061211bc45c91",
+      "response": "```json\n{\"category\": \"Terrain\", \"detail\": \"Terrain with heightfield and texture\"}\n```",
+      "ts": "2026-04-08T01:42:08Z"
+    },
+    {
+      "key": "96e8656a788a3fdf29ec514c7a39ee3d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:42:09Z"
+    },
+    {
+      "key": "e93b673e96005df5b722e90198f5fbeb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:42:10Z"
+    },
+    {
+      "key": "2e5f3f0e0865b31dbb127d8636134ea8",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, importance map normalize\"\n}\n```",
+      "ts": "2026-04-08T01:42:11Z"
+    },
+    {
+      "key": "65b1567a34a8752039b70b5a8aa69a42",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Shadow map pass, terrain-like geometry\"}\n```",
+      "ts": "2026-04-08T01:42:12Z"
+    },
+    {
+      "key": "d222397ba9acfb4a06ec53da806dd232",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Scene geometry shadow pass\"}\n```",
+      "ts": "2026-04-08T01:42:12Z"
+    },
+    {
+      "key": "01315881b1bbfd1b5dd36578905129a6",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:42:13Z"
+    },
+    {
+      "key": "99d2aba26b91a8e2697b091a36b82b1b",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Planar shadow blur filter pass\"\n}\n```",
+      "ts": "2026-04-08T01:42:14Z"
+    },
+    {
+      "key": "c1bc0a03a9c2a01ec84d959097b4faf6",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with color and shadow\"\n}\n```",
+      "ts": "2026-04-08T01:42:14Z"
+    },
+    {
+      "key": "ee7615ee910cac80cc7cda602c8612cf",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:42:15Z"
+    },
+    {
+      "key": "fd1366e1ff6f461c5416ae1f18969729",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:42:16Z"
+    },
+    {
+      "key": "de501a37fa1cb453013896164977c2fb",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Indexed draw, depth RT, shadow pass\"}\n```",
+      "ts": "2026-04-08T01:42:17Z"
+    },
+    {
+      "key": "c39602181428da5bc176378ac8086dbf",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Half-res Z write, fullscreen quad\"\n}\n```",
+      "ts": "2026-04-08T01:42:29Z"
+    },
+    {
+      "key": "7df117e8041e7773262cb3e811c1afea",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:42:30Z"
+    },
+    {
+      "key": "5973b799c8fc9be341908af0263cafd9",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Shadow map, uses instance data, depth only\"}\n```",
+      "ts": "2026-04-08T01:42:30Z"
+    },
+    {
+      "key": "b989a8228fb7bbd69dac33eec54f75f2",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:42:31Z"
+    },
+    {
+      "key": "c0cd7febc5d4114de10af8992c2515f5",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, texture sampling, color blend\"\n}\n```",
+      "ts": "2026-04-08T01:42:32Z"
+    },
+    {
+      "key": "7e59c1b023b21ba667f0f8756b6dd1ab",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer offsets\"\n}\n```",
+      "ts": "2026-04-08T01:42:33Z"
+    },
+    {
+      "key": "1fe0584e9bb472c03224f9aa114aa1ff",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:42:34Z"
+    },
+    {
+      "key": "3c8b074c495a9a56e27e0a86e63bef20",
+      "response": "```json\n{\"category\": \"Character\", \"detail\": \"Skinned mesh with per-instance data\"}\n```",
+      "ts": "2026-04-08T01:42:35Z"
+    },
+    {
+      "key": "5d6c41a59d2fc1b98c21dfd335ab063a",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and normal map\"\n}\n```",
+      "ts": "2026-04-08T01:42:36Z"
+    },
+    {
+      "key": "3bcab8f632b40e7ebc9ed84569bba84f",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Depth-only shadow map pass\"}\n```",
+      "ts": "2026-04-08T01:42:38Z"
+    },
+    {
+      "key": "9bd2986d47921f9a5d8d02c74157a9bc",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Indexed mesh, per-instance offset\"\n}\n```",
+      "ts": "2026-04-08T01:42:39Z"
+    },
+    {
+      "key": "c77c4dc1b4c7511959da73d1a018b88a",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen post-processing pass with effects\"\n}\n```",
+      "ts": "2026-04-08T01:42:40Z"
+    },
+    {
+      "key": "18a5a4c4206f29452bfda423b7fb9709",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with dirt and color textures\"\n}\n```",
+      "ts": "2026-04-08T01:42:41Z"
+    },
+    {
+      "key": "5ab1cc6479e4d0d1d3829f2aebff1905",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Shadow map pass, depth-only render target\"\n}\n```",
+      "ts": "2026-04-08T01:42:41Z"
+    },
+    {
+      "key": "d75a3fa5c4bc6a2defce65de5870ffc9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:42:42Z"
+    },
+    {
+      "key": "63203b47563ae7a26e0fd1552b9e1f45",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, reads g_mainTexture\"\n}\n```",
+      "ts": "2026-04-08T01:42:43Z"
+    },
+    {
+      "key": "5bc84739e873e5015ef644ed7e4b236f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:42:44Z"
+    },
+    {
+      "key": "113c13f316b8d6076c2bd0cc44375836",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Shadow map pass, world geometry\"}\n```",
+      "ts": "2026-04-08T01:42:45Z"
+    },
+    {
+      "key": "775b034ca82d126f34424c6459c13cbd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:42:45Z"
+    },
+    {
+      "key": "ccee08ce986992d1aff921215db3754a",
+      "response": "1.  **优化场景（Scene）DC 91966的几何体渲染：** 该DC是最大瓶颈，%Busy高达178.5%，且Frags数量远超其他DC。考虑使用**遮挡剔除**，减少需要渲染的三角形数量。同时，检查该DC是否使用了复杂的材质，考虑简化材质或使用**ASTC纹理压缩**，降低纹理带宽压力。\n\n2.  **优化后期处理（PostProcess）的性能：** PostProcess的DC（92053和92160）消耗大量时钟周期，且%Busy高，纹理读取量巨大。针对全屏后处理，优化Shader复杂度，减少不必要的计算。考虑使用**半精度浮点数（mediump）**，降低ALU压力。对于DC 92053，由于读取量巨大，检查是否可以优化后处理流程，减少RT的读取次数。\n\n3.  **优化角色（Character）的纹理读取：** Character的DC（91916和91914）%Texture Fetch Stall和%L1 Miss较高，表明纹理读取是瓶颈。检查角色使用的纹理分辨率是否过高，考虑使用**mipmap**，降低纹理带宽压力。同时，检查纹理采样方式，避免不必要的采样操作。\n\n4.  **优化角色材质：** Character的%Busy也较高，说明Shader计算量大。检查角色材质的复杂度，考虑简化Shader，减少ALU指令数量。如果角色使用了多张纹理，考虑将多张纹理合并到一张**纹理集**中，减少DrawCall数量。\n\n5.  **优化场景阴影渲染：** Scene(Shadow)的%Busy较高，说明阴影渲染是瓶颈之一。优化阴影贴图的分辨率，避免使用过高的分辨率。考虑使用**PCF（Percentage-Closer Filtering）**等技术，优化阴影采样。\n\n6.  **优化UI渲染：** UI的%L1 Miss高达100.4%，说明纹理读取是瓶颈。检查UI使用的纹理分辨率是否过高，考虑使用**mipmap**，降低纹理带宽压力。\n\n7.  **针对PostProcess的Early-Z优化：** PostProcess的Frags数量巨大，考虑在PostProcess之前使用**Early-Z**，提前剔除不可见的像素，减少Fragment Shader的计算量。\n\n8.  **考虑GMEM Tile优化：** 针对高Frags的DC，可以考虑使用**GMEM Tile**优化，减少内存带宽压力，提升渲染效率。\n",
+      "ts": "2026-04-08T01:42:52Z"
+    },
+    {
+      "key": "8a689bfbd194169b7c61a88197763b60",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with interior calculations\"\n}\n```",
+      "ts": "2026-04-08T01:44:18Z"
+    },
+    {
+      "key": "756bb409c91604f42f55cff42c02ec4e",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Scene geometry shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:44:31Z"
+    },
+    {
+      "key": "b1245ff7baa32bb51fd1907990c84a08",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with texture sampling and discard\"\n}\n```",
+      "ts": "2026-04-08T01:44:31Z"
+    },
+    {
+      "key": "b1b1f8ea2325fd88ee8af79393e41f11",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for volumetric lighting\"\n}\n```",
+      "ts": "2026-04-08T01:44:32Z"
+    },
+    {
+      "key": "591b691a82217cfec92ef829ec699aae",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:32Z"
+    },
+    {
+      "key": "773ac03e32f935d24639dfadb75d272f",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Depth-only RT, shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:44:33Z"
+    },
+    {
+      "key": "ec4a6d732c1d404c28822686c72df866",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:44:34Z"
+    },
+    {
+      "key": "96231f3a102274f3d3db5e49a5d2bcf4",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:44:35Z"
+    },
+    {
+      "key": "9c7e1fc738f4ae782f14379abea4e4c0",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:44:35Z"
+    },
+    {
+      "key": "4833cd5c96ac30399aceaf35df4d2a1b",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch for fog calculations\"\n}\n```",
+      "ts": "2026-04-08T01:44:36Z"
+    },
+    {
+      "key": "09dfb18fe431a660fc79c5cfda6594f4",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer offset\"\n}\n```",
+      "ts": "2026-04-08T01:44:36Z"
+    },
+    {
+      "key": "9b5d765d4c996fafb9a5bf98522e97d0",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen skybox rendering pass\"\n}\n```",
+      "ts": "2026-04-08T01:44:37Z"
+    },
+    {
+      "key": "91ce9a03a3c20a647b7ecd6a51375f5a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:37Z"
+    },
+    {
+      "key": "e034ac1b8a60e5a0b4f861aac8d381b5",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Depth-only RT, shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:44:39Z"
+    },
+    {
+      "key": "19669eaa8404ed35d59e9a8b9f01d4ca",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:39Z"
+    },
+    {
+      "key": "a3cf0bce925318f3b13337fd953fa4d0",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:40Z"
+    },
+    {
+      "key": "d9d800e13ca8e4bae7168c7c5123be89",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, instance buffer\"}\n```",
+      "ts": "2026-04-08T01:44:40Z"
+    },
+    {
+      "key": "ce438e6a153b6ee8b75428da55045b29",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer\"\n}\n```",
+      "ts": "2026-04-08T01:44:42Z"
+    },
+    {
+      "key": "b2650138dae8a1acbf6b5c77ac13e67d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with animation and texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:44:42Z"
+    },
+    {
+      "key": "099ef1287050251180f483edce4e9027",
+      "response": "```json\n{\"category\":\"Other\",\"detail\":\"Compute shader for sky lighting\"}\n```",
+      "ts": "2026-04-08T01:44:43Z"
+    },
+    {
+      "key": "cc954efbf104ef51299969c998d43b80",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Goal net with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:44:43Z"
+    },
+    {
+      "key": "8dd85f20d5c015b450cb56f4e97b310a",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Depth-only RT, shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:44:44Z"
+    },
+    {
+      "key": "da05324f91f43630e78c39eae9c416f8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:44:44Z"
+    },
+    {
+      "key": "e2ef17f603d066736a1047065a3feafb",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, indexed mesh\"}\n```",
+      "ts": "2026-04-08T01:44:45Z"
+    },
+    {
+      "key": "4da7e7111f019f58016720d142bfc2fc",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:45Z"
+    },
+    {
+      "key": "120ca470ef47ba5333fe6eaddd8ddbcf",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Animated crowd with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:44:47Z"
+    },
+    {
+      "key": "f44bd76a8e6d9a0f99925509453a41ac",
+      "response": "```json\n{\"category\": \"Character\", \"detail\": \"Skinned mesh with instance buffer\"}\n```",
+      "ts": "2026-04-08T01:44:53Z"
+    },
+    {
+      "key": "e4537872227266422f764fef13dfc644",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:44:54Z"
+    },
+    {
+      "key": "1caa7dcfbd3967e752a25db7343cd32d",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, indexed mesh\"}\n```",
+      "ts": "2026-04-08T01:45:00Z"
+    },
+    {
+      "key": "98dcd92410fbff367fbeb1b26615f0c5",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:00Z"
+    },
+    {
+      "key": "fd9d6876934c06e70a06ccbe3b09d37d",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Terrain heightfield shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:45:01Z"
+    },
+    {
+      "key": "47b406f30c03c1f51bb890ff58d56d4a",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:01Z"
+    },
+    {
+      "key": "54cb86aa76e7ce71de69385d76d5ce17",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer offset\"\n}\n```",
+      "ts": "2026-04-08T01:45:03Z"
+    },
+    {
+      "key": "1d00d81227f3e47301bdd207b8c73a45",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:03Z"
+    },
+    {
+      "key": "c9dd227b1270d4436ce5a85703ee68de",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:04Z"
+    },
+    {
+      "key": "9f3997a5b2886ebc4cec0286c05f8eae",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd, skinned mesh, per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:04Z"
+    },
+    {
+      "key": "c56dc1f8c2fbc9560abcf5ff1577f0c1",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:06Z"
+    },
+    {
+      "key": "f59bbbe1c50c04197d55cdc96692a69b",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:45:06Z"
+    },
+    {
+      "key": "5c3da5427cd6d9852c332ac9c29d6119",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:07Z"
+    },
+    {
+      "key": "23e7d2b7c5feab2adf3a4a42c522c052",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Shadow map pass, terrain-like geometry\"\n}\n```",
+      "ts": "2026-04-08T01:45:07Z"
+    },
+    {
+      "key": "0f009467bc338f09a732ea6fd22b098e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:08Z"
+    },
+    {
+      "key": "c9458bd3915f7822a3e9218268fbc332",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:09Z"
+    },
+    {
+      "key": "d832e2d15d2f42a8a4e64dd81d056cfd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:09Z"
+    },
+    {
+      "key": "674162aeae30c7943b5d87c9016294fe",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with SH probes and textures\"\n}\n```",
+      "ts": "2026-04-08T01:45:11Z"
+    },
+    {
+      "key": "bf7ca5820aca539a8f0e6643cc236f6e",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt, normal, color textures\"\n}\n```",
+      "ts": "2026-04-08T01:45:11Z"
+    },
+    {
+      "key": "c970d27d85bb5462d75f112563ea4410",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:12Z"
+    },
+    {
+      "key": "3609c7ec0bc5d8b8ef20a568f4637e7b",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:13Z"
+    },
+    {
+      "key": "a033b15fd865011a282a2f7fe4610d8c",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with SH probes and textures\"\n}\n```",
+      "ts": "2026-04-08T01:45:13Z"
+    },
+    {
+      "key": "38f095979fd298ca568b85d4158c3d0b",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance offset\"\n}\n```",
+      "ts": "2026-04-08T01:45:14Z"
+    },
+    {
+      "key": "d0fad2afba9343473f4ff598e8369c10",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:15Z"
+    },
+    {
+      "key": "6956d57c3ae802672ebacf7888b504eb",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with instance data and lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:45:16Z"
+    },
+    {
+      "key": "571817d584d457f8cffc030e87565e03",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd swarm with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:45:16Z"
+    },
+    {
+      "key": "0917942ac9281acc31e81cb96cb6393f",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:45:17Z"
+    },
+    {
+      "key": "1cdf6285e447f04d95df2e0a3d9f31ca",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Planar shadow rendering, world geometry\"\n}\n```",
+      "ts": "2026-04-08T01:45:19Z"
+    },
+    {
+      "key": "adcd0ad11b41d2aa79db8f0a96fec08e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:20Z"
+    },
+    {
+      "key": "d6ded7e7d1c7aece2a1a076c3020fc68",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and color textures\"\n}\n```",
+      "ts": "2026-04-08T01:45:22Z"
+    },
+    {
+      "key": "5653713afa35afbadcbe4edef496f527",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and normal map sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:30Z"
+    },
+    {
+      "key": "862f62ac71f6b765be16fd1448757f22",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Goal net with planar shadows\"\n}\n```",
+      "ts": "2026-04-08T01:45:30Z"
+    },
+    {
+      "key": "e55ecbedcd1c89b1e59ae9ef5df0b8dd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd agent with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:45:31Z"
+    },
+    {
+      "key": "82d3c932189f1835d0096056d894cf77",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:33Z"
+    },
+    {
+      "key": "f838978b77651175b9044739da838928",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:45:34Z"
+    },
+    {
+      "key": "9f0f2dd76b095dc59a0437629fb544bd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:35Z"
+    },
+    {
+      "key": "c3e76fc7fa38dbe6bb85ebd13b90c5dc",
+      "response": "```json\n{\"category\":\"Terrain\",\"detail\":\"Terrain with heightfield and texture sampling\"}\n```",
+      "ts": "2026-04-08T01:45:35Z"
+    },
+    {
+      "key": "32d3398b4813fc8383cff9088bc77194",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Planar shadow blur filter pass\"\n}\n```",
+      "ts": "2026-04-08T01:45:36Z"
+    },
+    {
+      "key": "3f67d6c752653e7f2342f84c72c58e9e",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, atmospheric scattering\"\n}\n```",
+      "ts": "2026-04-08T01:45:37Z"
+    },
+    {
+      "key": "a496ae7e2101ad73c11cfd52bee30908",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd rendering with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:38Z"
+    },
+    {
+      "key": "3a240af12481d90d3d56b6fa394cff9a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt mask and color\"\n}\n```",
+      "ts": "2026-04-08T01:45:38Z"
+    },
+    {
+      "key": "fda3b1a8b821b4aacda4c6bceb6332d1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:39Z"
+    },
+    {
+      "key": "47d763ca2f7e0deef653c10d0c1bee38",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with planar shadows and animation\"\n}\n```",
+      "ts": "2026-04-08T01:45:40Z"
+    },
+    {
+      "key": "05fa553edb6ee2edfe039f552d17100b",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt/color textures\"\n}\n```",
+      "ts": "2026-04-08T01:45:41Z"
+    },
+    {
+      "key": "48636fa667c1d3d7044537abbf7424ee",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with heightfield texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:41Z"
+    },
+    {
+      "key": "431434095979865c2b33e962e601f235",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for z-bin population\"\n}\n```",
+      "ts": "2026-04-08T01:45:42Z"
+    },
+    {
+      "key": "abe0b1c37d3d3116d51387a9f3e53364",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with atmosphere and transmittance\"\n}\n```",
+      "ts": "2026-04-08T01:45:42Z"
+    },
+    {
+      "key": "04c513c4b87079392cbdb9465f2a0845",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:45:44Z"
+    },
+    {
+      "key": "2f2ab8b4462e845b94cdbd4dee228009",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:45:44Z"
+    },
+    {
+      "key": "170cde85c125c519e78dc5e3634d8602",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for triangle clipping\"\n}\n```",
+      "ts": "2026-04-08T01:45:45Z"
+    },
+    {
+      "key": "64d7a4a44a13b92861206a4fb6e777ef",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:45:46Z"
+    },
+    {
+      "key": "adc3f0e071bb049c5cf003c3c9465995",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with texture sampling and discard\"\n}\n```",
+      "ts": "2026-04-08T01:45:46Z"
+    },
+    {
+      "key": "0cac0c0ea479c00d927521cf8788e6dd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt/normal map\"\n}\n```",
+      "ts": "2026-04-08T01:45:48Z"
+    },
+    {
+      "key": "f6425217679727e9ac3426856c3398a3",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for z-bin population\"\n}\n```",
+      "ts": "2026-04-08T01:45:57Z"
+    },
+    {
+      "key": "d74c2a8dba0eb4499ebf70f8377e7f2d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:45:59Z"
+    },
+    {
+      "key": "37467638d1ea9ac15cd63850be8ca83a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with SH probe lighting\"\n}\n```",
+      "ts": "2026-04-08T01:45:59Z"
+    },
+    {
+      "key": "c44ac32ac09889cacc44028da79fa707",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:04Z"
+    },
+    {
+      "key": "4adc9f6a68dd9b437ee6beb5dff815e3",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch for indirect args\"\n}\n```",
+      "ts": "2026-04-08T01:46:01Z"
+    },
+    {
+      "key": "bf91dea0a661237e2d8408d9a0e96efb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:03Z"
+    },
+    {
+      "key": "7fc0c08d634630ea2285f906929a5b81",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with texture sampling and discard\"\n}\n```",
+      "ts": "2026-04-08T01:46:03Z"
+    },
+    {
+      "key": "2199d0b48afeac1590fc1cf29b656676",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:05Z"
+    },
+    {
+      "key": "d1e9e8a387d625ee61ec19ed1759c597",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader vertex transformation pass\"\n}\n```",
+      "ts": "2026-04-08T01:46:06Z"
+    },
+    {
+      "key": "576c62cfb8ef87355b9cd4943f6a2059",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:06Z"
+    },
+    {
+      "key": "15f1101b720ff05fd8683529bc8770a1",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:07Z"
+    },
+    {
+      "key": "b530f6cf4224293d7859089cac93894d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:08Z"
+    },
+    {
+      "key": "0fffb4d8a0e6c93589c4ff81c02da2a5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:09Z"
+    },
+    {
+      "key": "06311353e1aca15e011bcee166e335e1",
+      "response": "```json\n{\"category\": \"Scene\", \"detail\": \"Terrain heightfield with texture sampling\"}\n```",
+      "ts": "2026-04-08T01:46:09Z"
+    },
+    {
+      "key": "c4da4ea4e2a4d781aaccf4f6cc9c23aa",
+      "response": "```json\n{\"category\":\"Character\",\"detail\":\"Character with per-instance data\"}\n```",
+      "ts": "2026-04-08T01:46:11Z"
+    },
+    {
+      "key": "bb8e6b167da09347840be5092ab77d66",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:11Z"
+    },
+    {
+      "key": "891b6a2c78d019d3352d4b537f8eeb23",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:12Z"
+    },
+    {
+      "key": "8888ed0538cf249cddec2e6e5dd7b66c",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch, clear buffers\"\n}\n```",
+      "ts": "2026-04-08T01:46:13Z"
+    },
+    {
+      "key": "a5d89e617c1417330f24e99cc61b08fc",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with coefficient/normal textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:14Z"
+    },
+    {
+      "key": "9680965ccd4e9121b1daabff4fd1d3dd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:14Z"
+    },
+    {
+      "key": "df70237e3c6d6b598c767c513241388f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:16Z"
+    },
+    {
+      "key": "d306055b16c295279341df192b70c581",
+      "response": "```json\n{\"category\":\"Terrain\",\"detail\":\"Terrain with texture sampling and discard\"}\n```",
+      "ts": "2026-04-08T01:46:16Z"
+    },
+    {
+      "key": "ea02250cbde06c4c7e488c148e3e434b",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:23Z"
+    },
+    {
+      "key": "921628276dc2eff738fc6cb754e0f7a7",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:29Z"
+    },
+    {
+      "key": "73bd3e8b20d628f61df962391682a5b8",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader dispatch\"\n}\n```",
+      "ts": "2026-04-08T01:46:30Z"
+    },
+    {
+      "key": "f87feeffbba1364c0df8515e95b2d19e",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:32Z"
+    },
+    {
+      "key": "716d0cc38fa94e24fa5b1f36dfc506f8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with SH probe lighting\"\n}\n```",
+      "ts": "2026-04-08T01:46:32Z"
+    },
+    {
+      "key": "ad07a7cae1adf2fc0c30533e24f6c50e",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain heightfield and virtual texture\"\n}\n```",
+      "ts": "2026-04-08T01:46:33Z"
+    },
+    {
+      "key": "b603f2e7a81cc91f870f569147cc14e3",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and virtual texture\"\n}\n```",
+      "ts": "2026-04-08T01:46:34Z"
+    },
+    {
+      "key": "6a17dbcc1aa5682fac6eb4266c12e8ad",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch: memory clear operation\"\n}\n```",
+      "ts": "2026-04-08T01:46:34Z"
+    },
+    {
+      "key": "c9ed45d4b1971fb5840888fdf6292ed4",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:35Z"
+    },
+    {
+      "key": "8cd58911f2a9410c9db085aa51e6ca4c",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:36Z"
+    },
+    {
+      "key": "7ef25e80c91f692a3b2c8f438186efe0",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for culling and clipping\"\n}\n```",
+      "ts": "2026-04-08T01:46:37Z"
+    },
+    {
+      "key": "24865d3f131d1bdbb97c08b7726141c3",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:37Z"
+    },
+    {
+      "key": "728b4dd06da9b7d2987ee5ddbcdba198",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:46:38Z"
+    },
+    {
+      "key": "6f40bb2f2ad933f8929ee8eeeb6c16a9",
+      "response": "```json\n{\"category\": \"Scene(Shadow)\", \"detail\": \"Indexed, depth-only, shadow pass\"}\n```",
+      "ts": "2026-04-08T01:46:38Z"
+    },
+    {
+      "key": "78b19f26380d2a2ed124811062a1d5a5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:46:40Z"
+    },
+    {
+      "key": "88363d8271a4ca342b24bcf5a5254eaa",
+      "response": "```json\n{\"category\": \"Other\", \"detail\": \"Light tile bitset generation pass\"}\n```",
+      "ts": "2026-04-08T01:46:40Z"
+    },
+    {
+      "key": "36984399ae90b0f6851a6cba2f32110b",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:41Z"
+    },
+    {
+      "key": "fba08b8b99b3d859a45312c26d1cdf41",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Indexed mesh, per-instance data, lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:46:41Z"
+    },
+    {
+      "key": "3c678664b4257d2be3a1ceebaa09a085",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Complex scene geometry with textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:42Z"
+    },
+    {
+      "key": "241baaf43abbf86bc1692fc480e33eee",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:46:43Z"
+    },
+    {
+      "key": "8bb35aeec19a800e3fa61c9b5f58a0b5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:46:44Z"
+    },
+    {
+      "key": "41b24d9911f04e5a0a72ea61de62d55f",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Depth-only RT, shadow map pass\"\n}\n```",
+      "ts": "2026-04-08T01:46:44Z"
+    },
+    {
+      "key": "6a833495b523541a849ed284c3867e3f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:45Z"
+    },
+    {
+      "key": "31be586f0a6eb628fa2b9973ac15eb38",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader for tiled light culling\"\n}\n```",
+      "ts": "2026-04-08T01:46:45Z"
+    },
+    {
+      "key": "da2445bf91ce51eeabd019de1649d2b9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:46:46Z"
+    },
+    {
+      "key": "b9d54c50613a65c0cfa9cbbbccd234cf",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:46:53Z"
+    },
+    {
+      "key": "ef34e77d2c37e94d254ff4585993f1a2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Indexed mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:00Z"
+    },
+    {
+      "key": "7dba571d2c569542f1ad50beedd4c91a",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:02Z"
+    },
+    {
+      "key": "1693d2a317424f13140977c83640776c",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:03Z"
+    },
+    {
+      "key": "ffb6c4d9ae084abf6edb8656c6fb6f7d",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:47:06Z"
+    },
+    {
+      "key": "d86e0c920bed9160e7ed7c9daa42e4a5",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Indexed mesh, per-instance data, lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:47:07Z"
+    },
+    {
+      "key": "617a35b497c5378c6627681ed4cec705",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:47:09Z"
+    },
+    {
+      "key": "3d44db6e4a058a9accd0d09b77234882",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:11Z"
+    },
+    {
+      "key": "ca3592836b08ceddf473a3b4d7dfb23e",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:47:11Z"
+    },
+    {
+      "key": "5f2481fb2134de1a9eb5e7df8f81b1f9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:12Z"
+    },
+    {
+      "key": "1ed4fc941f7c91a170a89e738a704ce4",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:12Z"
+    },
+    {
+      "key": "05c7059552d5b9a037cbbff54b8b6936",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:13Z"
+    },
+    {
+      "key": "d74fca7b22d7b84ad689ca8bd1fb8758",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Shadow map, depth-stencil, terrain parameters\"\n}\n```",
+      "ts": "2026-04-08T01:47:14Z"
+    },
+    {
+      "key": "5218701497bd20039f795d42053dd44e",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:15Z"
+    },
+    {
+      "key": "ebb1decb747d20dbdfcd495ff17af15f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:16Z"
+    },
+    {
+      "key": "53aaf6f629a86fb863f0b58e039fc7ac",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer\"\n}\n```",
+      "ts": "2026-04-08T01:47:23Z"
+    },
+    {
+      "key": "8b1a2be29691d05d0119a7d0a929c765",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:23Z"
+    },
+    {
+      "key": "2a76f54248381c68953278446e1af2aa",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:24Z"
+    },
+    {
+      "key": "aeca106835571c5ec1a1514ad92cb7da",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:25Z"
+    },
+    {
+      "key": "3c9db04ab4929ca7d8a06b2e8deba035",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with baked shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:31Z"
+    },
+    {
+      "key": "77988aca691f44689d2b84eee31920a9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:31Z"
+    },
+    {
+      "key": "4390c2c5ad435e1296750f286336c3af",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:47:32Z"
+    },
+    {
+      "key": "833c09da1ceca5fab9d8873d5a3e35bb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:34Z"
+    },
+    {
+      "key": "c62c9130f396ee75febb864b55c0cf9b",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Shadow map, terrain-related expressions\"\n}\n```",
+      "ts": "2026-04-08T01:47:35Z"
+    },
+    {
+      "key": "86e7c32d7b735ed60250ebe9ab4d7ed2",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:47:35Z"
+    },
+    {
+      "key": "7e41879091bb3a06d400a3460c970679",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:47:36Z"
+    },
+    {
+      "key": "693158ecb4f8f578e700643374c6688d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:37Z"
+    },
+    {
+      "key": "bf55049a49975224f77dfc0c2d9e7cd2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with baked shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:38Z"
+    },
+    {
+      "key": "e2b4716824530495b7aed3409754ab2c",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:38Z"
+    },
+    {
+      "key": "76581e5a0023a136a0299a698b4a1ed2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:40Z"
+    },
+    {
+      "key": "9c26b9c48a82599ccaac51fefe5eefe9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:41Z"
+    },
+    {
+      "key": "782fddd48ad26d278172aefdf360d801",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:47:43Z"
+    },
+    {
+      "key": "bc10c6b61cec115fc7c10e53f3cfa132",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:44Z"
+    },
+    {
+      "key": "86d1a462d26d3bb6ac58dae11e6896c0",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:46Z"
+    },
+    {
+      "key": "2c6f6e49b61a8cd69135041beb80659d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:47:53Z"
+    },
+    {
+      "key": "3e89bd2971b4fcb1bcbecfa5fe556774",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:47:53Z"
+    },
+    {
+      "key": "9a7fc70106208310e04bda082603fed0",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, color, display mapping\"\n}\n```",
+      "ts": "2026-04-08T01:48:02Z"
+    },
+    {
+      "key": "32e32778ace4c62ea4e99662bd0090d1",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen importance map calculation\"\n}\n```",
+      "ts": "2026-04-08T01:48:02Z"
+    },
+    {
+      "key": "fdce516f17698fc7eaa2d4aa5f3f037e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:48:03Z"
+    },
+    {
+      "key": "c5bb58d2b438ac97b1e228f5616e3542",
+      "response": "```json\n{\"category\": \"Scene\", \"detail\": \"Goal net with textures and lighting\"}\n```",
+      "ts": "2026-04-08T01:48:04Z"
+    },
+    {
+      "key": "f831feb0cbcb8acc76587d639b130859",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:48:05Z"
+    },
+    {
+      "key": "897f98abcb86505258b00238bb8f3fae",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:48:06Z"
+    },
+    {
+      "key": "c38befbcfe6815705a53f92af1f85b71",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen blur using importance map\"\n}\n```",
+      "ts": "2026-04-08T01:48:08Z"
+    },
+    {
+      "key": "6327a721a5681dd005b05fafcc9ef7ad",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:48:08Z"
+    },
+    {
+      "key": "3d83151864e58aeaf309a5b0ea115795",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:48:09Z"
+    },
+    {
+      "key": "04ab08633aaee56122990ece550a5cf4",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute dispatch for perceptual conversion\"\n}\n```",
+      "ts": "2026-04-08T01:48:09Z"
+    },
+    {
+      "key": "d1d936601c100a3039dcc5976f6bd90a",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:48:10Z"
+    },
+    {
+      "key": "ce871a521d88ff27011c6fdcc998853b",
+      "response": "```json\n{\"category\": \"Scene\", \"detail\": \"Scene geometry with lightmap sampling\"}\n```",
+      "ts": "2026-04-08T01:48:11Z"
+    },
+    {
+      "key": "3039d903e7c1c6ed3f2308e0ecf74500",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with color and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:48:12Z"
+    },
+    {
+      "key": "e7c2b8f93cb4cc5ef333aaeb34f49ff9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and shadows\"\n}\n```",
+      "ts": "2026-04-08T01:48:14Z"
+    },
+    {
+      "key": "dd26ff14325e9f0246ff8be537ca46c7",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, color and overlay textures\"\n}\n```",
+      "ts": "2026-04-08T01:48:14Z"
+    },
+    {
+      "key": "e3321798964bb170b66051bc9eaad9cc",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data and lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:48:16Z"
+    },
+    {
+      "key": "2511514308c7d1fa484d02b2b1711511",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, importance map normalize\"\n}\n```",
+      "ts": "2026-04-08T01:48:16Z"
+    },
+    {
+      "key": "178aef17b22ca3c2b0093b53f535601d",
+      "response": "```json\n{\"category\": \"Other\", \"detail\": \"Compute shader for average luminance\"}\n```",
+      "ts": "2026-04-08T01:48:21Z"
+    },
+    {
+      "key": "b1bab997436b7b5d506f211fbc913ce1",
+      "response": "```json\n{\"category\": \"Scene\", \"detail\": \"Indexed mesh, depth, vanilla shadow\"}\n```",
+      "ts": "2026-04-08T01:48:23Z"
+    },
+    {
+      "key": "596e7b3f2e491570db6f3cd515484454",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:48:31Z"
+    },
+    {
+      "key": "5628683d1e5fb2bd5d5ce1e1c917f052",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Compute shader dispatch\"\n}\n```",
+      "ts": "2026-04-08T01:48:31Z"
+    },
+    {
+      "key": "477c7b34211504d05ba95b8f702c107f",
+      "response": "1.  **角色（Character）DrawCall合并与优化：** 角色类别的DrawCall占据总时钟的35.1%，且Top 5 DrawCall均为Character，是最大瓶颈。针对“Crowd with SH probes and textures”的场景，考虑使用DrawCall Instancing或合并静态角色，减少DrawCall数量。同时，优化角色模型复杂度，降低顶点数量，减少片段着色器压力。\n\n2.  **角色纹理优化：** Character DrawCall的%TexStall较高，表明纹理读取是瓶颈之一。针对角色纹理，使用ASTC纹理压缩，减少纹理带宽消耗。同时，检查角色纹理分辨率是否过高，根据实际需求调整，避免不必要的纹理读取。\n\n3.  **场景（Scene）DrawCall优化：** Scene类别占据总时钟的29.8%，且Top 5 DrawCall中包含Scene。针对“Scene geometry with textures and shadows”的场景，使用遮挡剔除技术，减少不必要的片段着色，降低Fillrate压力。\n\n4.  **场景阴影优化：** Scene(Shadow)类别占比11.4%，考虑优化阴影渲染。使用更低分辨率的阴影贴图，或者采用PCF（Percentage-Closer Filtering）等技术，减少阴影计算量。\n\n5.  **UI优化：** UI类别虽然占比不高，但AvgFrags极高，且%L1Miss高达108.7%，表明UI渲染存在严重问题。优化UI的绘制方式，减少Overdraw。考虑使用UI Atlas，合并UI纹理，减少纹理切换。\n\n6.  **着色器复杂度优化：** 所有Top 5 DrawCall的%Busy都非常高，表明着色器计算量过大。检查角色和场景着色器，简化着色器代码，减少ALU指令数量。使用mediump精度，降低着色器计算精度，减少功耗。\n\n7.  **Early-Z优化：** 整体%L1Miss较高，特别是UI类别。启用Early-Z，利用GPU的深度测试，提前剔除不可见的片段，减少片段着色器的计算量。\n\n8.  **GMEM Tile优化：** 针对高Frags的DrawCall，考虑使用GMEM Tile技术，优化内存访问模式，提高GPU的并行处理能力。\n",
+      "ts": "2026-04-08T01:48:37Z"
+    },
+    {
+      "key": "5ee6b555f3a4ea8a357d87797cd787a1",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, atmospheric scattering\"\n}\n```",
+      "ts": "2026-04-08T01:49:33Z"
+    },
+    {
+      "key": "a1ed1a3cdfbaa45a977e3ae0102f5029",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain rendering with atmosphere and transmittance textures\"\n}\n```",
+      "ts": "2026-04-08T01:49:33Z"
+    },
+    {
+      "key": "fefe8d13d8f89088435786d4b29a7129",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:49:35Z"
+    },
+    {
+      "key": "86f44f3841b6728bebeb9f82784c3704",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:49:35Z"
+    },
+    {
+      "key": "8bd89843c2ceb06c46d79274031b9ca6",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with textures\"\n}\n```",
+      "ts": "2026-04-08T01:49:36Z"
+    },
+    {
+      "key": "7d5096783932fbe8407d1d05a4a560c4",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:49:37Z"
+    },
+    {
+      "key": "e84d64d3d7dc2da74fa12af4a705a5c0",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:49:37Z"
+    },
+    {
+      "key": "a261cffe88bfd6c0f103cf399f7b24f0",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt/color sampling\"\n}\n```",
+      "ts": "2026-04-08T01:49:39Z"
+    },
+    {
+      "key": "633ffa2c4f1dcb4b52b0320bc43275cb",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:49:39Z"
+    },
+    {
+      "key": "96f56509e74e330317ffdb7510be665f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:49:40Z"
+    },
+    {
+      "key": "9c13dd1ba9fbfb25ee16a2cfdff7bbb1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Planar shadow, instance buffer, mesh\"\n}\n```",
+      "ts": "2026-04-08T01:49:40Z"
+    },
+    {
+      "key": "5e23a50268d2317b33e8053a7c880d60",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Terrain and pitch geometry rendering\"\n}\n```",
+      "ts": "2026-04-08T01:49:42Z"
+    },
+    {
+      "key": "ba2467ad37d89c8527a7e258a14b43a1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:49:42Z"
+    },
+    {
+      "key": "e4aae81f1017c20ff38a216518a2d10e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:49:44Z"
+    },
+    {
+      "key": "b91bf2ca6dde282f769e38630d2970d1",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:49:45Z"
+    },
+    {
+      "key": "6361ab0bd86344862bcc4a38386cf33f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:49:46Z"
+    },
+    {
+      "key": "6769f29a3c35d84726318ca2265c42d9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with light probe data\"\n}\n```",
+      "ts": "2026-04-08T01:49:46Z"
+    },
+    {
+      "key": "04550537cd53d8b3452014df2af55f52",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:49:53Z"
+    },
+    {
+      "key": "7e801f3da8b850ea75134410cba6b66f",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, uses instance data\"\n}\n```",
+      "ts": "2026-04-08T01:49:55Z"
+    },
+    {
+      "key": "fb421a3217207638bc85911b1fde9d48",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:49:57Z"
+    },
+    {
+      "key": "d49ffe5a6f3a3144addf1692be71a5c9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:49:58Z"
+    },
+    {
+      "key": "81be5b6a450e3b1ced52ea7c784bd962",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:49:59Z"
+    },
+    {
+      "key": "b37fb3613f27ea7615c7eb25878f1ad2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:01Z"
+    },
+    {
+      "key": "3d522f3bb6431ebb77845daabb718714",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, indexed mesh\"}\n```",
+      "ts": "2026-04-08T01:50:01Z"
+    },
+    {
+      "key": "48b02befc7987e03f665ddbf0e3318d8",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and virtual texture\"\n}\n```",
+      "ts": "2026-04-08T01:50:02Z"
+    },
+    {
+      "key": "36b76ade846f5f92810fa25e8895b477",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Standard scene geometry draw call\"\n}\n```",
+      "ts": "2026-04-08T01:50:03Z"
+    },
+    {
+      "key": "b20504a1f891957b0c8ba3e39b74fb79",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:50:03Z"
+    },
+    {
+      "key": "9777b6bcbb94c8fadba994ab4379e2f6",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and virtual texture\"\n}\n```",
+      "ts": "2026-04-08T01:50:04Z"
+    },
+    {
+      "key": "4f683c7a7eefdea39595cc61c002969f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:50:05Z"
+    },
+    {
+      "key": "e03570383ab8fe4ceb7090a21c492ffb",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:05Z"
+    },
+    {
+      "key": "f88458eaa2270cc5d31901a7e86a5bb0",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:06Z"
+    },
+    {
+      "key": "906d1339a30bd547880e019dd25100f6",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, indexed mesh\"}\n```",
+      "ts": "2026-04-08T01:50:07Z"
+    },
+    {
+      "key": "634cdf11f0332c8827fc77092ef644d1",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data and lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:50:08Z"
+    },
+    {
+      "key": "097fb95850812585d77d22f819a8e895",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:50:08Z"
+    },
+    {
+      "key": "121e2db0952a7f8c2fa52733d7158e20",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:50:09Z"
+    },
+    {
+      "key": "0e60c203dead7c8a11d1c43cd95ce457",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:10Z"
+    },
+    {
+      "key": "de4a2968fed0be1f5a5aa03db143b112",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Standard scene geometry with textures\"\n}\n```",
+      "ts": "2026-04-08T01:50:10Z"
+    },
+    {
+      "key": "eeae31ed9fd522196fd3c0da2afcbe72",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:11Z"
+    },
+    {
+      "key": "33265cf225a8950716453285e2729d96",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:11Z"
+    },
+    {
+      "key": "6fd69b0a51f55116c316e23e3a12d596",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, instance buffer\"}\n```",
+      "ts": "2026-04-08T01:50:12Z"
+    },
+    {
+      "key": "0bbc8d8f5f926ff3f5e115e4e3b2a3f5",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:14Z"
+    },
+    {
+      "key": "34ab2ca7a646b1d7cf285c8970ea2a43",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, texture sampling, color blend\"\n}\n```",
+      "ts": "2026-04-08T01:50:14Z"
+    },
+    {
+      "key": "6befd808af6ae9c6fff22fbf1986d31c",
+      "response": "```json\n{\"category\":\"Character\",\"detail\":\"Skinned mesh with instance data\"}\n```",
+      "ts": "2026-04-08T01:50:15Z"
+    },
+    {
+      "key": "f4758ef803add96e201cc339b61f6dbd",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Complex scene with interior calculations\"\n}\n```",
+      "ts": "2026-04-08T01:50:15Z"
+    },
+    {
+      "key": "754850579338449648b33973d0d913f8",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, no index buffer\"\n}\n```",
+      "ts": "2026-04-08T01:50:23Z"
+    },
+    {
+      "key": "cba85be6ab46069413723f9c1bbf86bb",
+      "response": "```json\n{\"category\": \"Character\", \"detail\": \"Skinned mesh with dirt mask sampling\"}\n```",
+      "ts": "2026-04-08T01:50:23Z"
+    },
+    {
+      "key": "7c735ea1506fda41f94e45cfad43008a",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:24Z"
+    },
+    {
+      "key": "36619b3b96572340139f1d5affb2d628",
+      "response": "```json\n{\"category\":\"Character\",\"detail\":\"Character with per-instance data\"}\n```",
+      "ts": "2026-04-08T01:50:26Z"
+    },
+    {
+      "key": "eab6b0025a8b146545186b1d22024825",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data and lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:50:27Z"
+    },
+    {
+      "key": "3695946795e16e831bfff69f865ae011",
+      "response": "```json\n{\n  \"category\": \"UI\",\n  \"detail\": \"2D UI element rendering\"\n}\n```",
+      "ts": "2026-04-08T01:50:29Z"
+    },
+    {
+      "key": "1e573db18859787411ecd796edded4bc",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:30Z"
+    },
+    {
+      "key": "f29ba466b3a30af0552c931c5f7f3135",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data and lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:50:32Z"
+    },
+    {
+      "key": "abda22bb175e42296399f5e59abbb6d1",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Planar shadow blur filter pass\"\n}\n```",
+      "ts": "2026-04-08T01:50:32Z"
+    },
+    {
+      "key": "3ffa45a5c511b55902e38db3748b5eeb",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:34Z"
+    },
+    {
+      "key": "9aaea40696c3dd2a3cebbfeacc719a87",
+      "response": "```json\n{\n  \"category\": \"UI\",\n  \"detail\": \"2D UI element rendering\"\n}\n```",
+      "ts": "2026-04-08T01:50:34Z"
+    },
+    {
+      "key": "06c066ac35dc77c492ddcba481e9437d",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, reads main texture, writes color\"\n}\n```",
+      "ts": "2026-04-08T01:50:35Z"
+    },
+    {
+      "key": "d3b83610d0bf1cfbe17a518d264339ca",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:35Z"
+    },
+    {
+      "key": "ebb71349be3795db9bd9ffa950c85ea3",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:37Z"
+    },
+    {
+      "key": "e675c3b93dda62d21b6c4da9f4535c6f",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and normal map\"\n}\n```",
+      "ts": "2026-04-08T01:50:39Z"
+    },
+    {
+      "key": "92522f9ae42ebab62b516f8161064cce",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:39Z"
+    },
+    {
+      "key": "e50a8602cef1a55acce448bcc673dad6",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:50:40Z"
+    },
+    {
+      "key": "20e8feb1177490e0d1aec2f01a35b912",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Light tile bitset generation pass\"\n}\n```",
+      "ts": "2026-04-08T01:50:40Z"
+    },
+    {
+      "key": "ea87be302cbd95f705dea9b377d4cbe9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with per-object SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:50:42Z"
+    },
+    {
+      "key": "a3e42ec21ff989f985c48c45f5b13364",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned crowd with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:50:42Z"
+    },
+    {
+      "key": "b2fe3d0eb89766095c207d1feab65031",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:43Z"
+    },
+    {
+      "key": "d911e57b8a44bb51c9f752909aa3d70c",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:44Z"
+    },
+    {
+      "key": "d11d14d6612b494dca3488aec02a5e41",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:44Z"
+    },
+    {
+      "key": "82e3d0b324a214c3791ae812ee7292d6",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:45Z"
+    },
+    {
+      "key": "f10dac6a1dbf4e442ff9a666f4fd998f",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd swarm with animation and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:50:46Z"
+    },
+    {
+      "key": "c8dee109640e88c82bb190fc2633c81d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:48Z"
+    },
+    {
+      "key": "f67b39f43aeccbcbe55eb30572757b27",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:50Z"
+    },
+    {
+      "key": "1b295e86724fdb094c489de8f5a15b97",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:50:52Z"
+    },
+    {
+      "key": "d2153fb2f59a41f7152ccff0b131cc31",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance buffer\"\n}\n```",
+      "ts": "2026-04-08T01:50:53Z"
+    },
+    {
+      "key": "9302f16c635d8a963a7b0f5522b3a038",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen depth write, texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:50:56Z"
+    },
+    {
+      "key": "df7ea0e29448f19d6425ee57bd44bbf9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:00Z"
+    },
+    {
+      "key": "8f3269c597e7e8707b7851ab6e1f2e8a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd agent with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:51:01Z"
+    },
+    {
+      "key": "8dee5760c3472c5d424d44f4fe26589c",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:02Z"
+    },
+    {
+      "key": "916f175acbf98a67cc6769d644229908",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:02Z"
+    },
+    {
+      "key": "e41a02fb20a50f5c040fdd151a31aec0",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:03Z"
+    },
+    {
+      "key": "c42da5118385245382ceb61077785ba4",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:04Z"
+    },
+    {
+      "key": "a4edc8d76076b152f704a61378bbe5dc",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, texture sampling, color blend\"\n}\n```",
+      "ts": "2026-04-08T01:51:04Z"
+    },
+    {
+      "key": "28499bb7c2084c3c602ce0d8997ac741",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with per-instance transform/jitter\"\n}\n```",
+      "ts": "2026-04-08T01:51:05Z"
+    },
+    {
+      "key": "b37cbf575d85eae8fe0138030e5de01f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:05Z"
+    },
+    {
+      "key": "9b6a3ccadd03247f27bd1baa62fcb4f2",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with per-instance SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:51:06Z"
+    },
+    {
+      "key": "9f6945f174ab2c2cde931979028c12ad",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and virtual texture\"\n}\n```",
+      "ts": "2026-04-08T01:51:07Z"
+    },
+    {
+      "key": "21216797c24ec79a6f6cdbf695e8b7fb",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance color tint\"\n}\n```",
+      "ts": "2026-04-08T01:51:08Z"
+    },
+    {
+      "key": "d861e204b3af8a3c0b842f7605295a90",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:08Z"
+    },
+    {
+      "key": "ecf3aa45dcae6feefbdfc55e1125665c",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Instanced mesh, per-instance data, lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:51:10Z"
+    },
+    {
+      "key": "adb659f98b14f7e79807ad5d64a445ff",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen post-processing pass with HDR RTs\"\n}\n```",
+      "ts": "2026-04-08T01:51:10Z"
+    },
+    {
+      "key": "86014eeb6b5274b1ee61eee9a44500de",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:11Z"
+    },
+    {
+      "key": "81c6b4c294cb9f73b519fede9b9a2f52",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with complex calculations\"\n}\n```",
+      "ts": "2026-04-08T01:51:12Z"
+    },
+    {
+      "key": "48ab61333d139a5e6343cceff213dd05",
+      "response": "```json\n{\"category\":\"Scene\",\"detail\":\"Scene geometry with texture sampling\"}\n```",
+      "ts": "2026-04-08T01:51:12Z"
+    },
+    {
+      "key": "e7984fb13262c84b3a1476e7bab07d65",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:13Z"
+    },
+    {
+      "key": "25076c64900c85f608b28886d21dd820",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:14Z"
+    },
+    {
+      "key": "537ee1b9a3901e342be3cd6550da1357",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:14Z"
+    },
+    {
+      "key": "bf356fa06a6aff91db9d06e906402846",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:51:15Z"
+    },
+    {
+      "key": "7229563abca0c1491d7b056c4fd90fe0",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen quad, post-processing pass\"\n}\n```",
+      "ts": "2026-04-08T01:51:15Z"
+    },
+    {
+      "key": "85b168112f1b6092dcb6b8eee61b8d8b",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:17Z"
+    },
+    {
+      "key": "5c845a0500fe79cce26b46819bd5aac8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:18Z"
+    },
+    {
+      "key": "f6622cb4e746889c0e188f3b207f8070",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:20Z"
+    },
+    {
+      "key": "49d3b33f5994e38b7662ee68262d13e7",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with depth and textures\"\n}\n```",
+      "ts": "2026-04-08T01:51:22Z"
+    },
+    {
+      "key": "56e81eee4879c5e4e98f2c0e61c4daef",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with instance buffer and lightmap\"\n}\n```",
+      "ts": "2026-04-08T01:51:29Z"
+    },
+    {
+      "key": "ebe9f25298e9369117fe14ef1d5ccd0c",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:51:29Z"
+    },
+    {
+      "key": "18275b950b9583d797491ce9ea92d9d8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:51:31Z"
+    },
+    {
+      "key": "e1a9abc7ac709ae5cb59ce574c4ec712",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:33Z"
+    },
+    {
+      "key": "7fa10a6dd75c41888b84d0eb9edfd0b7",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:33Z"
+    },
+    {
+      "key": "be8b909a93dd23d52443c3af39cc4fa1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and transforms\"\n}\n```",
+      "ts": "2026-04-08T01:51:34Z"
+    },
+    {
+      "key": "04371de7055735cf17d8d77c05d536b4",
+      "response": "```json\n{\n  \"category\": \"PostProcess\",\n  \"detail\": \"Fullscreen atmospheric scattering pass\"\n}\n```",
+      "ts": "2026-04-08T01:51:34Z"
+    },
+    {
+      "key": "f3e2195967fa4027b06bc82969402df5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:35Z"
+    },
+    {
+      "key": "13d01d513c42da8540ffd6a160e3f713",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:51:36Z"
+    },
+    {
+      "key": "bc6581051ae8582d7cc0ab9590951f7a",
+      "response": "1.  **优化DC 412558 (Scene) 和 DC 413762 (PostProcess) 的纹理访问：** 这两个DC是最大的瓶颈，都存在高纹理L1 Miss率和纹理Fetch Stall。 针对Scene，考虑使用ASTC纹理压缩，减少纹理带宽需求，降低L1 Miss率。针对PostProcess，检查PostProcess的纹理采样方式，优化纹理格式，避免不必要的纹理读取。\n\n2.  **降低PostProcess的Fragment Shader负载：** PostProcess的%Busy高达152.4%，说明Shader计算量过大。 简化PostProcess效果，减少Shader指令数量，或者考虑使用更低精度的mediump，降低ALU压力。\n\n3.  **优化Character的Shader性能：** Character的%Busy也较高（161.4%），虽然Frags相对较少，但仍需优化。 检查Character的Shader代码，减少复杂计算，优化光照模型，并考虑使用更低精度的mediump。\n\n4.  **针对Scene的Early-Z优化：** Scene的Frags数量最多，且L1 Miss率较高。 启用Early-Z，减少Overdraw，降低Fragment Shader的负载，从而降低%Busy和L1 Miss率。\n\n5.  **优化Scene的DrawCall合并：** Scene的DrawCall数量最多，且占据了总Clocks的35.5%。 考虑合并Scene的DrawCall，减少DrawCall数量，降低CPU开销，从而间接降低GPU负载。\n\n6.  **检查并优化Character的纹理采样：** Character的Read Total较高，且存在Lightmap采样。 检查Lightmap的采样方式，确保采样效率，避免不必要的纹理读取。 考虑使用GMEM Tile技术，优化纹理访问。\n\n7.  **针对PostProcess的Render Target优化：** PostProcess使用多个Render Target，且Read Total较高。 检查Render Target的格式，避免使用高精度格式，降低带宽需求。 考虑使用更小的Render Target尺寸，或者优化Render Target的布局。\n\n8.  **优化UI的DrawCall：** UI的DrawCall数量较多，虽然单DC耗时较低，但整体占比1.9%。 优化UI的DrawCall合并，减少DrawCall数量，降低CPU开销。\n",
+      "ts": "2026-04-08T01:51:42Z"
+    },
+    {
+      "key": "15a010ad08f4c6f471df76c4241a0ac3",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:53:06Z"
+    },
+    {
+      "key": "7a22494ff4f9464954b6cd339dd121ba",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd rendering with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:53:06Z"
+    },
+    {
+      "key": "f10b52c1180a4b970aba1e55f23c9128",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:07Z"
+    },
+    {
+      "key": "af7781531bba391edc100e35a3c33f46",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:08Z"
+    },
+    {
+      "key": "c6c698b6477c1b944cfa10f6631c4c9b",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Indexed mesh, instance buffer, lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:53:09Z"
+    },
+    {
+      "key": "74aea14b83b6edce6986a9f912321c85",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Interior geometry with tiling and offsets\"\n}\n```",
+      "ts": "2026-04-08T01:53:09Z"
+    },
+    {
+      "key": "ef1671e3bc604c7bd103d2c61b8bf4b8",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:53:10Z"
+    },
+    {
+      "key": "6c7f5147c18e8583f3c4abd58cd139e2",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, instance-based transforms\"\n}\n```",
+      "ts": "2026-04-08T01:53:11Z"
+    },
+    {
+      "key": "a9ba9ddd60488ce552b6c636a2f4469e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with SH probes and animation\"\n}\n```",
+      "ts": "2026-04-08T01:53:11Z"
+    },
+    {
+      "key": "09814bc58c60d7536236ea19858702f9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Indexed mesh with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:12Z"
+    },
+    {
+      "key": "b0d68eb16ce0a25be2c16fd8a23bf53f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:13Z"
+    },
+    {
+      "key": "fe52ede86d49313a19b443d7adddf2d3",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:14Z"
+    },
+    {
+      "key": "009b949af6fbd32c430cb8139147ae35",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:14Z"
+    },
+    {
+      "key": "22a063f327c60945d5bedd66346e450d",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed geometry\"\n}\n```",
+      "ts": "2026-04-08T01:53:15Z"
+    },
+    {
+      "key": "72f3c5a7d04d3ef51fd2457408d3e803",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:16Z"
+    },
+    {
+      "key": "ca862e556c5a5d9e49f82f3d92fa726d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:17Z"
+    },
+    {
+      "key": "1c8f4ad5359c55aef54b00eff53db6cc",
+      "response": "```json\n{\n  \"category\": \"Scene(Shadow)\",\n  \"detail\": \"Planar shadow rendering, indexed mesh\"\n}\n```",
+      "ts": "2026-04-08T01:53:17Z"
+    },
+    {
+      "key": "052ef387b916dd50e2f1c67202d389d8",
+      "response": "```json\n{\n  \"category\": \"Other\",\n  \"detail\": \"Light tile bitset write, no geometry\"\n}\n```",
+      "ts": "2026-04-08T01:53:21Z"
+    },
+    {
+      "key": "abce298fbe83b590e840cf93357a3e1d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:53:23Z"
+    },
+    {
+      "key": "2c4a8edf8fdee4726b10a8ab3948aff9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:24Z"
+    },
+    {
+      "key": "27dd7f92fa4451e29b1df234d1e935ea",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:25Z"
+    },
+    {
+      "key": "a0ff9b586494adb0ee5d6e0dcb9ff260",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with SH probes and textures\"\n}\n```",
+      "ts": "2026-04-08T01:53:27Z"
+    },
+    {
+      "key": "91a25b706a0900f855f5c42a1642fe73",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Indexed mesh, per-instance data, lightmaps\"\n}\n```",
+      "ts": "2026-04-08T01:53:27Z"
+    },
+    {
+      "key": "dec3363bbed3189525087f907dcdeaae",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd with per-instance transforms\"\n}\n```",
+      "ts": "2026-04-08T01:53:28Z"
+    },
+    {
+      "key": "6720d0aa11fe160eccf7a37fe099702b",
+      "response": "```json\n{\"category\":\"Scene(Shadow)\",\"detail\":\"Planar shadow rendering, indexed mesh\"}\n```",
+      "ts": "2026-04-08T01:53:28Z"
+    },
+    {
+      "key": "353a5351025ed06452ce31b3c626c1bc",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:30Z"
+    },
+    {
+      "key": "bd809c4ae78a08a0c147c0581db03997",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:53:30Z"
+    },
+    {
+      "key": "e2fd423058a37082ac4e4bcb66999def",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:32Z"
+    },
+    {
+      "key": "8c3bb66ce145e8f400f96dd9f65ddbe2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:32Z"
+    },
+    {
+      "key": "67f00a0a437d32527f05c283c73e468a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Crowd agent with SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:53:34Z"
+    },
+    {
+      "key": "6ae8ab5edb9d30dc7684475b3d8e321e",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:34Z"
+    },
+    {
+      "key": "c74652620a1bc61d9483afa143ca755c",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:39Z"
+    },
+    {
+      "key": "2076cd0275fb5ea43f473154adeb9937",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:36Z"
+    },
+    {
+      "key": "28a039c09c758e0afb2bdfcf2343ccc0",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:53:37Z"
+    },
+    {
+      "key": "8a18859deae3a1b7ef6a5e1797a18246",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:37Z"
+    },
+    {
+      "key": "f6e0fa8e77331742391bd080d3683f37",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:38Z"
+    },
+    {
+      "key": "ff1493be0eef0913c8f6d7d36369df7b",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:39Z"
+    },
+    {
+      "key": "1326c32ca6fbc036ed520084958fb08d",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:40Z"
+    },
+    {
+      "key": "de8a186b6f59851094ac39445f2c36a5",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and normal map\"\n}\n```",
+      "ts": "2026-04-08T01:53:46Z"
+    },
+    {
+      "key": "7a9da9100145ddb75ca979ecb16de022",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:43Z"
+    },
+    {
+      "key": "d1039d77123e6fa4dc3a19b15a135d74",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Normal map, shadow map, coefficient texture\"\n}\n```",
+      "ts": "2026-04-08T01:53:43Z"
+    },
+    {
+      "key": "9c1d0bbdb4eb90c26ef3943b0bb04d5d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:53:44Z"
+    },
+    {
+      "key": "b80993e541faafa6c23e00c91f7cf8db",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:44Z"
+    },
+    {
+      "key": "f5f5f4638b367b7319c7ce7663810408",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:53:46Z"
+    },
+    {
+      "key": "1aa5448a3d7457705f481da4f70976d7",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with multiple textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:00Z"
+    },
+    {
+      "key": "64f30978dedd18d314bffeb042977ce5",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with dirt and color textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:00Z"
+    },
+    {
+      "key": "2960ea6cc484732eca6ff15b68587c75",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:54:01Z"
+    },
+    {
+      "key": "802a8dff00ad2060a63dda81864e9162",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:54:02Z"
+    },
+    {
+      "key": "af9fea0982855b42d0eee9bb920b77d0",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with SH probe lighting\"\n}\n```",
+      "ts": "2026-04-08T01:54:03Z"
+    },
+    {
+      "key": "ab078160b0b12847864789b1a1e35c99",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with instance buffer data\"\n}\n```",
+      "ts": "2026-04-08T01:54:03Z"
+    },
+    {
+      "key": "8573f0baf37db1b458ce40e644fa0640",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with dirt/color textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:05Z"
+    },
+    {
+      "key": "0f8cf8424cad93c7861fbe75a81723d3",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:06Z"
+    },
+    {
+      "key": "640b2ef610836afadce0338b2795d3e3",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:15Z"
+    },
+    {
+      "key": "60c84dbd64d1984221f0b11c56904c99",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:54:17Z"
+    },
+    {
+      "key": "3a0287942e688f25e564189b4da523a9",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:54:19Z"
+    },
+    {
+      "key": "fac4d7c25b85fea742225a0251e26a18",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:54:21Z"
+    },
+    {
+      "key": "ac321491ef05e0147d156f97568a7090",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with color and specmask textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:23Z"
+    },
+    {
+      "key": "f7c8aa5fcfbdb84071e6bd6669428d9e",
+      "response": "```json\n{\"category\":\"Terrain\",\"detail\":\"Terrain with normal and coefficient textures\"}\n```",
+      "ts": "2026-04-08T01:54:23Z"
+    },
+    {
+      "key": "3433a4b95f4c6fbaf07931e8a7ff7140",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:25Z"
+    },
+    {
+      "key": "ce02537ed354873c5657b1e151e30e4c",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:54:27Z"
+    },
+    {
+      "key": "8bef867986677277c655bc2bf26c7e84",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:29Z"
+    },
+    {
+      "key": "fe73b5315f8d583e41428114c0931595",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with normal and ambient textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:30Z"
+    },
+    {
+      "key": "6a4cf0d0ac2a07b2e25d17d645cef92e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with dirt and normal maps\"\n}\n```",
+      "ts": "2026-04-08T01:54:31Z"
+    },
+    {
+      "key": "784dd4e955ae1553d0a28534d988a7b2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:33Z"
+    },
+    {
+      "key": "fb33192e101ae8476e8c3d380fcb136b",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:54:33Z"
+    },
+    {
+      "key": "c4c5497f5c704b1848c1ccad8ec08bb9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:35Z"
+    },
+    {
+      "key": "26fe270d3d34e26383dec1aaebdc15b5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:35Z"
+    },
+    {
+      "key": "d5eac0b5645f7250ea1a1c7c3ce02d9e",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with textures\"\n}\n```",
+      "ts": "2026-04-08T01:54:37Z"
+    },
+    {
+      "key": "d2dd9d970f62aa75aad860cb2031c3e9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:54:37Z"
+    },
+    {
+      "key": "273169c3328158b1143e6e5035618d2d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:39Z"
+    },
+    {
+      "key": "c183201d0eb6f473e7520b12e5cbd5c4",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with texture sampling and weave\"\n}\n```",
+      "ts": "2026-04-08T01:54:40Z"
+    },
+    {
+      "key": "e75a0314bf0115581078585704c0e570",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:41Z"
+    },
+    {
+      "key": "7d9d7dd87055274e1913dd7727ce7243",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:42Z"
+    },
+    {
+      "key": "dcab7df5bdb6a9fa52a49c1b0cf2f3dd",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:42Z"
+    },
+    {
+      "key": "2fe7831c3ba9548752013a3579d3f8e1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:44Z"
+    },
+    {
+      "key": "1660cedcd4f4dbf530d851244872844a",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:54:45Z"
+    },
+    {
+      "key": "0f06c20c9716aad9920f99d4679707a8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:54:47Z"
+    },
+    {
+      "key": "a05b14ebbc50a4c67ec14286de17c19d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:54:48Z"
+    },
+    {
+      "key": "2350c2a37a433f64f2c64b7571fb68ed",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Terrain with lightmap and planar shadow\"\n}\n```",
+      "ts": "2026-04-08T01:54:50Z"
+    },
+    {
+      "key": "124a25bd92377162fb50062d6ce1dc48",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance SH probes\"\n}\n```",
+      "ts": "2026-04-08T01:54:52Z"
+    },
+    {
+      "key": "29810e8b6fbf7df56c32863bfcd0d35f",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance tint and lightmap\"\n}\n```",
+      "ts": "2026-04-08T01:54:54Z"
+    },
+    {
+      "key": "4de8cab132ee6c68928b8a7bd1dfa496",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with SH probe lighting\"\n}\n```",
+      "ts": "2026-04-08T01:54:55Z"
+    },
+    {
+      "key": "9f872a70f8de558aae5fb73cc67c7e25",
+      "response": "```json\n{\"category\":\"Terrain\",\"detail\":\"Terrain with lightmap and detail textures\"}\n```",
+      "ts": "2026-04-08T01:54:58Z"
+    },
+    {
+      "key": "3d0977b89bfdd118617a5b632c89cbe0",
+      "response": "```json\n{\"category\": \"Character\", \"detail\": \"Skinned mesh with per-instance data\"}\n```",
+      "ts": "2026-04-08T01:54:59Z"
+    },
+    {
+      "key": "5b56770acf9971a63e7e589e4ae45178",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:01Z"
+    },
+    {
+      "key": "cb84c1786c2fc886c2ea9c4ae4208591",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:01Z"
+    },
+    {
+      "key": "77dd5b575ddc555c0b7c133338bc3f95",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:02Z"
+    },
+    {
+      "key": "4c1f3fa5593813950269751b3d243bda",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:03Z"
+    },
+    {
+      "key": "3a492d78dee74997be75198a65e718c5",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:04Z"
+    },
+    {
+      "key": "19b00c93d2e23fc3ff5c55cb3773bac2",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with instance buffer data\"\n}\n```",
+      "ts": "2026-04-08T01:55:05Z"
+    },
+    {
+      "key": "2191006472bffc756b69eeaddc10f178",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with normal mapping\"\n}\n```",
+      "ts": "2026-04-08T01:55:06Z"
+    },
+    {
+      "key": "c5704633de35bea9cc2809f6d9d25966",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:08Z"
+    },
+    {
+      "key": "629b08b08423c4298f99ed3dd48f4f9a",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with lightmap and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:10Z"
+    },
+    {
+      "key": "bd3adb6742e213189288f4c4cdd9b24f",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:11Z"
+    },
+    {
+      "key": "3f2079b1dcfbfd2c9118f3b86cbcca12",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:13Z"
+    },
+    {
+      "key": "7fa2b2c9db81816552954b8e9a425586",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:13Z"
+    },
+    {
+      "key": "fc94094defcd089850eeb77c67a52f29",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:14Z"
+    },
+    {
+      "key": "cb26cb4c894c4b7df760f281fb99cd88",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:14Z"
+    },
+    {
+      "key": "561273344b2ac8568ff93993e1e9f7c0",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and normal sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:15Z"
+    },
+    {
+      "key": "f4c33241777cca8216501ac53ad05454",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:16Z"
+    },
+    {
+      "key": "d1d63d880df41f71d3151dc9e80cee32",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with baked shadow sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:17Z"
+    },
+    {
+      "key": "2a7124cc153d9562cbd87f73237aefaf",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Goal net with textures and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:17Z"
+    },
+    {
+      "key": "bbda7bc60ce32b97d5f5818fd0604066",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:18Z"
+    },
+    {
+      "key": "12cc7007d375b350a72cb9a8e817ce8c",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:19Z"
+    },
+    {
+      "key": "c2753edc615b01e8b78e964aae03b6f1",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with interior walls\"\n}\n```",
+      "ts": "2026-04-08T01:55:19Z"
+    },
+    {
+      "key": "e56787cd64861cd094363da7903692c9",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:20Z"
+    },
+    {
+      "key": "f691b96473500c5d6f48d8da9fa617ed",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:21Z"
+    },
+    {
+      "key": "2b5d045955d091de272184da20b7246d",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:25Z"
+    },
+    {
+      "key": "ae733e329272327e0a3544483b2c10b8",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:24Z"
+    },
+    {
+      "key": "e69aadc49d0a836b1a2522fa9a6fbbcd",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:27Z"
+    },
+    {
+      "key": "a03085cb7371ae7475354ca263b38c84",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:30Z"
+    },
+    {
+      "key": "c715cf12f887597c3f1e3019d286f22b",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:31Z"
+    },
+    {
+      "key": "12b8f24156145ac17cab421a9f65c340",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:33Z"
+    },
+    {
+      "key": "c5f4b4d1f8e11a818c959658fb5ab370",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with instance buffer data\"\n}\n```",
+      "ts": "2026-04-08T01:55:34Z"
+    },
+    {
+      "key": "60799be069b8fe4179831e386c299690",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:35Z"
+    },
+    {
+      "key": "d058d8d386113583e0ecded66088b066",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:36Z"
+    },
+    {
+      "key": "7eb1881ec9b681d4b24f4bfc5a6e84af",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:36Z"
+    },
+    {
+      "key": "bf67b970b6f822f0696f39ed6b5c79a0",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Character with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:55:37Z"
+    },
+    {
+      "key": "6c2fac2055f8da51e9e936fecf97cd5f",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:37Z"
+    },
+    {
+      "key": "8b238c909d9fc42376e48da607b2899e",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with baked shadows\"\n}\n```",
+      "ts": "2026-04-08T01:55:39Z"
+    },
+    {
+      "key": "253dca8b0148fcf5ec113c5b46637363",
+      "response": "```json\n{\"category\": \"Scene\", \"detail\": \"Scene geometry with lightmap sampling\"}\n```",
+      "ts": "2026-04-08T01:55:40Z"
+    },
+    {
+      "key": "87ff7950ca15a6c70148b10487e9c082",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:41Z"
+    },
+    {
+      "key": "15257b29d59a1954a60311ba02c5d951",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:42Z"
+    },
+    {
+      "key": "3fb2576377110baebe190eca51c6a86a",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:55:43Z"
+    },
+    {
+      "key": "ee142673c94b4b3585c249f5768eb34e",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Indexed mesh, normal and coefficient textures\"\n}\n```",
+      "ts": "2026-04-08T01:55:43Z"
+    },
+    {
+      "key": "01bc509eb48e2923b1a90c1b4b36e09d",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:55:44Z"
+    },
+    {
+      "key": "00aadaac304793aa47525338b57db3c7",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:44Z"
+    },
+    {
+      "key": "05da28ba87e7e51b714523fbac20e837",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with virtual texture sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:45Z"
+    },
+    {
+      "key": "bcba287d3787a404fa2ff80b92068cf2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:55:46Z"
+    },
+    {
+      "key": "451ae6d38effd843a8caa81bea58fa16",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:55:46Z"
+    },
+    {
+      "key": "428c2140b9d0542ac19c27dae16cbcaf",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Goal net with textures and instance data\"\n}\n```",
+      "ts": "2026-04-08T01:56:00Z"
+    },
+    {
+      "key": "9d35bfde46803e263dec41cdb8bc4ca4",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:56:00Z"
+    },
+    {
+      "key": "b39fd0aede78e60182ae5118188cb43f",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with per-instance data\"\n}\n```",
+      "ts": "2026-04-08T01:56:01Z"
+    },
+    {
+      "key": "be0d3261a93f253b3190ee4981ab80c6",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:56:01Z"
+    },
+    {
+      "key": "3d1343256a7bf51981fb967b470f98d6",
+      "response": "```json\n{\n  \"category\": \"Terrain\",\n  \"detail\": \"Terrain with lightmap and detail textures\"\n}\n```",
+      "ts": "2026-04-08T01:56:03Z"
+    },
+    {
+      "key": "cf876cf54a1c75a8157d920a415a9bad",
+      "response": "```json\n{\n  \"category\": \"Character\",\n  \"detail\": \"Skinned mesh with instance data\"\n}\n```",
+      "ts": "2026-04-08T01:56:05Z"
+    },
+    {
+      "key": "0cbe8f8d7c3ee8d3e745b6fc4ecebe47",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:56:05Z"
+    },
+    {
+      "key": "57b8c5782fe7c1408ae66e9ec2363627",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:56:06Z"
+    },
+    {
+      "key": "ab0dc5b5a2df25001d88f0a0452972a2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:56:07Z"
+    },
+    {
+      "key": "ebff16c1dbb67d2b3bc4cda22fb140b2",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Scene geometry with lightmap sampling\"\n}\n```",
+      "ts": "2026-04-08T01:56:08Z"
+    },
+    {
+      "key": "03cc9f583db88286303fdd9e537a1844",
+      "response": "```json\n{\n  \"category\": \"Scene\",\n  \"detail\": \"Goal net with textures and lighting\"\n}\n```",
+      "ts": "2026-04-08T01:56:10Z"
+    },
+    {
+      "key": "153492be9975ae0d9f9df43cc76e4377",
+      "response": "1.  **优化场景（Scene）Draw Call：** 场景类Draw Call占据了总时钟周期的大部分，且Top 5 Draw Call中Scene占据4席，是最大瓶颈。 重点优化对象为DC 466909、468536、467931、467063。 考虑合并静态场景几何体，减少Draw Call数量。 针对Lightmap和Shadow，优化Lightmap UV生成，减少重叠，并考虑使用ASTC纹理压缩，降低纹理读取带宽。\n\n2.  **优化角色（Character）Draw Call：** Character Draw Call虽然数量较少，但%Busy较高，且Read Total较高，是第二大瓶颈。 针对DC 466028，优化角色模型复杂度，减少顶点数量。 考虑使用Instance Rendering，减少Draw Call，但需要权衡Instance数量与带宽消耗。 优化角色材质，减少Shader复杂度，并使用mediump精度，降低ALU压力。\n\n3.  **降低Shader Busy和Fragment Shaded：** 所有Top 5 Draw Call的%Busy都远高于100%，表明Shader端压力巨大。 优化Shader代码，减少不必要的计算，例如简化光照模型，减少分支和循环。 考虑使用Early-Z，减少Overdraw，降低Fragment Shaded数量。\n\n4.  **优化纹理读取：** Top 5 Draw Call的%Texture Stall和%L1 Miss都较高，表明纹理读取是瓶颈之一。 使用ASTC纹理压缩，降低纹理带宽需求。 优化纹理采样方式，减少采样次数。 调整纹理分辨率，避免过度采样。\n\n5.  **优化Overdraw：** 场景和角色都存在Overdraw问题，导致Fragment Shaded数量高。 启用Early-Z，在Fragment Shader运行前剔除不可见的像素。 优化模型，减少重叠的三角形。 考虑使用遮挡剔除技术，进一步减少Overdraw。\n\n6.  **优化PostProcess：** PostProcess的AvgFrags和%Busy都非常高，虽然Draw Call数量少，但单次消耗巨大。 优化PostProcess效果，减少Pass数量。 降低PostProcess的渲染分辨率。 考虑使用GMEM Tile技术，优化PostProcess的性能。\n\n7.  **优化L1 Cache Miss：** 整体L1 Miss率较高，特别是Scene和Character。 优化数据布局，提高数据局部性，减少L1 Cache Miss。 调整纹理采样方式，减少纹理读取次数。\n\n8.  **针对特定场景优化：** 针对DC 466909的Terrain，优化地形LOD，减少远距离三角形数量。 针对DC 468536和467931的Goal net，优化模型复杂度，减少Draw Call。\n",
+      "ts": "2026-04-08T01:56:23Z"
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ]
+}

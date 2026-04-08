@@ -26,13 +26,14 @@ namespace SnapdragonProfilerCLI.Services.Analysis
         public void SetLlm(Tools.LlmApiWrapper llm) => _llm = llm;
 
         // Step 3: labeled JSON (replaces CSV)
-        // Each DC entry annotates the exact shader and texture file paths it uses.
+        // Each DC entry annotates the exact shader, texture, and mesh file paths it uses.
         // Relative paths from snapshot_{captureId}/ to session-level shared assets use "../../shaders/" etc.
         public string GenerateLabeledMetricsJson(
             DrawCallAnalysisReport report,
             string captureOutDir,
             string shaderBaseDir,
-            string textureBaseDir)
+            string textureBaseDir,
+            string meshBaseDir)
         {
             var drawcalls = new List<object>();
             foreach (var dc in report.DrawCallResults)
@@ -73,6 +74,15 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     .Where(p => p != null)
                     .ToArray();
 
+                // Mesh file: one OBJ per DC keyed by ApiID in shared session-level meshes folder
+                bool hasMesh = dc.ApiName.IndexOf("Dispatch",
+                    StringComparison.OrdinalIgnoreCase) < 0
+                    && dc.VertexBuffers.Count > 0
+                    && File.Exists(Path.Combine(meshBaseDir, $"mesh_{dc.ApiID}.obj"));
+                string[] meshFiles = hasMesh
+                    ? new[] { $"../../meshes/mesh_{dc.ApiID}.obj" }
+                    : Array.Empty<string>();
+
                 object? metricsNode = m == null ? null : (object)new
                 {
                     clocks                = m.Clocks,
@@ -103,6 +113,11 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     shader_files   = shaderFiles,
                     texture_ids    = dc.TextureIDs,
                     texture_files  = textureFiles,
+                    mesh_files     = meshFiles,
+                    vertex_buffers = dc.VertexBuffers.Select(vb => new
+                        { binding = vb.Binding, buffer_id = vb.BufferID }).ToArray(),
+                    index_buffer   = dc.IndexBuffer == null ? null : (object)new
+                        { buffer_id = dc.IndexBuffer.BufferID, index_type = dc.IndexBuffer.IndexType },
                     render_targets = new
                     {
                         color        = colorRTs.Select(r => r.AttachmentResourceID.ToString()).ToArray(),
@@ -118,7 +133,7 @@ namespace SnapdragonProfilerCLI.Services.Analysis
 
             var root = new
             {
-                schema_version  = "2.0",
+                schema_version  = "2.1",
                 generated_at    = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 total_drawcalls = report.DrawCallResults.Count,
                 drawcalls       = drawcalls,
@@ -940,8 +955,12 @@ namespace SnapdragonProfilerCLI.Services.Analysis
         public string GenerateCsvReport(DrawCallAnalysisReport r, string outputDir)
             => GenerateLabeledMetricsCsv(r, outputDir);
         public string GenerateJsonReport(DrawCallAnalysisReport r, string captureOutDir,
+            string shaderBaseDir, string textureBaseDir, string meshBaseDir)
+            => GenerateLabeledMetricsJson(r, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir);
+
+        public string GenerateJsonReport(DrawCallAnalysisReport r, string captureOutDir,
             string shaderBaseDir, string textureBaseDir)
-            => GenerateLabeledMetricsJson(r, captureOutDir, shaderBaseDir, textureBaseDir);
+            => GenerateLabeledMetricsJson(r, captureOutDir, shaderBaseDir, textureBaseDir, "");
 
         private static string Q(string s) =>
             s.Contains(',') || s.Contains('"') ? $"\"{s.Replace("\"","\"\"") }\"" : s;

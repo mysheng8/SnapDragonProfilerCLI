@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text;
+using SnapdragonProfilerCLI.Data;
 using SnapdragonProfilerCLI.Models;
-using SnapdragonProfilerCLI.Services.Analysis;
 
 namespace SnapdragonProfilerCLI.Tools
 {
@@ -17,14 +16,17 @@ namespace SnapdragonProfilerCLI.Tools
     /// </summary>
     public class MeshExtractor
     {
-        private readonly string _databasePath;
-        private readonly int    _captureId;
+        private readonly SdpDatabase _db;
 
-        public MeshExtractor(string databasePath, int captureId = 3)
+        /// <summary>Primary constructor — inject SdpDatabase instance.</summary>
+        public MeshExtractor(SdpDatabase db)
         {
-            _databasePath = databasePath;
-            _captureId    = captureId;
+            _db = db;
         }
+
+        /// <summary>Backward-compatible constructor (creates its own SdpDatabase).</summary>
+        public MeshExtractor(string databasePath, int captureId = 3)
+            : this(new SdpDatabase(databasePath, (uint)captureId)) { }
 
         // ──────────────────────────────────────────────────────────────────────
         // Public API
@@ -42,8 +44,7 @@ namespace SnapdragonProfilerCLI.Tools
             try
             {
                 // 1. Resolve DrawCallInfo (pipeline + VB/IB bindings + draw parameters)
-                var svc  = new DrawCallQueryService();
-                var info = svc.GetDrawCallInfo(_databasePath, (uint)_captureId, drawCallNumber);
+                var info = _db.GetDrawCallInfo(drawCallNumber);
                 if (info == null)
                 {
                     Console.WriteLine($"  ✗ DrawCall '{drawCallNumber}' not found");
@@ -70,15 +71,14 @@ namespace SnapdragonProfilerCLI.Tools
             Directory.CreateDirectory(outputDir);
 
             // Collect DrawCallApiIDs that have a vertex buffer entry
-            var apiIds = GetDrawCallsWithVertexBuffers(maxDrawCalls);
+            var apiIds = _db.GetDrawCallsWithVertexBuffers(maxDrawCalls);
             Console.WriteLine($"  Found {apiIds.Count} draw calls with vertex buffer bindings");
 
             int succeeded = 0;
-            var svc       = new DrawCallQueryService();
 
             foreach (uint apiId in apiIds)
             {
-                var info = svc.GetDrawCallInfo(_databasePath, (uint)_captureId, apiId.ToString());
+                var info = _db.GetDrawCallInfo(apiId.ToString());
                 if (info == null) continue;
 
                 string safeId  = apiId.ToString();
@@ -112,12 +112,12 @@ namespace SnapdragonProfilerCLI.Tools
                               info.IndexCount > 0);
 
             // 2. Load vertex input state from database tables
-            var (bindings, attributes) = LoadVertexInputState(info.PipelineID);
+            var (bindings, attributes) = _db.LoadVertexInputState(info.PipelineID);
 
             if (attributes.Count == 0)
             {
                 Console.WriteLine("  ✗ No vertex attribute descriptions found for this pipeline");
-                Console.WriteLine($"    (PipelineVertexInputAttributes where CaptureID={_captureId} AND PipelineID={info.PipelineID} returned 0 rows)");
+                Console.WriteLine($"    (PipelineVertexInputAttributes where CaptureID={_db.CaptureId} AND PipelineID={info.PipelineID} returned 0 rows)");
                 return false;
             }
 
@@ -130,7 +130,7 @@ namespace SnapdragonProfilerCLI.Tools
             int[]? indexArray = null;
             if (isIndexed && info.IndexBuffer != null)
             {
-                byte[]? ibBytes = ReadBufferBytes(info.IndexBuffer.BufferID);
+                byte[]? ibBytes = _db.ReadBufferBytes(info.IndexBuffer.BufferID);
                 if (ibBytes != null && ibBytes.Length > 0)
                 {
                     indexArray = ParseIndexBuffer(ibBytes, info.IndexBuffer.IndexType,
@@ -147,7 +147,7 @@ namespace SnapdragonProfilerCLI.Tools
             var vbData = new Dictionary<uint, byte[]>();  // key = binding slot
             foreach (var vb in info.VertexBuffers)
             {
-                byte[]? bytes = ReadBufferBytes(vb.BufferID);
+                byte[]? bytes = _db.ReadBufferBytes(vb.BufferID);
                 if (bytes != null && bytes.Length > 0)
                 {
                     vbData[vb.Binding] = bytes;
@@ -290,151 +290,9 @@ namespace SnapdragonProfilerCLI.Tools
             return true;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Database queries
-        // ──────────────────────────────────────────────────────────────────────
-
-        private (List<VertexBindingDesc> bindings, List<VertexAttrDesc> attributes)
-            LoadVertexInputState(uint pipelineId)
-        {
-            var bindings   = new List<VertexBindingDesc>();
-            var attributes = new List<VertexAttrDesc>();
-
-            using var conn = new SQLiteConnection($"Data Source={_databasePath};Version=3;Read Only=True;");
-            conn.Open();
-
-            // Binding descriptions (our own table exported by VulkanSnapshotModel)
-            if (TableExists(conn, "PipelineVertexInputBindings"))
-            {
-                try
-                {
-                    using var cmd = new SQLiteCommand(
-                        "SELECT Binding, Stride, InputRate FROM PipelineVertexInputBindings " +
-                        $"WHERE CaptureID={_captureId} AND PipelineID={pipelineId} ORDER BY Binding", conn);
-                    using var r = cmd.ExecuteReader();
-                    while (r.Read())
-                        bindings.Add(new VertexBindingDesc
-                        {
-                            Binding   = Convert.ToUInt32(r[0]),
-                            Stride    = Convert.ToUInt32(r[1]),
-                            // InputRate is stored as TEXT ("VERTEX"/"INSTANCE") — parse defensively
-                            InputRate = r[2] is long lr ? (uint)lr :
-                                        string.Equals(r[2]?.ToString(), "INSTANCE",
-                                            StringComparison.OrdinalIgnoreCase) ? 1u : 0u
-                        });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"  ⚠ PipelineVertexInputBindings query failed: {ex.Message}");
-                }
-            }
-
-            // Attribute descriptions (our own table exported by VulkanSnapshotModel)
-            if (TableExists(conn, "PipelineVertexInputAttributes"))
-            {
-                try
-                {
-                    using var cmd = new SQLiteCommand(
-                        "SELECT Location, Binding, Format, Offset FROM PipelineVertexInputAttributes " +
-                        $"WHERE CaptureID={_captureId} AND PipelineID={pipelineId} ORDER BY Location", conn);
-                    using var r = cmd.ExecuteReader();
-                    while (r.Read())
-                        attributes.Add(new VertexAttrDesc
-                        {
-                            Location = Convert.ToUInt32(r[0]),
-                            Binding  = Convert.ToUInt32(r[1]),
-                            Format   = Convert.ToUInt32(r[2]),
-                            Offset   = Convert.ToUInt32(r[3])
-                        });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"  ⚠ PipelineVertexInputAttributes query failed: {ex.Message}");
-                }
-            }
-
-            return (bindings, attributes);
-        }
-
-        private byte[]? ReadBufferBytes(uint resourceId)
-        {
-            try
-            {
-                using var conn = new SQLiteConnection($"Data Source={_databasePath};Version=3;Read Only=True;");
-                conn.Open();
-
-                if (!TableExists(conn, "VulkanSnapshotByteBuffers"))
-                    return null;
-
-                // Concatenate all chunks ordered by sequenceID
-                var chunks = new List<byte[]>();
-                using var cmd = new SQLiteCommand(
-                    "SELECT data FROM VulkanSnapshotByteBuffers " +
-                    $"WHERE captureID={_captureId} AND resourceID={resourceId} " +
-                    "ORDER BY sequenceID", conn);
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                {
-                    long len = r.GetBytes(0, 0, null, 0, 0);
-                    if (len > 0)
-                    {
-                        var chunk = new byte[len];
-                        r.GetBytes(0, 0, chunk, 0, (int)len);
-                        chunks.Add(chunk);
-                    }
-                }
-
-                if (chunks.Count == 0) return null;
-                if (chunks.Count == 1) return chunks[0];
-
-                // Concatenate multiple chunks
-                int total = chunks.Sum(c => c.Length);
-                var result = new byte[total];
-                int pos = 0;
-                foreach (var chunk in chunks)
-                {
-                    Buffer.BlockCopy(chunk, 0, result, pos, chunk.Length);
-                    pos += chunk.Length;
-                }
-                return result;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  ⚠ ReadBufferBytes({resourceId}) failed: {ex.Message}");
-                return null;
-            }
-        }
-
-        private List<uint> GetDrawCallsWithVertexBuffers(int maxCount)
-        {
-            var result = new List<uint>();
-            try
-            {
-                using var conn = new SQLiteConnection($"Data Source={_databasePath};Version=3;Read Only=True;");
-                conn.Open();
-
-                if (!TableExists(conn, "DrawCallVertexBuffers")) return result;
-                if (!TableExists(conn, "DrawCallParameters"))   return result;
-
-                // Join to ensure DrawCall exists in parameters table
-                using var cmd = new SQLiteCommand(
-                    $"SELECT DISTINCT vb.DrawCallApiID FROM DrawCallVertexBuffers vb " +
-                    $"INNER JOIN DrawCallParameters p ON p.DrawCallApiID = vb.DrawCallApiID " +
-                    $"ORDER BY vb.DrawCallApiID LIMIT {maxCount}", conn);
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                    result.Add(Convert.ToUInt32(r[0]));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  ⚠ GetDrawCallsWithVertexBuffers failed: {ex.Message}");
-            }
-            return result;
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────────
         // Attribute semantic selection
-        // ──────────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────────
 
         private static VertexAttrDesc? PickPositionAttribute(List<VertexAttrDesc> attrs)
         {
@@ -708,34 +566,5 @@ namespace SnapdragonProfilerCLI.Tools
             _   => $"VkFormat({vkFormat})"
         };
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Utility
-        // ──────────────────────────────────────────────────────────────────────
-
-        private static bool TableExists(SQLiteConnection conn, string tableName)
-        {
-            using var cmd = new SQLiteCommand(
-                $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'", conn);
-            return Convert.ToInt64(cmd.ExecuteScalar()) > 0;
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Internal DTOs
-        // ──────────────────────────────────────────────────────────────────────
-
-        private class VertexBindingDesc
-        {
-            public uint Binding   { get; set; }
-            public uint Stride    { get; set; }
-            public uint InputRate { get; set; }
-        }
-
-        private class VertexAttrDesc
-        {
-            public uint Location { get; set; }
-            public uint Binding  { get; set; }
-            public uint Format   { get; set; }
-            public uint Offset   { get; set; }
-        }
-    }
-}
+    }  // end class
+}  // end namespace

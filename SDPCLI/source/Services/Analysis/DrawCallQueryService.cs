@@ -1,41 +1,36 @@
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
-using System.Linq;
-using QGLPlugin;
+using SnapdragonProfilerCLI.Data;
 using SnapdragonProfilerCLI.Models;
 using ShaderInfo = SnapdragonProfilerCLI.Models.ShaderInfo;
 
 namespace SnapdragonProfilerCLI.Services.Analysis
 {
     /// <summary>
-    /// Resolves all Vulkan resources for a DrawCall from sdp.db.
-    ///
-    /// Priority order for each data source:
-    ///   DrawCall list   : DrawCallParameters (rowid order)
-    ///   Pipeline ID     : DrawCallBindings.PipelineID (direct join on DrawCallApiID)
-    ///   Textures        : DrawCallBindings.ImageViewID > VulkanSnapshotDescriptorSetBindings
-    ///   Render targets  : DrawCallRenderTargets  (direct join on DrawCallApiID)
-    ///   Vertex buffers  : DrawCallVertexBuffers  (direct join on DrawCallApiID)
-    ///   Index buffer    : DrawCallIndexBuffers   (direct join on DrawCallApiID)
-    ///   Shaders         : VulkanSnapshotShaderStages (join on pipelineID + captureID)
-    ///   Texture detail  : VulkanSnapshotTextures + VulkanSnapshotImageViews
-    ///
-    /// Stateless -- safe to inject as singleton; dbPath and captureId are per-call.
+    /// Thin shell — all SQL is delegated to <see cref="SdpDatabase"/> partial classes.
+    /// Stateless — safe to call from multiple threads concurrently.
     /// </summary>
     public class DrawCallQueryService
     {
-        // -- Public API -------------------------------------------------------
+        // ── Public API (original 3-arg signatures kept for backward compatibility) ──
 
-        /// <summary>
-        /// Resolves full DrawCall info.
-        /// drawCallNumber may be a plain integer DrawCallApiID ("106974") or encoded ("1.1.5").
-        /// </summary>
         public DrawCallInfo? GetDrawCallInfo(string dbPath, uint captureId, string drawCallNumber)
+            => new SdpDatabase(dbPath, captureId).GetDrawCallInfo(drawCallNumber);
+
+        public uint[] GetTexturesForDrawCall(string dbPath, uint captureId, string drawCallNumber)
         {
-            try
-            {
-                using var conn = Open(dbPath);
+            var info = GetDrawCallInfo(dbPath, captureId, drawCallNumber);
+            return info?.TextureIDs ?? Array.Empty<uint>();
+        }
+
+        public uint[] GetTexturesForPipelineId(string dbPath, uint captureId, uint pipelineID)
+            => new SdpDatabase(dbPath, captureId).GetTexturesForApiId(pipelineID);
+
+        public DrawCallInfo? GetPipelineInfoById(string dbPath, uint captureId, uint pipelineID)
+            => new SdpDatabase(dbPath, captureId).GetPipelineInfoById(pipelineID);
+    }
+}
+/*__REMOVED_OLD_SQL_IMPL_BELOW__
 
                 // Prefer direct ApiID lookup when drawCallNumber is a plain integer
                 if (uint.TryParse(drawCallNumber, out uint apiId))
@@ -317,7 +312,8 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     rt.FormatName = GetFormatName(Convert.ToUInt32(r2[2]));
                 }
             }
-            catch { /* format resolution is best-effort */ }
+            catch { // format resolution is best-effort
+            }
         }
 
         private static List<VertexBufferBinding> GetVertexBuffers(SQLiteConnection conn, uint apiId)
@@ -708,4 +704,4 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             _   => $"Format_{fmt}"
         };
     }
-}
+}*/

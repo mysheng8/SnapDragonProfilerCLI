@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SnapdragonProfilerCLI.Data;
 using SnapdragonProfilerCLI.Models;
 using SnapdragonProfilerCLI.Modes;
 
@@ -19,7 +20,6 @@ namespace SnapdragonProfilerCLI.Analysis
     public class AnalysisPipeline
     {
         private readonly Services.Analysis.SdpFileService sdpFileService;
-        private readonly Services.Analysis.DatabaseQueryService dbQueryService;
         private readonly Services.Analysis.DrawCallQueryService drawCallQueryService;
         private readonly Services.Analysis.DrawCallAnalysisService analysisService;
         private readonly Services.Analysis.ReportGenerationService reportService;
@@ -31,7 +31,6 @@ namespace SnapdragonProfilerCLI.Analysis
 
         public AnalysisPipeline(
             Services.Analysis.SdpFileService sdpFileService,
-            Services.Analysis.DatabaseQueryService dbQueryService,
             Services.Analysis.DrawCallQueryService drawCallQueryService,
             Services.Analysis.DrawCallAnalysisService analysisService,
             Services.Analysis.ReportGenerationService reportService,
@@ -41,7 +40,6 @@ namespace SnapdragonProfilerCLI.Analysis
             ILogger logger)
         {
             this.sdpFileService       = sdpFileService;
-            this.dbQueryService       = dbQueryService;
             this.drawCallQueryService = drawCallQueryService;
             this.analysisService      = analysisService;
             this.reportService        = reportService;
@@ -66,7 +64,11 @@ namespace SnapdragonProfilerCLI.Analysis
                 string? dbPath = sdpFileService.FindDatabasePath(sdpPath);
                 if (string.IsNullOrEmpty(dbPath))
                     throw new Exception("sdp.db not found in .sdp file");
-                dbQueryService.OpenDatabase(dbPath!);
+
+                // Create unified DB entry point and run pre-flight validation
+                var db = new SdpDatabase(dbPath!, captureId);
+                logger.Info("Pre-flight: Validating database tables...");
+                db.ValidateForAnalysis(logger);
 
                 // ── Pre-compute session paths ────────────────────────────────────
                 string sdpName    = System.IO.Path.GetFileNameWithoutExtension(sdpPath);
@@ -134,7 +136,7 @@ namespace SnapdragonProfilerCLI.Analysis
                                     Interlocked.Increment(ref shaderOkCount);
                                     return;
                                 }
-                                var shExt = new Tools.ShaderExtractor(dbPath, (int)captureId)
+                                var shExt = new Tools.ShaderExtractor(db)
                                 {
                                     SpirvCrossPath     = spirvCrossPath,
                                     ShaderOutputFormat = shaderFmt
@@ -163,7 +165,7 @@ namespace SnapdragonProfilerCLI.Analysis
                                     Interlocked.Increment(ref texSkipped);
                                     return;
                                 }
-                                var texExt = new Tools.TextureExtractor(dbPath, (int)captureId);
+                                var texExt = new Tools.TextureExtractor(db);
                                 if (texExt.ExtractTexture(texId, texFile))
                                     Interlocked.Increment(ref texOk);
                             });
@@ -266,44 +268,38 @@ namespace SnapdragonProfilerCLI.Analysis
                     }
                 }
 
-                // Export labeled + metrics JSON to captureOutDir
-                // JSON annotates each DC with the shader and texture file paths it references.
-                string labeledJson = reportService.GenerateLabeledMetricsJson(
-                    report, captureOutDir, shaderBaseDir, textureBaseDir);
-                logger.Info($"  → JSON: {labeledJson}");
-
-                // ── Step 3.5: Extract meshes for top-5 GPU-cost DrawCalls ────
-                string meshBaseDir = System.IO.Path.Combine(captureOutDir, "meshes");
+                // ── Step 3.5: Extract meshes for all non-compute DrawCalls ────
+                string meshBaseDir = System.IO.Path.Combine(sessionDir, "meshes");
 
                 if (onlyReport)
                 {
                     logger.Info("\nStep 3.5: Mesh extraction — SKIPPED (AnalysisOnlyGenerateReport=true)");
                 }
-                else if (System.IO.Directory.Exists(meshBaseDir))
-                {
-                    logger.Info($"\nStep 3.5: Mesh extraction — SKIPPED (meshes/ already exists → {meshBaseDir})");
-                }
                 else
                 {
-                    logger.Info("\nStep 3.5: Extracting meshes for top-5 DrawCalls by GPU Clocks...");
+                    logger.Info("\nStep 3.5: Extracting meshes for non-compute DrawCalls...");
                     System.IO.Directory.CreateDirectory(meshBaseDir);
 
-                    // Pick top-5 by GPU Clocks; fall back to first 5 DCs when no metrics available
-                    var withMetrics = report.DrawCallResults.Where(d => d.Metrics != null).ToList();
-                    var top5 = withMetrics.Count > 0
-                        ? withMetrics.OrderByDescending(d => d.Metrics!.Clocks).Take(5).ToList()
-                        : report.DrawCallResults.Take(5).ToList();
+                    var meshDcs = report.DrawCallResults
+                        .Where(dc => dc.ApiName.IndexOf("Dispatch",
+                            StringComparison.OrdinalIgnoreCase) < 0
+                            && dc.VertexBuffers.Count > 0)
+                        .ToList();
 
-                    var meshExt = new Tools.MeshExtractor(dbPath, (int)captureId);
                     int meshOk = 0;
-                    foreach (var dc in top5)
-                    {
-                        string objPath = System.IO.Path.Combine(meshBaseDir, $"drawcall_{dc.DrawCallNumber}.obj");
-                        logger.Info($"  Extracting DC {dc.DrawCallNumber} → {System.IO.Path.GetFileName(objPath)}");
-                        if (meshExt.ExtractMesh(dc.DrawCallNumber, objPath))
-                            meshOk++;
-                    }
-                    logger.Info($"  → Meshes: {meshOk}/{top5.Count} OBJ files written → {meshBaseDir}");
+                    int meshDegree = config.GetInt("MeshExtractionDegree", 4);
+                    Parallel.ForEach(meshDcs,
+                        new ParallelOptions { MaxDegreeOfParallelism = meshDegree },
+                        dc =>
+                        {
+                            string objPath = System.IO.Path.Combine(meshBaseDir, $"mesh_{dc.ApiID}.obj");
+                            if (System.IO.File.Exists(objPath)) { Interlocked.Increment(ref meshOk); return; }
+                            var ext = new Tools.MeshExtractor(db);
+                            if (ext.ExtractMesh(dc.DrawCallNumber, objPath))
+                                Interlocked.Increment(ref meshOk);
+                        });
+
+                    logger.Info($"  → Meshes: {meshOk}/{meshDcs.Count} OBJ files → {meshBaseDir}");
                 }
 
                 // Always (re)generate viewer.html if meshes/ dir has any OBJ files
@@ -316,6 +312,12 @@ namespace SnapdragonProfilerCLI.Analysis
                         logger.Info($"  → Viewer: {System.IO.Path.Combine(meshBaseDir, "viewer.html")}");
                     }
                 }
+
+                // Export labeled + metrics JSON to captureOutDir
+                // JSON annotates each DC with the shader, texture, and mesh file paths it references.
+                string labeledJson = reportService.GenerateLabeledMetricsJson(
+                    report, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir);
+                logger.Info($"  → JSON: {labeledJson}");
 
                 // ── Step 4: Summary report ────────────────────────────────────
                 logger.Info("\nStep 4: Generating summary...");

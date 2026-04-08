@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using SnapdragonProfilerCLI.Data;
 using SnapdragonProfilerCLI.Services.Analysis;
 using SnapdragonProfilerCLI.Tools;
 
@@ -158,8 +159,7 @@ namespace SnapdragonProfilerCLI.Modes
 
                 // ── 3. 定位目标 DrawCall ────────────────────────────────────
                 Console.WriteLine("\n[Step 2] Locating target DrawCall...");
-                var dbQuerySvc = new DatabaseQueryService(new Logging.ContextLogger("DCAnalysis"));
-                dbQuerySvc.OpenDatabase(dbPath);
+                var db = new SdpDatabase(dbPath, (uint)captureId);
 
                 string dcId;
 
@@ -172,7 +172,7 @@ namespace SnapdragonProfilerCLI.Modes
                 else
                 {
                     // 序号模式：取列表第 N 条
-                    var allDrawCalls = dbQuerySvc.GetDrawCallIds((uint)captureId);
+                    var allDrawCalls = db.GetDrawCallIds();
                     Console.WriteLine($"  Total DrawCalls found: {allDrawCalls.Count}");
 
                     if (allDrawCalls.Count < dcIndex)

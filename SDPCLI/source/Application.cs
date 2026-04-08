@@ -167,9 +167,8 @@ namespace SnapdragonProfilerCLI
             {
                 // Analysis mode: åˆ›å»ºæœåŠ¡å’Œ Pipeline
                 var sdpFileService      = new Services.Analysis.SdpFileService(config, logger);
-                var dbQueryService      = new Services.Analysis.DatabaseQueryService(logger);
                 var drawCallQueryService = new Services.Analysis.DrawCallQueryService();
-                var analysisService     = new Services.Analysis.DrawCallAnalysisService(dbQueryService, drawCallQueryService, logger);
+                var analysisService     = new Services.Analysis.DrawCallAnalysisService(drawCallQueryService, logger);
                 var reportService       = new Services.Analysis.ReportGenerationService(config, logger, null); // llmService assigned below
                 var categories          = config.Get("AnalysisCategories", "场景,角色,投影,后处理,特效,UI")
                                                .Split(',').Select(s => s.Trim()).ToList();
@@ -188,7 +187,6 @@ namespace SnapdragonProfilerCLI
                 var metricsService      = new Services.Analysis.MetricsCsvService();
                 var analysisPipeline    = new Analysis.AnalysisPipeline(
                     sdpFileService,
-                    dbQueryService,
                     drawCallQueryService,
                     analysisService,
                     reportService,

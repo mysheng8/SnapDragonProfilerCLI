@@ -1,29 +1,38 @@
 ---
 type: plan
-topic: 3D model extraction from vertex/index buffers
-status: proposed
+topic: 3D model extraction from vertex/index buffers + analysis pipeline mesh integration
+status: partially-implemented
 based_on:
   - FINDING-2026-04-03-3d-model-extraction-feasibility.md
+  - FINDING-2026-04-08-mesh-export-pipeline-integration.md
 related_paths:
+  - SDPCLI/source/Tools/MeshExtractor.cs
+  - SDPCLI/source/Modes/MeshExtractionMode.cs
   - SDPCLI/source/Tools/TextureExtractor.cs
   - SDPCLI/source/Tools/ShaderExtractor.cs
-  - SDPCLI/source/Modes/TextureExtractionMode.cs
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Services/Analysis/ReportGenerationService.cs
   - SDPCLI/source/Services/Analysis/DrawCallQueryService.cs
   - SDPCLI/source/Models/VulkanSnapshotModel.cs
   - SDPCLI/source/Models/DrawCallModels.cs
-  - SDPCLI/source/Main.cs
+  - SDPCLI/SDPCLI/config.ini
 related_tags:
   - vertex-buffer
   - index-buffer
   - 3d-model
   - mesh-extraction
   - OBJ
-  - new-feature
+  - drawcall-analysis
+  - parallel
+  - json
+  - pipeline-integration
 summary: |
-  在 SDPCLI 中新增 MeshExtractor 工具类和对应的 extract-mesh 模式，
-  从指定 DrawCall 的 VB/IB 二进制数据重建 3D mesh 并导出 Wavefront OBJ 文件。
-  前提：需要先通过 SQL 验证 VulkanSnapshotByteBuffers 中是否包含 VB/IB 的 binary data。
-last_updated: 2026-04-03
+  Phases 0-5 implemented: MeshExtractor.cs (OBJ from VB/IB binary) and MeshExtractionMode.cs
+  (standalone CLI mode) are fully functional. Phase 6 integrates mesh export into the batch
+  analysis pipeline: session-shared meshes/ folder, all non-compute DCs with VB bindings,
+  per-file existence check, parallel Parallel.ForEach, and mesh_files field in
+  DrawCallAnalysis JSON.
+last_updated: 2026-04-08
 ---
 
 # 计划：从 Vertex Buffer / Index Buffer 提取 3D 模型
@@ -302,5 +311,144 @@ Phase 4 ────────────────────────
 ```
 
 ---
+
+## Implementation Status (Phases 0–5)
+
+All original phases are **implemented** as of 2026-04-08:
+
+- `MeshExtractor.cs` — fully functional (VB/IB decode, OBJ writer, thread-safe independent SQLite per call)
+- `MeshExtractionMode.cs` — standalone `-mode extract-mesh` CLI with batch and single-DC modes
+- Step 3.5 in `AnalysisPipeline.cs` — already calls `MeshExtractor` (top-5 DCs, per-capture, serial)
+
+See `FINDING-2026-04-08-mesh-export-pipeline-integration.md` for the gap analysis.
+
+---
+
+## Phase 6 — Analysis Pipeline Mesh Integration
+
+Upgrades Step 3.5 from "top-5, per-capture, serial" to
+"all non-compute DCs, session-shared, parallel, JSON-annotated".
+
+### 6a. AnalysisPipeline.cs — Move meshBaseDir to sessionDir
+
+```csharp
+// BEFORE
+string meshBaseDir = Path.Combine(captureOutDir, "meshes");
+// AFTER
+string meshBaseDir = Path.Combine(sessionDir, "meshes");
+```
+
+### 6b. AnalysisPipeline.cs — Expand scope + per-file check + parallel
+
+Move Step 3.5 BEFORE the JSON generation call (Step 3), then replace body:
+
+```csharp
+Directory.CreateDirectory(meshBaseDir);
+var meshDcs = report.DrawCallResults
+    .Where(dc => dc.ApiName.IndexOf("Dispatch",
+        StringComparison.OrdinalIgnoreCase) < 0 && dc.VertexBuffers.Count > 0)
+    .ToList();
+
+int meshOk = 0;
+Parallel.ForEach(meshDcs,
+    new ParallelOptions { MaxDegreeOfParallelism = _config.MeshExtractionDegree },
+    dc =>
+    {
+        string objPath = Path.Combine(meshBaseDir, $"mesh_{dc.ApiID}.obj");
+        if (File.Exists(objPath)) { Interlocked.Increment(ref meshOk); return; }
+        var ext = new Tools.MeshExtractor(dbPath!, (int)captureId);
+        if (ext.ExtractMesh(dc.DrawCallNumber, objPath))
+            Interlocked.Increment(ref meshOk);
+    });
+logger.Info($"  -> Meshes: {meshOk}/{meshDcs.Count} OBJ files -> {meshBaseDir}");
+```
+
+Key points:
+- File naming: `mesh_{dc.ApiID}.obj` — ApiID is `uint`, globally unique, no special chars
+- `MeshExtractor` opens its own SQLite connections per call — safe at any concurrency degree
+- `MeshExtractionDegree` default = 4 (I/O-bound, same as `TextureExtractionDegree`)
+
+### 6c. AnalysisPipeline.cs — Pass meshBaseDir to JSON generator
+
+```csharp
+string labeledJson = reportService.GenerateLabeledMetricsJson(
+    report, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir);
+```
+
+### 6d. ReportGenerationService.cs — Add meshBaseDir + mesh_files
+
+Signature:
+```csharp
+public string GenerateLabeledMetricsJson(
+    DrawCallAnalysisReport report, string captureOutDir,
+    string shaderBaseDir, string textureBaseDir,
+    string meshBaseDir)    // NEW
+```
+
+Per-DC resolution inside the loop:
+```csharp
+bool hasMesh = dc.ApiName.IndexOf("Dispatch", StringComparison.OrdinalIgnoreCase) < 0
+    && dc.VertexBuffers.Count > 0
+    && File.Exists(Path.Combine(meshBaseDir, $"mesh_{dc.ApiID}.obj"));
+
+string[] meshFiles = hasMesh
+    ? new[] { $"../../meshes/mesh_{dc.ApiID}.obj" }
+    : Array.Empty<string>();
+```
+
+Add to the DC anonymous object:
+```csharp
+mesh_files     = meshFiles,
+vertex_buffers = dc.VertexBuffers.Select(vb => new
+    { binding = vb.Binding, buffer_id = vb.BufferID }).ToArray(),
+index_buffer   = dc.IndexBuffer == null ? null : (object)new
+    { buffer_id = dc.IndexBuffer.BufferID, index_type = dc.IndexBuffer.IndexType },
+```
+
+Bump `schema_version` from `"2.0"` to `"2.1"`.
+
+### 6e. Resulting JSON structure (schema_version 2.1)
+
+```json
+{
+  "schema_version": "2.1",
+  "drawcalls": [{
+    "dc_id": "1.1.31",
+    "api_name": "vkCmdDrawIndexed",
+    "pipeline_id": 1234,
+    "shader_files":   ["../../shaders/pipeline_1234_vert.hlsl"],
+    "texture_files":  ["../../textures/texture_456.png"],
+    "mesh_files":     ["../../meshes/mesh_106974.obj"],
+    "vertex_buffers": [{"binding": 0, "buffer_id": 5678}],
+    "index_buffer":   {"buffer_id": 9012, "index_type": "UINT16"},
+    "vertex_count":   5832,
+    "index_count":    8748
+  }]
+}
+```
+
+### 6f. config.ini
+
+```ini
+MeshExtractionDegree=4
+```
+
+Add alongside `TextureExtractionDegree=4`.
+
+### 6g. viewer.html
+
+`GenerateMeshViewerHtml` only needs its path updated from `captureOutDir/meshes/`
+to `sessionDir/meshes/`. No logic change required.
+
+---
+
+## Affected Files Summary (Phase 6)
+
+| File | Change |
+|------|--------|
+| `AnalysisPipeline.cs` | `meshBaseDir` to `sessionDir/meshes/`; all non-compute DCs with VBs; per-file check; `Parallel.ForEach`; reorder before Step 3 |
+| `ReportGenerationService.cs` | Add `meshBaseDir` param; `mesh_files`, `vertex_buffers`, `index_buffer` per DC; `schema_version` to `"2.1"` |
+| `Config.cs` | Add `MeshExtractionDegree` int property (default 4) |
+| `config.ini` | Add `MeshExtractionDegree=4` |
 
 ## Implementation requires the Executor agent.

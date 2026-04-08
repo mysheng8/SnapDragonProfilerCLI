@@ -1,9 +1,9 @@
 using System;
-using System.Data.SQLite;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
+using SnapdragonProfilerCLI.Data;
 using TextureConverter;
 
 namespace SnapdragonProfilerCLI.Tools
@@ -14,14 +14,17 @@ namespace SnapdragonProfilerCLI.Tools
     /// </summary>
     public class TextureExtractor
     {
-        private readonly string _databasePath;
-        private readonly int _captureId;
+        private readonly SdpDatabase _db;
 
-        public TextureExtractor(string databasePath, int captureId = 3)
+        /// <summary>Primary constructor — inject SdpDatabase instance.</summary>
+        public TextureExtractor(SdpDatabase db)
         {
-            _databasePath = databasePath;
-            _captureId = captureId;
+            _db = db;
         }
+
+        /// <summary>Backward-compatible constructor (creates its own SdpDatabase).</summary>
+        public TextureExtractor(string databasePath, int captureId = 3)
+            : this(new SdpDatabase(databasePath, (uint)captureId)) { }
 
         /// <summary>
         /// 提取 texture 并保存为 PNG
@@ -34,7 +37,7 @@ namespace SnapdragonProfilerCLI.Tools
                 Console.WriteLine($"\n=== Extracting Texture {resourceId} ===");
 
                 // 1. 查询 texture 元数据
-                var metadata = GetTextureMetadata(resourceId);
+                var metadata = _db.GetTextureMetadata(resourceId);
                 if (metadata == null)
                 {
                     Console.WriteLine($"  ⚠ Texture {resourceId} not found in database");
@@ -53,8 +56,8 @@ namespace SnapdragonProfilerCLI.Tools
                     return false;
                 }
 
-                // 2. 直接从 SQLite 查询 VulkanSnapshotByteBuffers 表获取纹理二进制数据
-                byte[]? textureData = GetTextureData(resourceId);
+                // 2. 直接从数据库读取 VulkanSnapshotByteBuffers 表获取纹理二进制数据
+                byte[]? textureData = _db.ReadTextureBytes(resourceId);
                 if (textureData == null || textureData.Length == 0)
                 {
                     Console.WriteLine($"  ⚠ No texture data found in VulkanSnapshotByteBuffers");
@@ -149,41 +152,7 @@ namespace SnapdragonProfilerCLI.Tools
             }
         }
 
-        private byte[]? GetTextureData(ulong resourceId)
-        {
-            using (var connection = new SQLiteConnection($"Data Source={_databasePath};Version=3;Read Only=True;"))
-            {
-                connection.Open();
-
-                // VulkanSnapshotByteBuffers: captureID, resourceID, sequenceID, offset, data
-                string query = @"
-                    SELECT data FROM VulkanSnapshotByteBuffers 
-                    WHERE captureID = @captureId AND resourceID = @resourceId
-                    ORDER BY sequenceID
-                    LIMIT 1";
-
-                using (var command = new SQLiteCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@captureId", _captureId);
-                    command.Parameters.AddWithValue("@resourceId", (long)resourceId);
-
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            long dataSize = reader.GetBytes(0, 0, null, 0, 0);
-                            byte[] buffer = new byte[dataSize];
-                            reader.GetBytes(0, 0, buffer, 0, (int)dataSize);
-                            return buffer;
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private bool IsAstcFormat(int vkFormat)
+        private static bool IsAstcFormat(int vkFormat)
         {
             // VK_FORMAT_ASTC_4x4_UNORM_BLOCK(157) to VK_FORMAT_ASTC_12x12_SRGB_BLOCK(184)
             return vkFormat >= 157 && vkFormat <= 184;
@@ -216,72 +185,6 @@ namespace SnapdragonProfilerCLI.Tools
             if (index >= 0 && index < sizes.Length)
                 return sizes[index];
             return (4, 4); // fallback
-        }
-
-        private TextureMetadata? GetTextureMetadata(ulong resourceId)
-        {
-            using (var connection = new SQLiteConnection($"Data Source={_databasePath};Version=3;Read Only=True;"))
-            {
-                connection.Open();
-
-                // Prefer rows for the specific capture; fall back to any row with this resourceID
-                // (VulkanSnapshotTextures accumulates across captures, resourceID may repeat).
-                string query = @"
-                    SELECT width, height, depth, format, layerCount, levelCount 
-                    FROM VulkanSnapshotTextures 
-                    WHERE captureID = @captureId AND resourceID = @resourceId
-                    LIMIT 1";
-
-                using (var command = new SQLiteCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@captureId", _captureId);
-                    command.Parameters.AddWithValue("@resourceId", resourceId);
-
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            return new TextureMetadata
-                            {
-                                Width = reader.GetInt32(0),
-                                Height = reader.GetInt32(1),
-                                Depth = reader.GetInt32(2),
-                                Format = reader.GetInt32(3),
-                                LayerCount = reader.GetInt32(4),
-                                LevelCount = reader.GetInt32(5)
-                            };
-                        }
-                    }
-                }
-
-                // Fallback: no captureID filter (for legacy SDPs without per-capture rows)
-                string fallbackQuery = @"
-                    SELECT width, height, depth, format, layerCount, levelCount 
-                    FROM VulkanSnapshotTextures 
-                    WHERE resourceID = @resourceId
-                    LIMIT 1";
-                using (var command = new SQLiteCommand(fallbackQuery, connection))
-                {
-                    command.Parameters.AddWithValue("@resourceId", resourceId);
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            return new TextureMetadata
-                            {
-                                Width = reader.GetInt32(0),
-                                Height = reader.GetInt32(1),
-                                Depth = reader.GetInt32(2),
-                                Format = reader.GetInt32(3),
-                                LayerCount = reader.GetInt32(4),
-                                LevelCount = reader.GetInt32(5)
-                            };
-                        }
-                    }
-                }
-            }
-
-            return null;
         }
 
         private static int GetBytesPerPixel(int vkFormat) => vkFormat switch
@@ -334,14 +237,5 @@ namespace SnapdragonProfilerCLI.Tools
             };
         }
 
-        private class TextureMetadata
-        {
-            public int Width { get; set; }
-            public int Height { get; set; }
-            public int Depth { get; set; }
-            public int Format { get; set; }
-            public int LayerCount { get; set; }
-            public int LevelCount { get; set; }
-        }
     }
 }
