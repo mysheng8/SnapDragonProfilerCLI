@@ -146,33 +146,29 @@ namespace SnapdragonProfilerCLI
         /// </summary>
         static void SetupEnvironment()
         {
-            string profilerPath = @"C:\Program Files\Qualcomm\Snapdragon Profiler";
-            string pluginsPath = Path.Combine(profilerPath, "plugins");
-            
-            // 添加 Snapdragon Profiler 路径到 DLL 搜索路径
-            if (Directory.Exists(profilerPath))
-            {
-                // 添加主目录到 DLL 搜索路径
-                SetDllDirectory(profilerPath);
-                Console.WriteLine($"✓ Added to DLL path: {profilerPath}");
-                
-                // 添加 plugins 目录到 PATH 环境变量（SetDllDirectory 只能设置一个路径）
-                if (Directory.Exists(pluginsPath))
-                {
-                    string currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-                    Environment.SetEnvironmentVariable("PATH", $"{profilerPath};{pluginsPath};{currentPath}");
-                    Console.WriteLine($"✓ Added to PATH: {pluginsPath}");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"⚠ WARNING: Snapdragon Profiler not found at: {profilerPath}");
-            }
-
-            // CRITICAL: Set working directory to match Snapdragon Profiler structure
-            // Official structure: service/android/arm64-v8a/
-            // SDPCore expects to find service/android/ relative to current directory
             string executableDir = AppDomain.CurrentDomain.BaseDirectory;
+            string pluginsPath   = Path.Combine(executableDir, "plugins");
+
+            // Primary: bin 目录（build 时已将 dll/ 下所有文件复制过来）
+            SetDllDirectory(executableDir);
+            Console.WriteLine($"✓ DLL search path: {executableDir}");
+
+            string currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+            string extraPaths  = executableDir;
+            if (Directory.Exists(pluginsPath))
+                extraPaths = $"{pluginsPath};{extraPaths}";
+            Environment.SetEnvironmentVariable("PATH", $"{extraPaths};{currentPath}");
+            Console.WriteLine($"✓ Added to PATH: {extraPaths}");
+
+            // Fallback: 工程 dll/ 目录（源头，版本受 git 控制）
+            // 路径: executableDir/../../../../dll  (net472 → Debug → bin → SDPCLI → repo root → dll)
+            string repoDllPath = Path.GetFullPath(Path.Combine(executableDir, "..", "..", "..", "..", "dll"));
+            if (Directory.Exists(repoDllPath))
+            {
+                Environment.SetEnvironmentVariable("PATH",
+                    $"{Environment.GetEnvironmentVariable("PATH")};{repoDllPath}");
+                Console.WriteLine($"✓ Fallback DLL path (repo): {repoDllPath}");
+            }
             
             Console.WriteLine("\n=== SDPCore environment setup ===");
             Console.WriteLine($"Executable directory: {executableDir}");

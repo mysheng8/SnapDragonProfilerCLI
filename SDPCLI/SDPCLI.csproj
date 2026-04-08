@@ -17,7 +17,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="System.IO.Compression" Version="4.3.0" />
     <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
   </ItemGroup>
@@ -41,12 +40,17 @@
     </Reference>
 
     <Reference Include="QGLPlugin">
-      <HintPath>plugins\QGLPlugin.dll</HintPath>
+      <HintPath>..\dll\plugins\QGLPlugin.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
+    <Reference Include="System.Data.SQLite">
+      <HintPath>..\dll\System.Data.SQLite.dll</HintPath>
       <Private>true</Private>
     </Reference>
 
     <Reference Include="Newtonsoft.Json">
-      <HintPath>plugins\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\dll\Newtonsoft.Json.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>
@@ -60,6 +64,12 @@
     <!-- Copy all native dependencies from dll directory -->
     <None Include="..\dll\*.dll" Exclude="..\dll\SDPClientFramework.dll;..\dll\SDPCoreWrapper.dll;..\dll\SDPCore.dll">
       <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+
+    <!-- SQLite native interop (x64) -->
+    <None Include="..\dll\x64\SQLite.Interop.dll">
+      <Link>x64\SQLite.Interop.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     
@@ -93,11 +103,11 @@
     
     <!-- Copy entire plugins directory to output/plugins/ -->
     <ItemGroup>
-      <PluginFiles Include="plugins\**\*.*" />
+      <PluginFiles Include="..\dll\plugins\**\*.*" />
     </ItemGroup>
     
     <Copy SourceFiles="@(PluginFiles)" 
-          DestinationFiles="@(PluginFiles->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')" 
+          DestinationFiles="@(PluginFiles->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')"   
           SkipUnchangedFiles="true" />
     
     <Message Text="✓ Plugins deployed to plugins/" Importance="high" />
