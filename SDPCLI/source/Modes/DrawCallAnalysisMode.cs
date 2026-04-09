@@ -4,7 +4,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using SnapdragonProfilerCLI.Data;
-using SnapdragonProfilerCLI.Services.Analysis;
 using SnapdragonProfilerCLI.Tools;
 
 namespace SnapdragonProfilerCLI.Modes
@@ -189,8 +188,7 @@ namespace SnapdragonProfilerCLI.Modes
 
                 // ── 4. 查询完整资源信息 ─────────────────────────────────────
                 Console.WriteLine($"\n[Step 3] Resolving DrawCall {displayId} resources...");
-                var drawCallQuerySvc = new DrawCallQueryService();
-                var dcInfo = drawCallQuerySvc.GetDrawCallInfo(dbPath, (uint)captureId, dcId);
+                var dcInfo = db.GetDrawCallInfo(dcId);
 
                 if (dcInfo == null)
                 {

@@ -98,7 +98,16 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 if (_llmCache.TryGetValue(dc.PipelineID, out var cached))
                 {
                     _logger.Debug("    [LLM] cache hit pipeline " + dc.PipelineID + " -> " + cached.Category);
-                    return cached;
+                    // Clone with LabelSource = "cache" so callers can distinguish
+                    return new DrawCallLabel
+                    {
+                        Category    = cached.Category,
+                        Subcategory = cached.Subcategory,
+                        Detail      = cached.Detail,
+                        ReasonTags  = cached.ReasonTags,
+                        Confidence  = cached.Confidence,
+                        LabelSource = "cache",
+                    };
                 }
 
                 string shaderCode = LoadShaderCode(shaderBaseDir, dc.PipelineID);
@@ -121,7 +130,8 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 {
                     string errDetail = "[LLM error: " + (_llm.LastError ?? "no response") + "]";
                     _logger.Info("    [LLM] DC " + dc.DrawCallNumber + " error: " + (_llm.LastError ?? "no response"));
-                    var errLabel = new DrawCallLabel { Category = _allowedCategories[0], Detail = errDetail };
+                    var errLabel = new DrawCallLabel { Category = _allowedCategories[0], Detail = errDetail,
+                        Confidence = 0.10f, LabelSource = "rule" };
                     _llmCache[dc.PipelineID] = errLabel;
                     return errLabel;
                 }
@@ -139,7 +149,8 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 if (raw.Length > 120) raw = raw.Substring(0, 120) + "...";
                 string parseErrDetail = "[LLM parse error: " + raw + "]";
                 _logger.Info("    [LLM] DC " + dc.DrawCallNumber + " parse failed. Response: " + raw);
-                var parseErrLabel = new DrawCallLabel { Category = _allowedCategories[0], Detail = parseErrDetail };
+                var parseErrLabel = new DrawCallLabel { Category = _allowedCategories[0], Detail = parseErrDetail,
+                    Confidence = 0.15f, LabelSource = "rule" };
                 _llmCache[dc.PipelineID] = parseErrLabel;
                 return parseErrLabel;
             }
@@ -250,7 +261,12 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             sb.AppendLine("  - 'Other' is ONLY valid for vkCmdDispatch compute passes. NEVER use 'Other' for vkCmdDraw or vkCmdDrawIndexed.");
             sb.AppendLine("  - If R1a/R1b apply (shadow map RT), you MUST use a shadow category. Do NOT fall back to 'Other' when uncertain about object type — default to 'Scene(Shadow)'.");
             sb.AppendLine("  - If the shader detail mentions 'shadow', 'planar shadow', or 'depth encoding', the category MUST end in '(Shadow)'.");
-            sb.AppendLine("Output JSON only, no markdown: {\"category\":\"<category>\",\"detail\":\"<3-8 word description>\"}");
+            sb.AppendLine();
+            sb.Append("Categories: ").AppendLine(catList);
+            sb.AppendLine("Subcategory examples: Opaque, Transparent, DepthOnly, SkinMesh, GaussianBlur, ToneMapping, SSAO, Bloom, TAA, ShadowDepth, ParticleBillboard, UICanvas.");
+            sb.AppendLine("ReasonTags — pick 1-4 that apply: pbr_material, multi_texture_blend, high_uv_sampling, skinned_mesh, morphing, instanced_draw, compute_dispatch, gaussian_blur, tone_mapping, ssao, bloom, taa, shadow_depth_write, shadow_pcf_sample, particle_billboard, trail_ribbon, ui_canvas, font_glyph, depth_only, opaque_geometry, transparent_geometry, large_render_target, mrt_output.");
+            sb.AppendLine("Output JSON only, no markdown, confidence in [0,1]:");
+            sb.AppendLine("{\"category\":\"<category>\",\"subcategory\":\"<subcategory>\",\"detail\":\"<3-8 word description>\",\"reason_tags\":[\"tag1\"],\"confidence\":0.9}");
             return sb.ToString();
         }
 
@@ -422,8 +438,11 @@ namespace SnapdragonProfilerCLI.Services.Analysis
 
             string jsonStr = text.Substring(start, end - start + 1);
 
-            string rawCat = "";
-            string detail = "";
+            string rawCat  = "";
+            string subcat  = "";
+            string detail  = "";
+            string[] tags  = Array.Empty<string>();
+            float confidence = 0.85f;
 
             // Primary: standard JSON parse
             JObject? obj = null;
@@ -432,17 +451,26 @@ namespace SnapdragonProfilerCLI.Services.Analysis
 
             if (obj != null)
             {
-                rawCat = obj["category"]?.ToString()?.Trim() ?? "";
-                detail = obj["detail"]?.ToString()?.Trim()   ?? "";
+                rawCat     = obj["category"]?.ToString()?.Trim()    ?? "";
+                subcat     = obj["subcategory"]?.ToString()?.Trim() ?? "";
+                detail     = obj["detail"]?.ToString()?.Trim()      ?? "";
+                confidence = obj["confidence"] != null
+                    ? Math.Max(0f, Math.Min(1f, (float)(obj["confidence"]!.ToObject<double>())))
+                    : 0.85f;
+                var tagsArr = obj["reason_tags"] as Newtonsoft.Json.Linq.JArray;
+                if (tagsArr != null)
+                    tags = tagsArr.Select(t => t.ToString()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
             }
             else
             {
                 // Fallback: regex extraction for malformed JSON (e.g. missing commas)
                 var catMatch = Regex.Match(jsonStr, "\"category\"\\s*:\\s*\"([^\"]+)\"");
                 var detMatch = Regex.Match(jsonStr, "\"detail\"\\s*:\\s*\"([^\"]+)\"");
+                var subMatch = Regex.Match(jsonStr, "\"subcategory\"\\s*:\\s*\"([^\"]+)\"");
                 if (!catMatch.Success) return null;
                 rawCat = catMatch.Groups[1].Value.Trim();
                 detail = detMatch.Success ? detMatch.Groups[1].Value.Trim() : "";
+                subcat = subMatch.Success ? subMatch.Groups[1].Value.Trim() : "";
             }
 
             // Exact match first, then partial
@@ -460,12 +488,14 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 {
                     string baseCategory = shadowMatch.Groups[1].Value;
                     if (_allowedCategories.Any(c => string.Equals(c, baseCategory, StringComparison.OrdinalIgnoreCase)))
-                        return new DrawCallLabel { Category = baseCategory + "(Shadow)", Detail = detail };
+                        return new DrawCallLabel { Category = baseCategory + "(Shadow)", Subcategory = subcat,
+                            Detail = detail, ReasonTags = tags, Confidence = confidence, LabelSource = "llm" };
                 }
             }
 
             if (matched == null) return null;
-            return new DrawCallLabel { Category = matched, Detail = detail };
+            return new DrawCallLabel { Category = matched, Subcategory = subcat, Detail = detail,
+                ReasonTags = tags, Confidence = confidence, LabelSource = "llm" };
         }
 
         // ── Rule-based fallback ───────────────────────────────────────────────
@@ -496,7 +526,9 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 if (hasAnyColor && !hasDepth && allColorRG)
                 {
                     string baseCat = _allowedCategories.Contains("Scene") ? "Scene" : _allowedCategories[0];
-                    return new DrawCallLabel { Category = baseCat + "(Shadow)", Detail = "Encoded shadow map (RG depth)" };
+                    return new DrawCallLabel { Category = baseCat + "(Shadow)", Subcategory = "DepthOnly",
+                        Detail = "Encoded shadow map (RG depth)", ReasonTags = new[] { "shadow_depth_write" },
+                        Confidence = 0.75f, LabelSource = "rule" };
                 }
             }
 
@@ -505,20 +537,37 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                 if (!_allowedCategories.Contains(category)) continue;
                 if (HitAny(entryLow, keywords))
                 {
-                    string detail = PrettifyEntry(entries);
-                    return new DrawCallLabel { Category = category, Detail = string.IsNullOrEmpty(detail) ? detailHint : detail };
+                    string detail    = PrettifyEntry(entries);
+                    string[] rtags   = RuleReasonTags(category);
+                    return new DrawCallLabel { Category = category, Detail = string.IsNullOrEmpty(detail) ? detailHint : detail,
+                        ReasonTags = rtags, Confidence = 0.70f, LabelSource = "rule" };
                 }
             }
 
             if (isCompute && _allowedCategories.Contains("PostProcess"))
-                return new DrawCallLabel { Category = "PostProcess", Detail = PrettifyEntryOr(entries, "Compute pass") };
+                return new DrawCallLabel { Category = "PostProcess", Detail = PrettifyEntryOr(entries, "Compute pass"),
+                    Subcategory = "Compute", ReasonTags = new[] { "compute_dispatch" }, Confidence = 0.70f, LabelSource = "rule" };
 
             if (isFullscreen && _allowedCategories.Contains("PostProcess"))
-                return new DrawCallLabel { Category = "PostProcess", Detail = PrettifyEntryOr(entries, "Fullscreen pass") };
+                return new DrawCallLabel { Category = "PostProcess", Detail = PrettifyEntryOr(entries, "Fullscreen pass"),
+                    Subcategory = "Fullscreen", ReasonTags = new[] { "tone_mapping" }, Confidence = 0.65f, LabelSource = "rule" };
 
             string defCat = _allowedCategories.Contains("Scene") ? "Scene" : _allowedCategories[0];
-            return new DrawCallLabel { Category = defCat, Detail = PrettifyEntryOr(entries, "Scene rendering") };
+            return new DrawCallLabel { Category = defCat, Detail = PrettifyEntryOr(entries, "Scene rendering"),
+                Subcategory = "Opaque", ReasonTags = new[] { "opaque_geometry" }, Confidence = 0.60f, LabelSource = "rule" };
         }
+
+        private static string[] RuleReasonTags(string category) => category switch
+        {
+            "Shadow" or "Scene(Shadow)" or "Character(Shadow)" or "Terrain(Shadow)"
+                            => new[] { "shadow_depth_write" },
+            "UI"            => new[] { "ui_canvas" },
+            "VFX"           => new[] { "particle_billboard" },
+            "Character"     => new[] { "skinned_mesh" },
+            "Terrain"       => new[] { "pbr_material", "multi_texture_blend" },
+            "PostProcess"   => new[] { "tone_mapping" },
+            _               => new[] { "opaque_geometry" },
+        };
 
         // ── Helpers ──────────────────────────────────────────────────────────
 

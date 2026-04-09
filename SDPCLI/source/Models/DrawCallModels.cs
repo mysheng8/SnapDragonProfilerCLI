@@ -142,31 +142,136 @@ namespace SnapdragonProfilerCLI.Models
         public string ShaderStageName { get; set; } = "";
     }
 
-    /// <summary>Rule-based category label for a DrawCall.</summary>
+    /// <summary>Category label for a DrawCall — LLM or rule-based.</summary>
     public class DrawCallLabel
     {
-        public string Category { get; set; } = "场景";  // 场景/角色/投影/后处理/特效/UI
-        public string Detail   { get; set; } = "";      // e.g. "平面阴影高斯模糊"
+        /// <summary>One of the configured categories, e.g. Scene / Character / PostProcess …</summary>
+        public string   Category    { get; set; } = "Scene";
+        /// <summary>Second-level classification, e.g. Opaque / Terrain / GaussianBlur.</summary>
+        public string   Subcategory { get; set; } = "";
+        /// <summary>Free-text description (≤120 chars), from LLM or rule hint.</summary>
+        public string   Detail      { get; set; } = "";
+        /// <summary>Structured tags chosen from the attribution_rules.json label_reason_tags list.</summary>
+        public string[] ReasonTags  { get; set; } = Array.Empty<string>();
+        /// <summary>LLM self-reported confidence [0,1]; rule path emits 0.70.</summary>
+        public float    Confidence  { get; set; } = 0.70f;
+        /// <summary>"llm" | "rule" | "cache"</summary>
+        public string   LabelSource { get; set; } = "rule";
     }
 
-    /// <summary>Per-DrawCall performance metrics loaded from profiler CSV.</summary>
+    /// <summary>
+    /// Per-DrawCall GPU performance metrics.
+    /// All counter values are stored in <see cref="All"/>, keyed by the original Adreno counter
+    /// name (same strings as MetricsWhitelist in config.ini).
+    /// Use <see cref="G"/> for safe access, or <see cref="CounterToKey"/> to convert to snake_case
+    /// JSON keys consumed by StatusJsonService / AttributionRuleEngine.
+    /// </summary>
     public class DrawCallMetrics
     {
-        public string DrawCallNumber       { get; set; } = "";
-        public string ApiName              { get; set; } = "";
-        public long   Clocks               { get; set; }
-        public long   ReadTotalBytes       { get; set; }
-        public long   WriteTotalBytes      { get; set; }
-        public long   FragmentsShaded      { get; set; }
-        public long   VerticesShaded       { get; set; }
-        public double ShadersBusyPct       { get; set; }
-        public double TexL1MissPct         { get; set; }
-        public double TexL2MissPct         { get; set; }
-        public double TexFetchStallPct     { get; set; }
-        public long   FragmentInstructions { get; set; }
-        public long   VertexInstructions   { get; set; }
-        public long   TexMemReadBytes      { get; set; }
-        public long   VertexMemReadBytes   { get; set; }
+        // ── Identity ─────────────────────────────────────────────────────────
+        public string DrawCallNumber { get; set; } = "";
+        public string ApiName        { get; set; } = "";
+
+        /// <summary>
+        /// Raw counter values from DB DrawCallMetrics table.
+        /// Keys = MetricName strings (e.g. "Clocks", "% Shaders Busy").
+        /// Populated by MetricsQueryService; filtered by MetricsWhitelist at query time.
+        /// </summary>
+        public Dictionary<string, double> All { get; set; } =
+            new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Safe accessor — returns 0.0 when key is absent.</summary>
+        public double G(string counterName) =>
+            All.TryGetValue(counterName, out var v) ? v : 0.0;
+
+        // ── Convenience typed accessors (for sort/aggregate lambda sites) ────
+        // These read from All, so they automatically reflect whatever counters are present.
+        public long   Clocks               => (long)G("Clocks");
+        public long   ReadTotalBytes       => (long)G("Read Total (Bytes)");
+        public long   WriteTotalBytes      => (long)G("Write Total (Bytes)");
+        public long   FragmentsShaded      => (long)G("Fragments Shaded");
+        public long   VerticesShaded       => (long)G("Vertices Shaded");
+        public double ShadersBusyPct       => G("% Shaders Busy");
+        public double TexL1MissPct         => G("% Texture L1 Miss");
+        public double TexL2MissPct         => G("% Texture L2 Miss");
+        public double TexFetchStallPct     => G("% Texture Fetch Stall");
+        public long   FragmentInstructions => (long)G("Fragment Instructions");
+        public long   VertexInstructions   => (long)G("Vertex Instructions");
+        public long   TexMemReadBytes      => (long)G("Texture Memory Read BW (Bytes)");
+        public long   VertexMemReadBytes   => (long)G("Vertex Memory Read (Bytes)");
+
+        // ── Counter name → snake_case JSON key mapping ───────────────────────
+        // Used by StatusJsonService (percentile blocks) and AttributionRuleEngine (GetMetricValues).
+        // Keys = original Adreno counter names; Values = snake_case keys in JSON / attribution_rules.json.
+        public static readonly IReadOnlyDictionary<string, string> CounterToKey =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Misc
+            ["Clocks"]                               = "clocks",
+            ["Preemptions"]                          = "preemptions",
+            ["Avg Preemption Delay"]                 = "avg_preemption_delay",
+            // Memory Bandwidth
+            ["Read Total (Bytes)"]                   = "read_total_bytes",
+            ["Write Total (Bytes)"]                  = "write_total_bytes",
+            ["Texture Memory Read BW (Bytes)"]       = "tex_mem_read_bytes",
+            ["Vertex Memory Read (Bytes)"]           = "vertex_mem_read_bytes",
+            ["SP Memory Read (Bytes)"]               = "sp_mem_read_bytes",
+            ["Avg Bytes / Fragment"]                 = "avg_bytes_per_fragment",
+            ["Avg Bytes / Vertex"]                   = "avg_bytes_per_vertex",
+            // Geometry
+            ["Fragments Shaded"]                     = "fragments_shaded",
+            ["Vertices Shaded"]                      = "vertices_shaded",
+            ["Reused Vertices"]                      = "reused_vertices",
+            ["Pre-clipped Polygons"]                 = "pre_clipped_polygons",
+            ["LRZ Pixels Killed"]                    = "lrz_pixels_killed",
+            ["Average Polygon Area"]                 = "avg_polygon_area",
+            ["Average Vertices / Polygon"]           = "avg_vertices_per_polygon",
+            ["% Prims Clipped"]                      = "prims_clipped_pct",
+            ["% Prims Trivially Rejected"]           = "prims_trivially_rejected_pct",
+            // Texture
+            ["% Texture Fetch Stall"]                = "tex_fetch_stall_pct",
+            ["% Texture L1 Miss"]                    = "tex_l1_miss_pct",
+            ["% Texture L2 Miss"]                    = "tex_l2_miss_pct",
+            ["% Texture Pipes Busy"]                 = "tex_pipes_busy_pct",
+            ["% Linear Filtered"]                    = "linear_filtered_pct",
+            ["% Nearest Filtered"]                   = "nearest_filtered_pct",
+            ["% Anisotropic Filtered"]               = "anisotropic_filtered_pct",
+            ["% Non-Base Level Textures"]            = "non_base_level_tex_pct",
+            ["L1 Texture Cache Miss Per Pixel"]      = "l1_tex_cache_miss_per_pixel",
+            ["Textures / Fragment"]                  = "textures_per_fragment",
+            ["Textures / Vertex"]                    = "textures_per_vertex",
+            // Shader / ALU
+            ["% Shaders Busy"]                       = "shaders_busy_pct",
+            ["% Shaders Stalled"]                    = "shaders_stalled_pct",
+            ["% Time ALUs Working"]                  = "time_alus_working_pct",
+            ["% Time EFUs Working"]                  = "time_efus_working_pct",
+            ["% Time Shading Vertices"]              = "time_shading_vertices_pct",
+            ["% Time Shading Fragments"]             = "time_shading_fragments_pct",
+            ["% Time Compute"]                       = "time_compute_pct",
+            ["% Shader ALU Capacity Utilized"]       = "shader_alu_capacity_pct",
+            ["% Wave Context Occupancy"]             = "wave_context_occupancy_pct",
+            ["% Instruction Cache Miss"]             = "instruction_cache_miss_pct",
+            ["Fragment Instructions"]                = "fragment_instructions",
+            ["Fragment ALU Instructions (Full)"]     = "fragment_alu_instr_full",
+            ["Fragment ALU Instructions (Half)"]     = "fragment_alu_instr_half",
+            ["Fragment EFU Instructions"]            = "fragment_efu_instructions",
+            ["Vertex Instructions"]                  = "vertex_instructions",
+            ["ALU / Fragment"]                       = "alu_per_fragment",
+            ["ALU / Vertex"]                         = "alu_per_vertex",
+            ["EFU / Fragment"]                       = "efu_per_fragment",
+            ["EFU / Vertex"]                         = "efu_per_vertex",
+            // Vertex Fetch / Stall
+            ["% Vertex Fetch Stall"]                 = "vertex_fetch_stall_pct",
+            ["% Stalled on System Memory"]           = "stalled_on_system_mem_pct",
+        };
+
+        /// <summary>Convert a counter name to its snake_case JSON key; fallback to simple lowercase.</summary>
+        public static string NormalizeKey(string counterName) =>
+            CounterToKey.TryGetValue(counterName, out var k) ? k
+            : counterName.ToLowerInvariant()
+                .Replace("% ", "pct_").Replace("%", "pct")
+                .Replace(" / ", "_per_").Replace(" ", "_")
+                .Replace("(", "").Replace(")", "").Trim('_');
     }
 
     /// <summary>Aggregated analysis result for an entire capture.</summary>

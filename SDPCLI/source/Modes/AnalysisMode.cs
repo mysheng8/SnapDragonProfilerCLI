@@ -74,28 +74,7 @@ namespace SnapdragonProfilerCLI.Modes
             else
                 logger.Info($"  CommandBuffer filter: {cmdBufferFilter} (specific)");
 
-            string? metricsCSV = config.Get("AnalysisMetricsCSV", "");
-            if (!string.IsNullOrWhiteSpace(metricsCSV))
-            {
-                string root = config.Get("WorkingDirectory", AppDomain.CurrentDomain.BaseDirectory);
-                if (!System.IO.Path.IsPathRooted(metricsCSV))
-                    metricsCSV = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, metricsCSV));
-                if (!System.IO.File.Exists(metricsCSV))
-                {
-                    logger.Info($"  ⚠ AnalysisMetricsCSV not found: {metricsCSV} — will auto-discover");
-                    metricsCSV = null;
-                }
-                else
-                {
-                    logger.Info($"  Metrics CSV: {metricsCSV}");
-                }
-            }
-            else
-            {
-                metricsCSV = null;
-            }
-
-            // ── 扫描一次 captureId 列表，然后进入交互循环 ─────────────────────
+            // ── 扫描一次 captureId 列表，然后进入交互循环 ─────────────────────────
             var captureIds = ScanCaptureIds(selectedFile);
             if (captureIds.Count == 0)
             {
@@ -128,7 +107,7 @@ namespace SnapdragonProfilerCLI.Modes
                     logger.Info($"\n--- Analyzing snapshot_{captureId} ---");
                     try
                     {
-                        pipeline.RunAnalysis(selectedFile, outputPath, captureId, cmdBufferFilter, metricsCSV);
+                        pipeline.RunAnalysis(selectedFile, outputPath, captureId, cmdBufferFilter);
                     }
                     catch (Exception ex)
                     {

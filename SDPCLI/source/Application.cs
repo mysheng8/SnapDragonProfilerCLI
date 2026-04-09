@@ -97,8 +97,11 @@ namespace SnapdragonProfilerCLI
         /// <param name="captureId">Capture ID (optional, default 3)</param>
         /// <param name="drawCallId">DrawCall ID for shader extraction (e.g. "10" or "1.0.10")</param>
         /// <param name="pipelineId">Pipeline ID for shader extraction</param>
-        public void Run(string? modeArg = null, string? sdpPath = null, string? resourceId = null, string? outputPath = null, string? captureId = null, string? drawCallId = null, string? pipelineId = null, string? maxDrawCalls = null)
+        public void Run(string? modeArg = null, string? sdpPath = null, string? resourceId = null, string? outputPath = null, string? captureId = null, string? drawCallId = null, string? pipelineId = null, string? maxDrawCalls = null, string? passMode = null)
         {
+            // Inject CLI overrides into config before anything else reads them
+            if (!string.IsNullOrWhiteSpace(passMode))
+                config.Set("AnalysisPassMode", passMode!.Trim().ToLowerInvariant());
             // Create logger instance
             ILogger logger = new Logging.ContextLogger("Analysis");
             
@@ -166,10 +169,9 @@ namespace SnapdragonProfilerCLI
             if (modeInput == "2")
             {
                 // Analysis mode: åˆ›å»ºæœåŠ¡å’Œ Pipeline
-                var sdpFileService      = new Services.Analysis.SdpFileService(config, logger);
-                var drawCallQueryService = new Services.Analysis.DrawCallQueryService();
-                var analysisService     = new Services.Analysis.DrawCallAnalysisService(drawCallQueryService, logger);
-                var reportService       = new Services.Analysis.ReportGenerationService(config, logger, null); // llmService assigned below
+                var sdpFileService  = new Services.Analysis.SdpFileService(config, logger);
+                var analysisService = new Services.Analysis.DrawCallAnalysisService(logger);
+                var reportService       = new Services.Analysis.RawJsonGenerationService(config, logger);
                 var categories          = config.Get("AnalysisCategories", "场景,角色,投影,后处理,特效,UI")
                                                .Split(',').Select(s => s.Trim()).ToList();
                 var llmService          = new Tools.LlmApiWrapper(config, logger);
@@ -183,17 +185,16 @@ namespace SnapdragonProfilerCLI
                     logger.Info("  LLM labeling disabled (set LlmApiEndpoint + LlmApiKey in config.ini to enable)");
                 int maxShaderChars      = config.GetInt("LlmMaxShaderChars", 4000);
                 var labelService        = new Services.Analysis.DrawCallLabelService(categories, llmService, logger, maxShaderChars);
-                reportService.SetLlm(llmService);
-                var metricsService      = new Services.Analysis.MetricsCsvService();
-                var analysisPipeline    = new Analysis.AnalysisPipeline(
+                var metricsService      = new Services.Analysis.MetricsQueryService(config);
+                var analysisPipeline = new Analysis.AnalysisPipeline(
                     sdpFileService,
-                    drawCallQueryService,
                     analysisService,
                     reportService,
                     labelService,
                     metricsService,
                     config,
-                    logger);
+                    logger,
+                    llmService);
 
                 mode = new AnalysisMode(analysisPipeline, sdpFileService, config, testPath, logger, sdpPath);
             }

@@ -79,5 +79,11 @@ namespace SnapdragonProfilerCLI
         {
             return settings.ContainsKey(key);
         }
+
+        /// <summary>Override a config key at runtime (CLI arg injection).</summary>
+        public void Set(string key, string value)
+        {
+            settings[key] = value;
+        }
     }
 }

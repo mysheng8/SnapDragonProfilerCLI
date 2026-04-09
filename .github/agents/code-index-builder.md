@@ -248,7 +248,7 @@ Output TYPE B
 
 Target:
 
-/INDEX.md
+docs/index/INDEX.md
 
 ---
 

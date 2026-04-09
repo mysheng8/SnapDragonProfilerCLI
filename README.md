@@ -4,19 +4,19 @@ Snapdragon Profiler 的命令行辅助工具集，用于无头模式抓帧、离
 
 ---
 
-## 文件结构
+## 📂 Repository Structure
 
 ```
 snapdragon/
-├── SDPCLI/                  # 主工具（C# CLI）— 详见 SDPCLI/README.md
+├── SDPCLI/                  # 主工具（C# CLI）— see SDPCLI/README.md
 │   ├── source/              # 源代码
 │   ├── config.ini           # 运行配置（PackageName、RenderingAPI 等）
 │   ├── test/                # 抓帧输出目录（.sdp + 解析结果）
 │   ├── android/             # Profiler 服务端 APK（arm64 / armeabi-v7a）
 │   └── plugins/             # QGLPlugin 等处理器插件
 │
-├── dll/                     # SDPCore / QGLPlugin 原生 DLL 及 C# wrapper 项目
-├── docs/                    # 背景分析文档与 AI agent 上下文
+├── dll/                     # SDPCore / QGLPlugin 原生 DLL 及 C# wrapper
+├── docs/                    # 文档与分析记录
 ├── profiler/                # 原始 CSV 报告
 ├── meminfo_poll.ps1         # 手机内存实时监控脚本
 ├── monitor_crash.ps1        # logcat 崩溃监控脚本
@@ -25,62 +25,67 @@ snapdragon/
 
 ---
 
-## 快速开始
+## 🚀 Quick Start
 
 ```powershell
-# 编译
+# build
 dotnet build SDPCLI
 
-# 运行（交互模式）
+# run (interactive mode)
 .\SDPCLI.bat
 ```
 
-详细用法、配置项、模式说明见 [SDPCLI/README.md](SDPCLI/README.md).
+更多用法、配置项、模式说明见：
+
+👉 `SDPCLI/README.md`
 
 ---
 
-# Project AI Context Protocol
+## 🧩 Main Components
 
-This repository uses a **context-driven AI workflow** to control how AI agents investigate, plan, and implement changes.
+### SDPCLI
+核心 CLI 工具，负责：
 
-All agents MUST follow this protocol.
+- 控制 Snapdragon Profiler
+- 抓取 frame 数据（.sdp）
+- 解析和导出分析结果
+- 调用 plugins 进行数据处理
 
----
+### dll
+包含：
 
-## 🧠 Core Principle
+- `SDPCore.dll`
+- `QGLPlugin.dll`
+- 对应 C# wrapper
 
-DO NOT rely on chat history.
+用于与 Snapdragon Profiler SDK 交互。
 
-ALWAYS use repository context:
+### profiler
+存放原始 profiler 导出的 CSV 数据，用于离线分析。
 
-README → Context INDEX → Code INDEX → context docs → code
+### scripts
 
-Language policy violations are considered critical errors.
-
----
-
-## 🚨 Mandatory Rules
-
-Before doing anything, agents MUST:
-
-1. Read `README.md`
-2. Read `docs/context/INDEX.md` (Context Index)
-3. Read `docs/index/INDEX.md` (Code Index at repository root)
-4. Identify relevant context and modules
-5. Only then proceed
+- `meminfo_poll.ps1` → 实时监控设备内存
+- `monitor_crash.ps1` → logcat 崩溃检测
 
 ---
 
-## 📂 Context Structure
+## 📚 Documentation
 
-Persistent knowledge is stored under:
+- `SDPCLI/README.md`  
+  → CLI 使用说明与配置
 
-```
-docs/context/
-├── INDEX.md          # Master index — read this first
-├── findings/         # Investigation results
-├── plans/            # Approved implementation plans
-└── decisions/        # Architectural decisions
-```
+- `docs/`  
+  → 分析文档、实验记录、AI 辅助输出
 
+（注：AI workflow 和文档治理规则见 `.copilot-instructions.md`）
 
+---
+
+## 🧭 Notes
+
+- 本仓库同时用于：
+  - 工具开发
+  - profiling 分析
+  - 自动化实验
+- 文档可能包含 AI 辅助生成内容，请以代码和实际结果为准

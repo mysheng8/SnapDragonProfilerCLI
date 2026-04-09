@@ -39,6 +39,7 @@ namespace SnapdragonProfilerCLI
                 string? drawCallIdArg = null;
                 string? pipelineIdArg = null;
                 string? maxDrawCallsArg = null;
+                string? passModeArg = null;
                 
                 for (int i = 0; i < args.Length; i++)
                 {
@@ -82,6 +83,19 @@ namespace SnapdragonProfilerCLI
                         maxDrawCallsArg = args[i + 1];
                         i++;
                     }
+                    else if (args[i].ToLower() == "-pass-mode" && i + 1 < args.Length)
+                    {
+                        passModeArg = args[i + 1];
+                        i++;
+                    }
+                    else if (args[i].ToLower() == "-stats-only")
+                    {
+                        passModeArg = "stats";
+                    }
+                    else if (args[i].ToLower() == "-analysis-only")
+                    {
+                        passModeArg = "analysis";
+                    }
                 }
                 
                 // 环境准备: 设置DLL搜索路径
@@ -92,7 +106,7 @@ namespace SnapdragonProfilerCLI
 
                 // 运行应用程序业务逻辑
                 Application app = new Application(testPath);
-                app.Run(modeArg, sdpArg, resourceIdArg, outputArg, captureIdArg, drawCallIdArg, pipelineIdArg, maxDrawCallsArg);
+                app.Run(modeArg, sdpArg, resourceIdArg, outputArg, captureIdArg, drawCallIdArg, pipelineIdArg, maxDrawCallsArg, passModeArg);
                 
                 // Output before closing DualWriter
                 Console.WriteLine("\nPress any key to exit...");

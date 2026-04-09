@@ -17,6 +17,7 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="System.IO.Compression" Version="4.3.0" />
     <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
   </ItemGroup>
@@ -44,10 +45,6 @@
       <Private>true</Private>
     </Reference>
 
-    <Reference Include="System.Data.SQLite">
-      <HintPath>..\dll\System.Data.SQLite.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
 
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\dll\Newtonsoft.Json.dll</HintPath>
@@ -67,12 +64,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
 
-    <!-- SQLite native interop (x64) -->
-    <None Include="..\dll\x64\SQLite.Interop.dll">
-      <Link>x64\SQLite.Interop.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    
+
     <None Include="config.ini">
       <Link>config.ini</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

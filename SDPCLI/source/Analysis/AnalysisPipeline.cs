@@ -11,6 +11,15 @@ using SnapdragonProfilerCLI.Modes;
 namespace SnapdragonProfilerCLI.Analysis
 {
     /// <summary>
+    /// Controls which passes the pipeline executes.
+    ///   All          — full pipeline (default)
+    ///   StatsOnly    — Pass A only (Steps 1–A6), skip B1/B2/B3
+    ///   AnalysisOnly — Pass B only (B1/B2/B3), skip asset extraction and A4/A5/A6 generation
+    /// Set via config key AnalysisPassMode = all|stats|analysis, or CLI flags -stats-only / -analysis-only.
+    /// </summary>
+    public enum PassMode { All, StatsOnly, AnalysisOnly }
+
+    /// <summary>
     /// Analysis Pipeline — 4-step orchestrator:
     ///   Step 1  Collect all DrawCalls (submit1 / cmd1 filtered)
     ///   Step 2  Label each DC (shader-name rules → Category + Detail)
@@ -20,46 +29,53 @@ namespace SnapdragonProfilerCLI.Analysis
     public class AnalysisPipeline
     {
         private readonly Services.Analysis.SdpFileService sdpFileService;
-        private readonly Services.Analysis.DrawCallQueryService drawCallQueryService;
         private readonly Services.Analysis.DrawCallAnalysisService analysisService;
-        private readonly Services.Analysis.ReportGenerationService reportService;
+        private readonly Services.Analysis.RawJsonGenerationService reportService;
         private readonly Services.Analysis.DrawCallLabelService labelService;
-        private readonly Services.Analysis.MetricsCsvService metricsService;
-        private readonly Services.Analysis.CaptureReportService captureReportService;
+        private readonly Services.Analysis.MetricsQueryService metricsService;
         private readonly Config config;
         private readonly ILogger logger;
+        private readonly Tools.LlmApiWrapper? _llm;
 
         public AnalysisPipeline(
             Services.Analysis.SdpFileService sdpFileService,
-            Services.Analysis.DrawCallQueryService drawCallQueryService,
             Services.Analysis.DrawCallAnalysisService analysisService,
-            Services.Analysis.ReportGenerationService reportService,
+            Services.Analysis.RawJsonGenerationService reportService,
             Services.Analysis.DrawCallLabelService labelService,
-            Services.Analysis.MetricsCsvService metricsService,
+            Services.Analysis.MetricsQueryService metricsService,
             Config config,
-            ILogger logger)
+            ILogger logger,
+            Tools.LlmApiWrapper? llm = null)
         {
-            this.sdpFileService       = sdpFileService;
-            this.drawCallQueryService = drawCallQueryService;
-            this.analysisService      = analysisService;
+            this.sdpFileService  = sdpFileService;
+            this.analysisService = analysisService;
             this.reportService        = reportService;
             this.labelService         = labelService;
             this.metricsService       = metricsService;
-            this.captureReportService = new Services.Analysis.CaptureReportService(logger);
             this.config               = config;
             this.logger               = logger;
+            _llm                      = llm;
         }
 
         /// <summary>Run the 4-step analysis pipeline.</summary>
         public void RunAnalysis(string sdpPath, string outputDir, uint captureId,
-                                int? cmdBufferFilter = null, string? metricsCSV = null)
+                                int? cmdBufferFilter = null)
         {
             try
             {
                 logger.Info("\n=== Analysis Pipeline ===\n");
-                bool onlyReport = config.GetBool("AnalysisOnlyGenerateReport", false);
-                if (onlyReport)
-                    logger.Info("  ℹ AnalysisOnlyGenerateReport=true — will skip extraction and LLM labeling");
+                PassMode passMode  = GetPassMode();
+                bool onlyReport    = config.GetBool("AnalysisOnlyGenerateReport", false)
+                                   || passMode == PassMode.AnalysisOnly;
+                bool skipPassAGen  = passMode == PassMode.AnalysisOnly;  // skip A4/A5/A6 generation
+                bool skipPassB     = passMode == PassMode.StatsOnly;     // skip B1/B2/B3
+                if (passMode != PassMode.All)
+                {
+                    string pmCfg = config.Get("AnalysisPassMode", "all");
+                    logger.Info("  \u2139 PassMode=" + passMode + " (AnalysisPassMode=" + pmCfg + ")");
+                }
+                if (onlyReport && passMode == PassMode.AnalysisOnly)
+                    logger.Info("  \u2139 AnalysisOnly — skipping extraction + Pass A generation; using existing JSONs");
                 // ── Setup: locate + open DB ───────────────────────────────────
                 string? dbPath = sdpFileService.FindDatabasePath(sdpPath);
                 if (string.IsNullOrEmpty(dbPath))
@@ -205,67 +221,23 @@ namespace SnapdragonProfilerCLI.Analysis
                     logger.Info($"    {kv.Key}: {kv.Value}");
                 }
 
-                // ── Step 3: Load metrics CSV, join, export CSV ───────────────
-                logger.Info("\nStep 3: Loading metrics...");
+                // ── Step 3: Join GPU performance metrics from DB ───────────────────────
+                logger.Info("\nStep 3: Joining GPU metrics from DB...");
 
-                Dictionary<string, DrawCallMetrics> metrics = new();
-
-                // SDK 创建的 snapshot_{captureId}/ 目录 — 我们的文件也写在这里
-                string sessionDbDir = sessionDir;
-                string snapshotDir  = System.IO.Path.Combine(sessionDbDir, $"snapshot_{captureId}");
-                string? captureSubDir = System.IO.Directory.Exists(snapshotDir) ? snapshotDir : null;
-                // Fallback to session root for old-format sdp files
-                string metricsSearchDir = captureSubDir != null
-                    && System.IO.File.Exists(System.IO.Path.Combine(captureSubDir, "DrawCallMetrics.csv"))
-                    ? captureSubDir : sessionDbDir;
-                string sessionMetricsCsv = System.IO.Path.Combine(metricsSearchDir, "DrawCallMetrics.csv");
-                string sessionParamsCsv  = System.IO.Path.Combine(metricsSearchDir, "DrawCallParameters.csv");
-
-                if (System.IO.File.Exists(sessionMetricsCsv) && System.IO.File.Exists(sessionParamsCsv))
+                var metrics = metricsService.LoadMetrics(dbPath!, captureId);
+                if (metrics.Count > 0)
                 {
-                    metrics = metricsService.LoadMetricsFromSession(metricsSearchDir);
-                    logger.Info($"  → Loaded {metrics.Count} metric rows from: {metricsSearchDir}");
-
-                    // Join: dc.DrawCallNumber is the DrawCallApiID string → direct key match
                     int joined = 0;
                     foreach (var dc in report.DrawCallResults)
                     {
                         if (metrics.TryGetValue(dc.DrawCallNumber, out var m))
                         { dc.Metrics = m; joined++; }
                     }
-                    logger.Info($"  → Joined metrics to {joined} / {report.DrawCallResults.Count} DCs");
+                    logger.Info($"  → Loaded {metrics.Count} rows; joined metrics to {joined} / {report.DrawCallResults.Count} DCs");
                 }
                 else
                 {
-                    // Priority 2: external Snapdragon Profiler trace CSV (old approach)
-                    string? resolvedMetrics = ResolveMetricsPath(metricsCSV, sdpPath);
-
-                    if (!string.IsNullOrEmpty(resolvedMetrics))
-                    {
-                        metrics = metricsService.LoadMetrics(resolvedMetrics!);
-                        logger.Info($"  → Loaded {metrics.Count} metric rows from: {resolvedMetrics}");
-
-                        // Join metrics to DrawCallResults.
-                        // Primary: key match on DrawCallNumber (e.g. "1.1.5").
-                        // Fallback: positional "1.1.N" when DCs use raw integer IDs
-                        //           but the profiler CSV uses encoded format.
-                        bool metricsUseEncoded = metrics.Count > 0 &&
-                            (metrics.Keys.FirstOrDefault()?.Contains('.') == true);
-                        int joined = 0;
-                        for (int idx = 0; idx < report.DrawCallResults.Count; idx++)
-                        {
-                            var dc = report.DrawCallResults[idx];
-                            DrawCallMetrics? m = null;
-                            if (!metrics.TryGetValue(dc.DrawCallNumber, out m) && metricsUseEncoded)
-                                metrics.TryGetValue($"1.{(cmdBufferFilter ?? 1)}.{idx + 1}", out m);
-                            if (m != null) { dc.Metrics = m; joined++; }
-                        }
-                        logger.Info($"  → Joined metrics to {joined} / {report.DrawCallResults.Count} DCs");
-                    }
-                    else
-                    {
-                        logger.Info("  → No metrics found. Place DrawCallMetrics.csv + DrawCallParameters.csv in the session folder, or set AnalysisMetricsCSV in config.ini as fallback.");
-                    }
+                    logger.Info("  ⚠ DrawCallMetrics table absent or empty — run 'SDPCLI import' first.");
                 }
 
                 // ── Step 3.5: Extract meshes for all non-compute DrawCalls ────
@@ -315,25 +287,138 @@ namespace SnapdragonProfilerCLI.Analysis
 
                 // Export labeled + metrics JSON to captureOutDir
                 // JSON annotates each DC with the shader, texture, and mesh file paths it references.
+                if (!skipPassAGen)
+                {
                 string labeledJson = reportService.GenerateLabeledMetricsJson(
-                    report, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir);
+                    report, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir, captureId, sdpName);
                 logger.Info($"  → JSON: {labeledJson}");
+                }
+                else
+                {
+                    logger.Info("  → raw.json: SKIPPED (AnalysisOnly mode, using existing)");
+                }
 
-                // ── Step 4: Summary report ────────────────────────────────────
-                logger.Info("\nStep 4: Generating summary...");
-                string summaryMd = reportService.GenerateSummaryReport(report, captureOutDir);
-                logger.Info($"  → Summary: {summaryMd}");
-
-                // ── Step 5: Compact report.json ───────────────────────────────
-                logger.Info("\nStep 5: Generating report.json...");
+                // ── Step A5: Status JSON (percentile stats, no LLM) ───────────
+                Services.Analysis.StatusJsonResult? statusResult = null;
+                if (!skipPassAGen)
+                {
+                logger.Info("\nStep A5: Generating status.json...");
                 try
                 {
-                    captureReportService.GenerateReport(report, captureOutDir, summaryMd);
+                    var statusService = new Services.Analysis.StatusJsonService();
+                    statusResult = statusService.GenerateStatusJson(
+                        report, captureOutDir, captureId, sdpName);
+                    logger.Info($"  → Status: {statusResult.FilePath}");
+
+                    // ── Step A6: TopDC JSON (attribution rule engine) ─────────
+                    logger.Info("\nStep A6: Generating topdc.json...");
+                    try
+                    {
+                        // Locate attribution_rules.json — next to the exe or in analysis/ subfolder
+                        string rulesPath = System.IO.Path.Combine(
+                            System.IO.Path.GetDirectoryName(
+                                System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".",
+                            "analysis", "attribution_rules.json");
+                        if (!System.IO.File.Exists(rulesPath))
+                        {
+                            rulesPath = System.IO.Path.Combine(
+                                System.IO.Path.GetDirectoryName(sdpPath) ?? ".", "..", "analysis", "attribution_rules.json");
+                        }
+
+                        if (!System.IO.File.Exists(rulesPath))
+                        {
+                            logger.Info("  ⚠ attribution_rules.json not found — skipping topdc.json");
+                        }
+                        else
+                        {
+                            var engine = new Services.Analysis.AttributionRuleEngine(rulesPath);
+                            // Use pre-computed percentile tables directly — no re-parse of status.json
+                            var topDcService = new Services.Analysis.TopDcJsonService(engine);
+                            string topDcPath = topDcService.GenerateTopDcJson(
+                                report, statusResult!.GlobalPercentiles, statusResult!.CategoryStatsMap,
+                                captureOutDir, shaderBaseDir, meshBaseDir, captureId, sdpName);
+                            logger.Info($"  → TopDC: {topDcPath}");
+                        }
+                    }
+                    catch (Exception topEx)
+                    {
+                        logger.Info($"  ⚠ topdc.json generation failed: {topEx.Message}");
+                    }
                 }
-                catch (Exception reportEx)
+                catch (Exception statusEx)
                 {
-                    logger.Info($"  ⚠ report.json generation failed: {reportEx.Message}");
+                    logger.Info($"  ⚠ status.json generation failed: {statusEx.Message}");
                 }
+                } // end if (!skipPassAGen)
+                else
+                {
+                    logger.Info("\nStep A5+A6: SKIPPED (AnalysisOnly mode, using existing status.json / topdc.json)");
+                }
+
+                // ── Step B1: Per-DC LLM content analysis ──────────────────────
+                if (skipPassB)
+                {
+                    logger.Info("\nStep B1/B2/B3: SKIPPED (StatsOnly mode)");
+                }
+                else
+                {
+                logger.Info("\nStep B1: DC content analysis...");
+                try
+                {
+                    var contentService = new Services.Analysis.DcContentAnalysisService(config, logger, _llm);
+                    int b1Count = contentService.AnalyzeAll(report, captureOutDir, shaderBaseDir);
+                    logger.Info($"  → Analyzed {b1Count} DCs (cached to per_dc_content/)");
+
+                    // ── Step B2: Per-category attribution report (LLM) ────────
+                    logger.Info("\nStep B2: Attribution analysis report...");
+                    try
+                    {
+                        var attrService = new Services.Analysis.AttributionReportService(
+                            config, logger, _llm, contentService);
+                        string analysisMd = attrService.GenerateAnalysisMd(
+                            report, captureOutDir, captureId, sdpName);
+                        logger.Info($"  → Analysis: {analysisMd}");
+                    }
+                    catch (Exception b2Ex)
+                    {
+                        logger.Info($"  ⚠ Step B2 failed: {b2Ex.Message}");
+                    }
+
+                    // ── Step B3: Dashboard (rule-based charts + tables) ───────
+                    logger.Info("\nStep B3: Dashboard generation...");
+                    try
+                    {
+                        var dashService = new Services.Analysis.DashboardGenerationService(config, logger);
+                        string dashMd   = dashService.GenerateDashboard(
+                            report, captureOutDir, captureId, sdpName);
+                        logger.Info($"  → Dashboard: {dashMd}");
+                    }
+                    catch (Exception b3Ex)
+                    {
+                        logger.Info($"  ⚠ Step B3 failed: {b3Ex.Message}");
+                    }
+                }
+                catch (Exception b1Ex)
+                {
+                    logger.Info($"  ⚠ Step B1 failed: {b1Ex.Message}");
+                }
+                } // end if (!skipPassB)
+
+                // ── Step 4: Summary report (DEPRECATED — pending removal) ──────
+                // logger.Info("\nStep 4: Generating summary...");
+                // string summaryMd = reportService.GenerateSummaryReport(report, captureOutDir);
+                // logger.Info($"  → Summary: {summaryMd}");
+
+                // ── Step 5: Compact report.json (DEPRECATED — pending removal) ─
+                // logger.Info("\nStep 5: Generating report.json...");
+                // try
+                // {
+                //     captureReportService.GenerateReport(report, captureOutDir, summaryMd);
+                // }
+                // catch (Exception reportEx)
+                // {
+                //     logger.Info($"  ⚠ report.json generation failed: {reportEx.Message}");
+                // }
 
                 logger.Info("\n=== Analysis Complete ===");
             }
@@ -346,6 +431,17 @@ namespace SnapdragonProfilerCLI.Analysis
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        private PassMode GetPassMode()
+        {
+            string raw = config.Get("AnalysisPassMode", "all").Trim().ToLowerInvariant();
+            return raw switch
+            {
+                "stats"    => PassMode.StatsOnly,
+                "analysis" => PassMode.AnalysisOnly,
+                _          => PassMode.All
+            };
+        }
 
         private static void GenerateMeshViewerHtml(string meshDir, List<string> objFiles)
         {
@@ -502,53 +598,29 @@ namespace SnapdragonProfilerCLI.Analysis
         }
 
         /// <summary>
-        /// Resolves metrics CSV path.
-        /// Priority: auto-discover next to SDP > auto-discover in sdp/ subfolder > explicit config path.
-        /// The config value is a fallback so that each SDP automatically uses its own matching export.
-        /// </summary>
-        private static string? ResolveMetricsPath(string? configFallback, string sdpPath)
-        {
-            // 1. Auto-discover: look for a Snapdragon Profiler metrics CSV in the same dir as the SDP
-            string sdpDir = System.IO.Path.GetDirectoryName(sdpPath) ?? ".";
-            foreach (string f in System.IO.Directory.GetFiles(sdpDir, "*.csv").OrderBy(x => x))
-            {
-                if (LooksLikeMetricsCsv(f)) return f;
-            }
-
-            // 2. Also try a sibling "sdp/" folder
-            string sdpSibling = System.IO.Path.Combine(sdpDir, "..", "sdp");
-            if (System.IO.Directory.Exists(sdpSibling))
-            {
-                foreach (string f in System.IO.Directory.GetFiles(sdpSibling, "*.csv").OrderBy(x => x))
-                {
-                    if (LooksLikeMetricsCsv(f)) return f;
-                }
-            }
-
-            // 3. Fall back to the explicitly configured path (may be from a different capture)
-            if (!string.IsNullOrEmpty(configFallback) && System.IO.File.Exists(configFallback))
-                return configFallback;
-
-            return null;
-        }
-
-        /// <summary>
         /// Reload Category + Detail labels from the most recent DrawCallAnalysis output in captureOutDir.
         /// Tries JSON first (new format), falls back to CSV (legacy) for backward compatibility.
         /// Called when AnalysisOnlyGenerateReport=true to skip LLM labeling.
         /// </summary>
         private void LoadLabelsFromAnalysis(DrawCallAnalysisReport report, string captureOutDir)
         {
-            var labelMap = new Dictionary<string, (string Cat, string Det)>();
-
-            // ── Try JSON first ────────────────────────────────────────────────
+            // ── Try new-schema raw.json (schema_version 2.0) ──────────────────
             string? jsonPath = null;
+            bool    isNewSchema = false;
             if (System.IO.Directory.Exists(captureOutDir))
             {
-                jsonPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.json")
-                    .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
+                // Prefer snapshot_*_raw.json (schema 2.0)
+                jsonPath = System.IO.Directory.GetFiles(captureOutDir, "snapshot_*_raw.json")
                     .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
                     .FirstOrDefault();
+                if (jsonPath != null) isNewSchema = true;
+
+                // Fallback: legacy DrawCallAnalysis_*.json
+                if (jsonPath == null)
+                    jsonPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.json")
+                        .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
+                        .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
+                        .FirstOrDefault();
             }
 
             if (jsonPath != null)
@@ -558,92 +630,98 @@ namespace SnapdragonProfilerCLI.Analysis
                 {
                     string text = System.IO.File.ReadAllText(jsonPath, System.Text.Encoding.UTF8);
                     var root    = Newtonsoft.Json.Linq.JObject.Parse(text);
-                    var arr     = root["drawcalls"] as Newtonsoft.Json.Linq.JArray;
+
+                    // New schema 2.0: root["draw_calls"]  Old schema: root["drawcalls"]
+                    var arr = (root["draw_calls"] ?? root["drawcalls"]) as Newtonsoft.Json.Linq.JArray;
                     if (arr != null)
                     {
+                        int matched = 0;
                         foreach (var token in arr)
                         {
                             string? dcId = token["dc_id"]?.ToString();
-                            string? cat  = token["category"]?.ToString();
-                            string? det  = token["detail"]?.ToString();
-                            if (!string.IsNullOrEmpty(dcId))
-                                labelMap[dcId!] = (cat ?? "", det ?? "");
+                            if (string.IsNullOrEmpty(dcId)) continue;
+
+                            Models.DrawCallLabel label;
+                            if (isNewSchema)
+                            {
+                                // schema 2.0: label is a subobject
+                                var lNode = token["label"];
+                                label = new Models.DrawCallLabel
+                                {
+                                    Category    = lNode?["category"]?.ToString()    ?? "Scene",
+                                    Subcategory = lNode?["subcategory"]?.ToString() ?? "",
+                                    Detail      = lNode?["detail"]?.ToString()      ?? "",
+                                    ReasonTags  = (lNode?["reason_tags"] as Newtonsoft.Json.Linq.JArray)
+                                                    ?.Select(t => t.ToString()).ToArray()
+                                                  ?? Array.Empty<string>(),
+                                    Confidence  = lNode?["confidence"]?.ToObject<float>() ?? 0.70f,
+                                    LabelSource = lNode?["label_source"]?.ToString()  ?? "rule",
+                                };
+                            }
+                            else
+                            {
+                                // legacy schema 1.x: flat category/detail at token root
+                                label = new Models.DrawCallLabel
+                                {
+                                    Category = token["category"]?.ToString() ?? "Scene",
+                                    Detail   = token["detail"]?.ToString()   ?? "",
+                                };
+                            }
+
+                            var dc = report.DrawCallResults.FirstOrDefault(d => d.DrawCallNumber == dcId);
+                            if (dc != null) { dc.Label = label; matched++; }
                         }
+                        logger.Info($"  → Restored labels for {matched} / {report.DrawCallResults.Count} DCs");
                     }
+                    return;
                 }
                 catch (Exception ex)
                 {
                     logger.Info($"  ⚠ Failed to parse JSON labels: {ex.Message} — falling back to CSV.");
-                    jsonPath = null;
                 }
             }
 
             // ── Fallback: legacy CSV ──────────────────────────────────────────
-            if (jsonPath == null && labelMap.Count == 0)
+            string? csvPath = null;
+            if (System.IO.Directory.Exists(captureOutDir))
             {
-                string? csvPath = null;
-                if (System.IO.Directory.Exists(captureOutDir))
-                {
-                    csvPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.csv")
-                        .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
-                        .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
-                        .FirstOrDefault();
-                }
-
-                if (csvPath == null)
-                {
-                    logger.Info("  ⚠ No existing DrawCallAnalysis_*.json or *.csv found — labels will be empty.");
-                    return;
-                }
-
-                logger.Info($"  Loading labels from (legacy CSV): {System.IO.Path.GetFileName(csvPath)}");
-                bool firstLine = true;
-                foreach (var raw in System.IO.File.ReadAllLines(csvPath))
-                {
-                    if (firstLine) { firstLine = false; continue; }
-                    if (string.IsNullOrWhiteSpace(raw)) continue;
-                    var cols = raw.Split(',');
-                    if (cols.Length < 3) continue;
-                    string dc  = cols[0].Trim().Trim('"');
-                    string cat = cols[1].Trim().Trim('"');
-                    string det = cols[2].Trim().Trim('"');
-                    if (!string.IsNullOrEmpty(dc))
-                        labelMap[dc] = (cat, det);
-                }
+                csvPath = System.IO.Directory.GetFiles(captureOutDir, "DrawCallAnalysis_*.csv")
+                    .Where(f => System.IO.Path.GetFileName(f).IndexOf("Summary", StringComparison.OrdinalIgnoreCase) < 0)
+                    .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
+                    .FirstOrDefault();
             }
 
-            int matched = 0;
+            if (csvPath == null)
+            {
+                logger.Info("  ⚠ No existing snapshot_*_raw.json / DrawCallAnalysis_*.json / *.csv found — labels will be empty.");
+                return;
+            }
+
+            logger.Info($"  Loading labels from (legacy CSV): {System.IO.Path.GetFileName(csvPath)}");
+            var legacyMap = new Dictionary<string, (string Cat, string Det)>();
+            bool firstLine = true;
+            foreach (var rawLine in System.IO.File.ReadAllLines(csvPath))
+            {
+                if (firstLine) { firstLine = false; continue; }
+                if (string.IsNullOrWhiteSpace(rawLine)) continue;
+                var cols = rawLine.Split(',');
+                if (cols.Length < 3) continue;
+                string dc  = cols[0].Trim().Trim('"');
+                string cat = cols[1].Trim().Trim('"');
+                string det = cols[2].Trim().Trim('"');
+                if (!string.IsNullOrEmpty(dc))
+                    legacyMap[dc] = (cat, det);
+            }
+            int csvMatched = 0;
             foreach (var dc in report.DrawCallResults)
             {
-                if (labelMap.TryGetValue(dc.DrawCallNumber, out var lbl))
+                if (legacyMap.TryGetValue(dc.DrawCallNumber, out var lbl))
                 {
                     dc.Label = new Models.DrawCallLabel { Category = lbl.Cat, Detail = lbl.Det };
-                    matched++;
+                    csvMatched++;
                 }
             }
-            logger.Info($"  → Restored labels for {matched} / {report.DrawCallResults.Count} DCs");
-        }
-
-        private static bool LooksLikeMetricsCsv(string path)
-        {
-            // Exclude our own labeled output files and session-dir DB-sourced CSVs
-            string name = System.IO.Path.GetFileName(path);
-            if (name.StartsWith("DrawCallAnalysis_", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (name.Equals("DrawCallMetrics.csv", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (name.Equals("DrawCallParameters.csv", StringComparison.OrdinalIgnoreCase))
-                return false;
-            try
-            {
-                string firstLine = System.IO.File.ReadLines(path).FirstOrDefault() ?? "";
-                // Snapdragon Profiler export has both Clocks and Fragments columns
-                // but NOT a DrawCall/Category/Detail header (which our output has)
-                return firstLine.IndexOf("Clocks", StringComparison.OrdinalIgnoreCase) >= 0
-                    && firstLine.IndexOf("Fragments", StringComparison.OrdinalIgnoreCase) >= 0
-                    && firstLine.IndexOf("Category", StringComparison.OrdinalIgnoreCase) < 0;
-            }
-            catch { return false; }
+            logger.Info($"  → Restored labels for {csvMatched} / {report.DrawCallResults.Count} DCs");
         }
     }
 }

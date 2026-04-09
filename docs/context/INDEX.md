@@ -132,6 +132,53 @@ When searching for context:
 
 ---
 
+### FINDING-2026-04-09-directory-layout-current-state.md
+- topic: directory layout current state — projectDir / workspaceDir / sessionDir / config
+- summary: |
+    config.ini must be copied to exeDir to load; testPath resolves to SDPCLI/test/ not repo workspace/;
+    SDK writes sessions to exeDir/ via cwd; sessionDir concept exists in AnalysisPipeline but is
+    unnamed in config; sub-dir names (shaders/textures/meshes) are hardcoded; gfxrz files and analysis
+    assets split across two separate roots; SdpFileService scans single directory.
+- related_paths:
+  - SDPCLI/config.ini
+  - SDPCLI/source/Config.cs
+  - SDPCLI/source/Main.cs
+  - SDPCLI/source/Application.cs
+  - SDPCLI/source/Modes/SnapshotCaptureMode.cs
+  - SDPCLI/source/Modes/AnalysisMode.cs
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Services/Capture/SessionSummaryService.cs
+  - SDPCLI/source/Services/Analysis/SdpFileService.cs
+- tags:
+  - directory-layout
+  - config
+  - workspace
+  - session
+  - paths
+
+---
+
+### FINDING-2026-04-08-drawanalysis-refactor-baseline.md
+- topic: drawanalysis pipeline refactor baseline — current state audit
+- summary: |
+    审计当前 AnalysisPipeline 4-step 流程的耦合问题：DrawCallLabel 缺 subcategory/reason_tag/confidence；
+    输出 JSON 混杂 raw 数据与统计；无百分位归因机制；MD 由单次 LLM 调用生成，无内容/归因分层；
+    无展示层分离。为两 pass 重构提供基线。
+- related_paths:
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Models/DrawCallModels.cs
+  - SDPCLI/source/Services/Analysis/DrawCallLabelService.cs
+  - SDPCLI/source/Services/Analysis/ReportGenerationService.cs
+- tags:
+  - drawcall-analysis
+  - refactor
+  - json-schema
+  - bottleneck
+  - attribution
+  - llm
+
+---
+
 ### FINDING-2026-04-02-env-loading-bootstrap.md
 - topic: env loading / config bootstrap
 - summary: Investigation of environment variable resolution and config initialization path
@@ -159,6 +206,77 @@ When searching for context:
 ---
 
 ## 🧭 Plans
+
+### PLAN-2026-04-09-directory-layout-redesign.md
+- topic: directory layout redesign — projectDir / workspaceDir / sessionDir structure
+- status: proposed
+- based_on:
+  - FINDING-2026-04-09-directory-layout-current-state.md
+- summary: |
+    Three-layer path model: projectDir (d:\snapdragon\), workspaceDir (projectDir/workspace/),
+    sessionDir (workspaceDir/<session-name>/). config.ini moves to projectDir; Config.cs
+    searches projectDir before exeDir. Sub-directory names (shaders/textures/meshes/snapshot/
+    db/gfxrz) become explicit config keys Session.ShadersDir etc., shared by CLI and future UI.
+    SessionLayout value object reads these keys. SdpFileService.ScanWorkspace() scans workspaceDir.
+    SDK session writes redirected to workspaceDir via cwd change. JSON manifest uses relative paths.
+    4-phase rollout: P1 config location, P2 workspaceDir, P3 SessionLayout, P4 SDP discovery.
+- related_paths:
+  - SDPCLI/config.ini
+  - SDPCLI/source/Config.cs
+  - SDPCLI/source/Main.cs
+  - SDPCLI/source/Application.cs
+  - SDPCLI/source/Modes/SnapshotCaptureMode.cs
+  - SDPCLI/source/Modes/AnalysisMode.cs
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Services/Capture/SessionSummaryService.cs
+  - SDPCLI/source/Services/Analysis/SdpFileService.cs
+- tags:
+  - directory-layout
+  - config
+  - workspace
+  - session
+  - paths
+  - refactor
+
+---
+
+### PLAN-2026-04-08-drawanalysis-two-pass-refactor.md
+- topic: DrawAnalysis 两 pass 重构 — 统计 pass（无 LLM）+ 分析 pass（LLM）完整设计
+- status: proposed
+- based_on:
+  - FINDING-2026-04-08-drawanalysis-refactor-baseline.md
+  - FINDING-2026-04-07-shader-texture-export-structure.md
+- summary: |
+    将 AnalysisPipeline 拆分为 Pass A（统计，无 LLM）和 Pass B（分析，LLM）。
+    Pass A 产出 3 个 JSON：snapshot_{id}_raw.json（DC 原始信息 + 扩展 label）、
+    snapshot_{id}_status.json（整体统计 + 百分位 + label 质量）、
+    snapshot_{id}_topdc.json（per-category top-N 三层归因结果）。
+    新增 analysis/attribution_rules.json 三层规则引擎（指标 hint → 百分位比较 → 加权 bottleneck 得分）。
+    Pass B 分两步 LLM：Step B1 分析 DC shader 内容，Step B2 输出归因报告 MD；
+    Step B3 规则生成展示 Dashboard MD（分类饼图/柱图占位 + top5 表格）。
+    定义 8 个新服务类和对应文件布局，DrawCallLabel 扩展为含 subcategory/reason_tags/confidence。
+- related_paths:
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Models/DrawCallModels.cs
+  - SDPCLI/source/Services/Analysis/DrawCallLabelService.cs
+  - SDPCLI/source/Services/Analysis/ReportGenerationService.cs
+  - SDPCLI/source/Services/Analysis/StatusJsonService.cs  (NEW)
+  - SDPCLI/source/Services/Analysis/AttributionRuleEngine.cs  (NEW)
+  - SDPCLI/source/Services/Analysis/TopDcJsonService.cs  (NEW)
+  - SDPCLI/source/Services/Analysis/AttributionReportService.cs  (NEW)
+  - SDPCLI/source/Services/Analysis/DashboardGenerationService.cs  (NEW)
+  - analysis/attribution_rules.json  (NEW)
+- tags:
+  - drawcall-analysis
+  - two-pass
+  - json-schema
+  - bottleneck
+  - attribution
+  - percentile
+  - llm
+  - refactor
+
+---
 
 ### PLAN-2026-04-07-unified-shader-texture-export-json.md
 - topic: unified shader/texture folder + drawcall analysis JSON output + parallel extraction + LLM response cache
@@ -291,13 +409,19 @@ When searching for context:
 
 - Findings = evidence and root cause analysis
 - Plans = actionable solutions based on findings
+- Implementations = actual execution state, deviations, and validation outcomes
 - Decisions = confirmed rules or constraints
 
 When implementing:
 → Always prefer PLAN over FINDING
+→ Read IMPLEMENTATION records before iterating on existing work
 
 When investigating:
 → Start from FINDING
+→ Use IMPLEMENTATION records to understand real execution state
+
+When rules or constraints conflict:
+→ Prefer DECISION documents
 
 ---
 
@@ -307,6 +431,7 @@ When adding new documents:
 
 - Add new FINDING entries under Findings
 - Add new PLAN entries under Plans
+- Add new IMPL entries under Implementations
 - Add new DECISION entries under Decisions
 
 Keep:
@@ -332,3 +457,5 @@ Common tags:
 - performance
 - shader
 - build
+- implementation
+- partial

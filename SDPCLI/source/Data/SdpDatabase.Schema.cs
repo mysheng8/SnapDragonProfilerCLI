@@ -169,11 +169,10 @@ namespace SnapdragonProfilerCLI.Data
                     "The SDP file may be incomplete or corrupt.");
 
             // ── Group 2: CSV-imported tables ──────────────────────────────
-            if (!hasParams)
-                logger.Warning(
-                    "  ⚠ [ERROR]  Table 'DrawCallParameters' missing — DC list will be inaccurate.\n" +
-                    "             → Run CSV import first: SDPCLI.exe import <sdpPath>\n" +
-                    "             → Or set AutoImportCsv=true in config.ini");
+            CheckCsvTable(conn, logger, "DrawCallParameters",
+                "DC list will be inaccurate; run: SDPCLI.exe import <sdpPath> or set AutoImportCsv=true");
+            CheckCsvTable(conn, logger, "DrawCallMetrics",
+                "GPU performance counters (Clocks, Fragments, etc.) unavailable — metrics join will be skipped");
 
             CheckCsvTable(conn, logger, "DrawCallBindings",
                 "per-DC pipeline and texture binding will be unavailable (PipelineID=0, no TextureIDs)");
