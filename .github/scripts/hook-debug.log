@@ -1,0 +1,18 @@
+2026-04-09 14:33:26,711 [hook] DEBUG --- hook fired ---
+2026-04-09 14:33:26,712 [hook] DEBUG tool_name = 'create_file'
+2026-04-09 14:33:26,712 [hook] DEBUG tool_input keys = ['filePath']
+2026-04-09 14:33:26,712 [hook] DEBUG extracted paths = ['d:/snapdragon/docs/context/test.md']
+2026-04-09 14:33:26,712 [hook] DEBUG bad_paths = []
+2026-04-09 14:33:26,712 [hook] DEBUG ALLOW: all paths under docs/context/*.md
+2026-04-09 14:33:26,772 [hook] DEBUG --- hook fired ---
+2026-04-09 14:33:26,772 [hook] DEBUG tool_name = 'replace_string_in_file'
+2026-04-09 14:33:26,773 [hook] DEBUG tool_input keys = ['filePath']
+2026-04-09 14:33:26,773 [hook] DEBUG extracted paths = ['d:/snapdragon/SDPCLI/source/App.cs']
+2026-04-09 14:33:26,773 [hook] DEBUG bad_paths = ['d:/snapdragon/SDPCLI/source/App.cs']
+2026-04-09 14:33:26,814 [hook] WARNING DENY: disallowed paths -> ['d:/snapdragon/SDPCLI/source/App.cs']
+2026-04-09 14:36:09,197 [hook] DEBUG --- hook fired ---
+2026-04-09 14:36:09,197 [hook] DEBUG tool_name = 'create_file'
+2026-04-09 14:36:09,197 [hook] DEBUG tool_input keys = ['filePath', 'content']
+2026-04-09 14:36:09,197 [hook] DEBUG extracted paths = ['d:/snapdragon/SDPCLI/source/test.cs']
+2026-04-09 14:36:09,197 [hook] DEBUG bad_paths = ['d:/snapdragon/SDPCLI/source/test.cs']
+2026-04-09 14:36:09,197 [hook] WARNING DENY: disallowed paths -> ['d:/snapdragon/SDPCLI/source/test.cs']
