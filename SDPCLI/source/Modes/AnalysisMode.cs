@@ -88,8 +88,32 @@ namespace SnapdragonProfilerCLI.Modes
                 Console.WriteLine("  0. Analyze ALL");
                 for (int i = 0; i < captureIds.Count; i++)
                     Console.WriteLine($"  {i + 1}. snapshot_{captureIds[i]}");
-                Console.Write($"Select (0=all, 1-{captureIds.Count}), or ENTER to exit: ");
-                string? input = Console.ReadLine();
+                Console.Write($"Select (0=all, 1-{captureIds.Count}), or ESC to exit: ");
+                string input = "";
+                while (true)
+                {
+                    var key = Console.ReadKey(intercept: true);
+                    if (key.Key == ConsoleKey.Escape)
+                    {
+                        Console.WriteLine();
+                        return;
+                    }
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        Console.WriteLine();
+                        break;
+                    }
+                    if (key.Key == ConsoleKey.Backspace && input.Length > 0)
+                    {
+                        input = input.Substring(0, input.Length - 1);
+                        Console.Write("\b \b");
+                    }
+                    else if (char.IsDigit(key.KeyChar))
+                    {
+                        input += key.KeyChar;
+                        Console.Write(key.KeyChar);
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(input))
                     break;
@@ -115,7 +139,7 @@ namespace SnapdragonProfilerCLI.Modes
                     }
                 }
 
-                Console.WriteLine("\n=== Done. Select another snapshot or press ENTER to exit. ===");
+                Console.WriteLine("\n=== Done. Select another snapshot or ESC to exit. ===");
             }
         }
         

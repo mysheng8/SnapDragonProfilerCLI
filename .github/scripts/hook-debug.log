@@ -16,3 +16,11 @@
 2026-04-09 14:36:09,197 [hook] DEBUG extracted paths = ['d:/snapdragon/SDPCLI/source/test.cs']
 2026-04-09 14:36:09,197 [hook] DEBUG bad_paths = ['d:/snapdragon/SDPCLI/source/test.cs']
 2026-04-09 14:36:09,197 [hook] WARNING DENY: disallowed paths -> ['d:/snapdragon/SDPCLI/source/test.cs']
+2026-04-09 17:50:31,864 [hook] DEBUG --- hook fired ---
+2026-04-09 17:50:31,865 [hook] DEBUG tool_name = 'grep_search'
+2026-04-09 17:50:31,865 [hook] DEBUG tool_input keys = ['maxResults', 'query', 'isRegexp']
+2026-04-09 17:50:31,865 [hook] DEBUG tool_name not in EDIT_TOOLS -> allow (pass-through)
+2026-04-09 17:50:39,986 [hook] DEBUG --- hook fired ---
+2026-04-09 17:50:39,986 [hook] DEBUG tool_name = 'read_file'
+2026-04-09 17:50:39,986 [hook] DEBUG tool_input keys = ['filePath', 'startLine', 'endLine']
+2026-04-09 17:50:39,986 [hook] DEBUG tool_name not in EDIT_TOOLS -> allow (pass-through)
