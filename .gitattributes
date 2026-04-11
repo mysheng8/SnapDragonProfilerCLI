@@ -5,3 +5,7 @@
 /project/sdp/2026-04-11T09-50-42/sdpframe_005.gfxrz filter=lfs diff=lfs merge=lfs -text
 /project/sdp/2026-04-11T09-50-42/sdpframe_006.gfxrz filter=lfs diff=lfs merge=lfs -text
 /project/sdp/2026-04-11T09-50-42/sdpframe_007.gfxrz filter=lfs diff=lfs merge=lfs -text
+*.sdp filter=lfs diff=lfs merge=lfs -text
+*.db filter=lfs diff=lfs merge=lfs -text
+*.gfxrz filter=lfs diff=lfs merge=lfs -text
+*.dll filter=lfs diff=lfs merge=lfs -text
