@@ -56,87 +56,70 @@ CaptureType=4         # 4=Snapshot
 
 ---
 
-## 模式 2：Analysis（分析已有 .sdp 文件）
+## 模式 2：analysis（分析已有 .sdp 文件）
 
 **不需要**设备连接，纯离线分析。
 
 ```powershell
 cd SDPCLI\bin\Debug\net472
 
-# 分析指定 .sdp 文件（相对路径基于 config.ini 中 TestDirectory 或 SDPCLI\test\）
-SDPCLI.exe -mode analysis -sdp "2026-03-20T20-36-12.sdp"
+# 分析所有 snapshot（路径相对于 SdpDir，默认 project\sdp\）
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp
 
-# 或者绝对路径
-SDPCLI.exe -mode analysis -sdp "D:\snapdragon\SDPCLI\test\2026-03-20T20-36-12.sdp"
+# 只分析 snapshot_3
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3
+
+# 增量：只重新生成 label（不重新提取资源）
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3 -t label
 ```
 
 成功输出：
 ```
-=== Analysis Mode ===
-Opening: test\2026-03-20T20-36-12.sdp
-Extracting sdp.db...
-Total DrawCalls: 2048
-Report saved: test\DrawCallReport_20260327_143022.csv
+=== Analysis Pipeline ===
+  Database: D:\snapdragon\project\sdp\2026-04-11T09-50-42\sdp.db
+  Session folder: D:\snapdragon\project\analysis\2026-04-11T09-50-42
+  Capture output: ...\snapshot_3
+Step 1: Collecting DrawCalls...
+  → 1824 DrawCalls collected
+Step 4: Writing JSON outputs...
+  ✓ dc.json, shaders.json, textures.json, metrics.json, status.json
 ```
+
+**分析输出位置**：`<ProjectDir>/analysis/<sdp_basename>/snapshot_N/`
 
 ---
 
-## 模式 3：Texture Extraction（提取纹理）
+## 模式 3：extract-texture（提取纹理）
 
 从 .sdp 文件中提取指定纹理，保存为 PNG。
 
-**步骤 1**：先找到可用的 resourceID （分析模式下查询，或用 sqlite3）：
+**步骤 1**：在 sdp.db 中找到 resourceID：
 ```sql
--- 在 sdp.db 中执行
-SELECT resourceID, width, height, format FROM VulkanSnapshotTextures 
+SELECT resourceID, width, height, format FROM VulkanSnapshotTextures
 WHERE captureID=3 AND width > 64 ORDER BY width*height DESC LIMIT 20;
 ```
 
 **步骤 2**：提取
 ```powershell
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352
+SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352
 
 # 指定输出路径和 captureID
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352 -output "test\tex.png" -capture-id 3
-```
-
-成功输出：
-```
-=== Texture Extraction Mode ===
-SDP: test\capture.sdp
-ResourceID: 23352, CaptureID: 3
-✓ Texture extracted: test\texture_23352.png (1024x1024 RGBA8)
+SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352 -capture-id 3 -output out\tex.png
 ```
 
 ---
 
-## 模式 4：Shader Extraction（提取 Shader）
+## 模式 4：extract-shader（提取 Shader）
 
-从 .sdp 文件中提取指定 DrawCall 使用的 Shader（GLSL/SPIR-V）。
+从 .sdp 文件中提取指定 pipeline 的 Shader（SPIR-V/GLSL）。
 
 ```powershell
-# 通过 DrawCall ID 提取（格式：帧.提交.DrawCall）
-SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -drawcall-id "1.1.5"
+# 通过 Pipeline ID 提取
+SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42
 
-# 或者通过 Pipeline ID 提取
-SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -pipeline-id 42 -output "shaders\"
+# 指定输出目录
+SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42 -output shaders\
 ```
-
----
-
-## 常见问题
-
-### Q: "ProcessManager has 0 processes"
-- 确认 `service/android/` 目录存在于 `bin\Debug\net472\service\`
-- 运行 `dotnet build` 会自动部署，或参考 [PLUGIN_DEPLOYMENT.md](PLUGIN_DEPLOYMENT.md)
-
-### Q: DLL 加载失败
-- 确认 Snapdragon Profiler 安装在 `C:\Program Files\Qualcomm\Snapdragon Profiler`
-- 确认使用 x64 构建，不要用 x86
-
-### Q: 纹理提取失败（No texture data found）
-- 纹理数据可能存储在 `.gfxr` 文件中而非数据库
-- 参考 [TEXTURE_QUERY_LIMITATION.md](TEXTURE_QUERY_LIMITATION.md)
 
 ---
 
@@ -147,7 +130,3 @@ SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -pipeline-id 42 -output 
 | [README.md](README.md) | 完整文档、架构说明 |
 | [CLI_PARAMETERS.md](CLI_PARAMETERS.md) | 所有命令行参数 |
 | [CONFIG_GUIDE.md](CONFIG_GUIDE.md) | config.ini 配置说明 |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 故障排查 |
-| [PLUGIN_DEPLOYMENT.md](PLUGIN_DEPLOYMENT.md) | 设备端插件部署 |
-| [TEXTURE_EXTRACTION_GUIDE.md](TEXTURE_EXTRACTION_GUIDE.md) | 纹理提取详细指南 |
-| [VULKAN_SNAPSHOT_MODEL_USAGE.md](VULKAN_SNAPSHOT_MODEL_USAGE.md) | VulkanSnapshotModel API 使用 |

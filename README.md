@@ -11,13 +11,14 @@ snapdragon/
 ├── SDPCLI/                  # 主工具（C# CLI）— see SDPCLI/README.md
 │   ├── source/              # 源代码
 │   ├── config.ini           # 运行配置（PackageName、RenderingAPI 等）
-│   ├── test/                # 抓帧输出目录（.sdp + 解析结果）
-│   ├── android/             # Profiler 服务端 APK（arm64 / armeabi-v7a）
-│   └── plugins/             # QGLPlugin 等处理器插件
+│   └── android/             # Profiler 服务端 APK（arm64 / armeabi-v7a）
+│
+├── project/                 # 运行时数据（WorkingDirectory/project/）
+│   ├── sdp/                 # snapshot 会话输出（<timestamp>/）
+│   └── analysis/            # analysis 分析输出（<sdp_basename>/snapshot_N/）
 │
 ├── dll/                     # SDPCore / QGLPlugin 原生 DLL 及 C# wrapper
 ├── docs/                    # 文档与分析记录
-├── profiler/                # 原始 CSV 报告
 ├── meminfo_poll.ps1         # 手机内存实时监控脚本
 ├── monitor_crash.ps1        # logcat 崩溃监控脚本
 └── SDPCLI.bat               # 快速启动入口
@@ -60,8 +61,6 @@ dotnet build SDPCLI
 
 用于与 Snapdragon Profiler SDK 交互。
 
-### profiler
-存放原始 profiler 导出的 CSV 数据，用于离线分析。
 
 ### scripts
 
@@ -78,6 +77,12 @@ dotnet build SDPCLI
 - `docs/`  
   → 分析文档、实验记录、AI 辅助输出
 
+- `docs/context/`  
+  → 结构化的分析发现、计划、决策等
+
+- `docs/index/`
+  → 代码索引与模块概览
+
 （注：AI workflow 和文档治理规则见 `.copilot-instructions.md`）
 
 ---
@@ -88,4 +93,4 @@ dotnet build SDPCLI
   - 工具开发
   - profiling 分析
   - 自动化实验
-- 文档可能包含 AI 辅助生成内容，请以代码和实际结果为准
+- 文档可能包含 AI 辅助生成内容，请以代码和实际结果为准，谨慎参考分析结论。

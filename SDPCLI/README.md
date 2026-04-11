@@ -28,20 +28,22 @@ dotnet build SDPCLI
 # 输出：SDPCLI\bin\Debug\net472\SDPCLI.exe
 ```
 
-### 四种运行模式
+### 运行模式
 
-#### **模式 1：Capture（设备截图）**
+#### **模式 1：snapshot（设备抓帧）**
 连接手机，启动 app，截取 Vulkan 帧：
 
 ```powershell
 cd SDPCLI\bin\Debug\net472
 
-# 交互模式（让用户选择）
+# 交互模式（进入菜单）
 SDPCLI.exe
 
-# 直接进入 Capture 模式
-SDPCLI.exe -mode capture                      # 自动生成文件名
-SDPCLI.exe -mode capture -sdp "output\frame_001.sdp"  # 指定输出文件名
+# 直接抓帧（指定包名\活动）
+SDPCLI.exe snapshot com.your.app\ActivityName -c
+
+# 只启动不抓帧
+SDPCLI.exe snapshot com.your.app\ActivityName -l
 ```
 
 或者通过项目根目录的批处理脚本：
@@ -49,50 +51,54 @@ SDPCLI.exe -mode capture -sdp "output\frame_001.sdp"  # 指定输出文件名
 SDPCLI.bat
 ```
 
-配置文件 `config.ini`：
+配置文件 `config.ini`（可省略，交互模式会提示输入）：
 ```ini
 PackageName=com.your.app
 ActivityName=.MainActivity
-RenderingAPI=16          # 16=Vulkan
-CaptureType=4            # 4=Snapshot
-UseADBFallback=false
+RenderingAPI=16   # 16=Vulkan
+CaptureType=4     # 4=Snapshot
 AutoStartCapture=false
-# OutputDirectory=output # 输出目录（可选，默认为 output）
 ```
 
-#### **模式 2：Analysis（离线分析）**
-分析已有的 .sdp 文件，查询 DrawCall 数据：
+**输出位置**：`<ProjectDir>/sdp/<timestamp>/`（默认 `<WorkingDirectory>/project/sdp/`）
+
+#### **模式 2：analysis（离线分析）**
+分析已有的 .sdp 文件，生成 DrawCall 报告：
 
 ```powershell
-SDPCLI.exe -mode analysis -sdp "output\session_20260323_143022\1.sdp"
+# 分析所有 snapshot（路径相对于 SdpDir）
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp
+
+# 只分析 snapshot_3
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3
+
+# 只重新生成 label（增量，不重新提取 shader/texture）
+SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3 -t label
 ```
 
-**注意**：路径相对于 `config.ini` 中配置的 `TestDirectory`（或指定绝对路径）
+**输出位置**：`<ProjectDir>/analysis/<sdp_basename>/snapshot_N/`
 
-**查询示例**：
-- 查询所有 DrawCall：`SELECT * FROM DrawCalls;`
-- 查询 Shader：`SELECT * FROM VulkanSnapshotGraphicsShaderStages WHERE resourceID=123;`
-- 查询 Texture：`SELECT imageViewID FROM DrawCallDescriptorBindings WHERE apiID=456;`
-
-#### **模式 3：Texture Extraction（纹理提取）**
+#### **模式 3：extract-texture（纹理提取）**
 从 .sdp 文件中提取纹理，保存为 PNG：
 
 ```powershell
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352
+SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352
 
-# 指定输出路径和 captureID
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352 -output "out\texture.png" -capture-id 3
+# 指定 captureID 和输出路径
+SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352 -capture-id 3 -output out\texture.png
 ```
 
-#### **模式 4：Shader Extraction（Shader 提取）**
-从 .sdp 文件中提取 Shader 代码（GLSL/SPIR-V）：
+#### **模式 4：extract-shader（Shader 提取）**
+从 .sdp 文件中提取 Shader 代码（SPIR-V/GLSL）：
 
 ```powershell
-SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -drawcall-id "1.1.5"
+SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42
 
-# 指定 pipeline ID 和输出目录
-SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -pipeline-id 42 -output "shaders\"
+# 指定输出目录
+SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42 -output shaders\
 ```
+
+详细参数说明见 `CLI_PARAMETERS.md`。
 
 ---
 
@@ -113,34 +119,6 @@ SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -pipeline-id 42 -output 
 - **直接引用预编译 DLL**：使用 `SDPClientFramework.dll`、`QGLPlugin.dll` 等，**不修改不重新编译**
 - **API 完全兼容**：通过公开的 `public` API 调用，如 `ProcessorPlugin.GetLocalBuffer()`
 - **参考 GUI 源码**：`dll/project/*` 仅作参考，理解 API 用法和数据结构
-
-### 代码修改准则
-> ⚠️ **重要规则**：**所有修改代码的操作都必须先提出方案，等待 Review 确认后才能执行，否则一律不允许编辑代码。**
-
-**适用场景**：
-- 重构现有代码
-- 修改核心逻辑
-- 添加新功能模块
-- 修改数据库结构或查询逻辑
-
-**流程**：
-1. 📋 **提出方案**：明确说明要修改什么、为什么修改、预期效果
-2. ⏸️ **等待确认**：等待项目维护者 Review 并批准
-3. ✅ **执行修改**：得到批准后才能进行代码编辑
-4. 📝 **记录变更**：更新相关文档，说明修改内容
-
-**禁止行为**：
-- ❌ 擅自修改代码（即使逻辑上合理）
-- ❌ 回答问题时顺便修改代码
-- ❌ "我觉得这样更好"就直接改
-- ❌ 未经批准的重构或优化
-
-**代码目录限制**：
-- ✅ **允许修改**：`SDPCLI/source/` 目录下的所有代码（经过 Review 批准后）
-- ❌ **禁止修改**：`dll/project/` 目录下的所有代码
-  - 该目录是通过 DLL 反编译得到的源码
-  - **仅供参考**，用于理解 API 用法和数据结构
-  - 不得编辑、重新编译或替换原始 DLL
 
 ### 关键约束
 - **必须依赖 SDPClientFramework**：要使用 QGLPlugin，必须通过 `ProcessorPluginMgr` 加载
@@ -494,144 +472,6 @@ AnalysisMode.Run()
 
 ---
 
-## 实现计划（已完成）
-
-### Phase 1-4: 基础框架 ✅
-- [x] 项目结构、DLL 引用、Client 初始化
-- [x] DeviceManager、设备发现、自动连接
-- [x] CaptureManager、Capture 流程
-- [x] 数据导出到输出目录（可配置）
-
-### Phase 5-6: 双模式支持 ✅
-- [x] CLI 参数解析（`-mode`, `-sdp`）
-- [x] Analysis 模式实现（ImportCapture）
-- [x] SQL 查询界面和结果输出
-
-### Phase 7: DrawCall 分析 ✅
-- [x] DrawCallAnalysis 工具类
-- [x] Shader 查询（修复 stageType、pName 列缺失）
-- [x] GetApiIDForDrawCall（DrawCall 位置 → apiID 映射）
-
-### Phase 8: Texture精确绑定 ✅
-- [x] `QGLPluginService` 实现三层数据源回退（ProcessorPlugin → SnapshotDsbBuffer → DB）
-- [x] `CsvToDbService` 写入自定义表（DrawCallDescriptorBindings）
-- [x] 代码结构重构：分层模式（Modes/Services/Tools）
-
----
-
-## 命令行参数
-
-### 完整语法
-
-```powershell
-SDPCLI.exe [-mode <capture|analysis>] [-sdp <path>]
-```
-
-### 参数说明
-
-| 参数 | 说明 | 默认值 | 示例 |
-|------|------|--------|------|
-| `-mode` | 运行模式：`capture`（捕捉）或 `analysis`（分析）<br>**不指定时进入交互模式** | 交互模式 | `-mode capture` |
-| `-sdp` | **Capture 模式**：指定输出的 .sdp 文件路径<br>**Analysis 模式**：指定输入的 .sdp 文件路径<br>**交互模式不可用**<br>路径相对于输出目录 | Capture: 自动生成<br>Analysis: 必填 | `-sdp "output.sdp"`<br>`-sdp "output\1.sdp"` |
-
-### 使用示例
-
-```powershell
-# 交互模式（默认）
-SDPCLI.exe                          # 启动后提示用户选择 capture 或 analysis 模式
-
-# Capture 模式（自动生成文件名）
-SDPCLI.exe -mode capture            # 文件保存到 output\session_YYYYMMDD_HHMMSS\1.sdp
-
-# Capture 模式（指定输出文件名）
-SDPCLI.exe -mode capture -sdp "game_frame_001.sdp"
-
-# Analysis 模式（必须指定 -sdp 参数）
-SDPCLI.exe -mode analysis -sdp "session_20260323_143022\1.sdp"  # 相对于输出目录
-```
-
----
-
-## 使用方法
-
-### 交互模式（默认）
-
-```powershell
-cd SDPCLI\bin\Debug
-
-# 直接运行，进入交互模式
-SDPCLI.exe
-
-# 输出：
-# Select mode:
-# 1. Capture (connect device and capture frame)
-# 2. Analysis (analyze existing .sdp file)
-# Enter your choice (1 or 2): 
-```
-
-### Capture 模式（完整示例）
-
-```powershell
-cd SDPCLI\bin\Debug
-
-# 配置 config.ini
-PackageName=com.miHoYo.Yuanshen  # 你的 app 包名
-ActivityName=com.miHoYo.GetMobileInfo.MainActivity
-RenderingAPI=16
-CaptureType=4
-
-# 方式 1：自动生成文件名（推荐）
-SDPCLI.exe -mode capture
-
-# 输出：
-# ✓ Processor plugins loaded
-# ✓ Connected to device: Xiaomi 12
-# ✓ App launched: com.miHoYo.Yuanshen (PID: 12345)
-# Press ENTER to capture a frame...
-# [按回车]
-# ✓ Capture saved to: output\session_20260323_143022\1.sdp
-# ✓ Descriptor bindings saved to DrawCallDescriptorBindings
-
-# 方式 2：指定输出文件名
-SDPCLI.exe -mode capture -sdp "yuanshen_frame_001.sdp"
-
-# 输出：
-# ✓ Capture saved to: output\yuanshen_frame_001.sdp
-```
-
-### Analysis 模式（完整示例）
-
-```powershell
-cd SDPCLI\bin\Debug
-
-# 分析指定的 .sdp 文件（相对于输出目录）
-SDPCLI.exe -mode analysis -sdp "session_20260323_143022\1.sdp"
-
-# 输出：
-# ✓ Imported capture from: output\session_20260323_143022\1.sdp
-# ✓ Custom binding tables found
-# Enter SQL query (or 'quit'):
-
-# 查询示例：
-> SELECT * FROM DrawCalls LIMIT 10;
-# apiID,name,vertexCount,instanceCount
-# 456,vkCmdDraw,3,1
-# 789,vkCmdDrawIndexed,36,1
-# ...
-
-> SELECT stageType, pName FROM VulkanSnapshotGraphicsShaderStages WHERE resourceID=123;
-# stageType,pName
-# VERTEX,vert_main
-# FRAGMENT,frag_main
-
-> SELECT imageViewID FROM DrawCallDescriptorBindings WHERE apiID=456;
-# imageViewID
-# 0x7F00001234
-# 0x7F00005678
-```
-
----
-
 ## 目录结构
 
 ```
@@ -649,7 +489,7 @@ snapdragon/
 │   │   ├── SDPClient.cs             # Client/Session 初始化
 │   │   ├── CliClientDelegate.cs     # CLI 客户端事件委托
 │   │   ├── CliDeviceDelegate.cs     # CLI 设备事件委托
-│   │   ├── SimpleClientDelegate.cs  # 数据事件（OnDataProcessed）
+
 │   │   ├── ConsoleLogSink.cs        # 控制台日志输出
 │   │   ├── ConsolePlatform.cs       # 控制台平台适配
 │   │   ├── Utility.cs               # 辅助工具
@@ -853,12 +693,10 @@ CREATE TABLE DrawCallPipelines (
   - `dll/project/QGLPlugin/VkSnapshotModel.cs` - `PopulateDescSets()` 实现
   - `dll/project/QGLPlugin/DescSetBindings.cs` - `DescBindings` 结构定义
 
-### 已创建的文档（用户编写）
+### 已创建的文档
 - `QUICKSTART.md` - 快速开始指南
-- `USAGE.md` - 详细使用说明
-- `DRAWCALL_ANALYSIS_GUIDE.md` - DrawCall 分析教程
-- `IMPLEMENTATION_NOTES.md` - 实现细节笔记
-- `TROUBLESHOOTING.md` - 故障排查
+- `CLI_PARAMETERS.md` - 完整命令行参数说明
+- `CONFIG_GUIDE.md` - config.ini 配置项说明
 
 ---
 
@@ -882,8 +720,8 @@ CREATE TABLE DrawCallPipelines (
 ### 4. 配置文件
 - `config.ini` 必须在 **exe 同目录**
 - 关键参数：`PackageName`、`ActivityName`、`RenderingAPI=16`（Vulkan）
-- **输出目录**：默认为当前目录的 `output/` 文件夹，可通过 `SessionDirectoryRootPath` 配置
-- `-sdp` 参数的路径**相对于输出目录**，如 `-sdp "session_001\\1.sdp"` 实际保存为 `output\\session_001\\1.sdp`
+- **输出目录**：默认 `<WorkingDirectory>/project/sdp/`，可在 `config.ini` 中通过 `ProjectDir`/`SdpDir` 配置
+- analysis 模式输出默认到 `<WorkingDirectory>/project/analysis/<sdp_basename>/snapshot_N/`
 
 ---
 
