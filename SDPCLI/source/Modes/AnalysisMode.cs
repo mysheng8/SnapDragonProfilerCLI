@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -9,7 +9,9 @@ using SnapdragonProfilerCLI.Services.Analysis;
 namespace SnapdragonProfilerCLI.Modes
 {
     /// <summary>
-    /// Analysis模式 - 分析已有的.sdp文件（重构后的薄包装）
+    /// Analysis mode — analyzes an existing .sdp file.
+    /// Non-interactive when sdpPath is provided via positional arg.
+    /// Interactive (file + snapshot selection) when no sdpPath given.
     /// </summary>
     public class AnalysisMode : IMode
     {
@@ -19,24 +21,33 @@ namespace SnapdragonProfilerCLI.Modes
         private readonly ILogger logger;
         private readonly string outputPath;
         private readonly string? specifiedSdpPath;
-        
+        private readonly int? specifiedSnapshotId;  // null = all (>= 2 means specific)
+        private readonly string? targetArg;         // -target/-t value (reserved for P1)
+        private readonly string? outputArg;         // -output/-o override
+
         public string Name => "Analysis";
-        public string Description => "分析已有的.sdp文件";
-        
+        public string Description => "Analyze existing .sdp file";
+
         public AnalysisMode(
             AnalysisPipeline pipeline,
             SdpFileService fileService,
             Config config,
             string outputPath,
             ILogger logger,
-            string? sdpPath = null)
+            string? sdpPath    = null,
+            int?    snapshotId = null,
+            string? targetArg  = null,
+            string? outputArg  = null)
         {
-            this.pipeline = pipeline;
-            this.fileService = fileService;
-            this.config = config;
-            this.outputPath = outputPath;
-            this.logger = logger;
-            this.specifiedSdpPath = sdpPath;
+            this.pipeline            = pipeline;
+            this.fileService         = fileService;
+            this.config              = config;
+            this.outputPath          = outputPath;
+            this.logger              = logger;
+            this.specifiedSdpPath    = sdpPath;
+            this.specifiedSnapshotId = snapshotId;
+            this.targetArg           = targetArg;
+            this.outputArg           = outputArg;
         }
         
         public void Run()
@@ -45,9 +56,9 @@ namespace SnapdragonProfilerCLI.Modes
 
             string? selectedFile = null;
 
-            // 如果命令行指定了 .sdp 文件，直接使用
             if (!string.IsNullOrEmpty(specifiedSdpPath))
             {
+                // Non-interactive: resolve via new SdpDir/ProjectDir chain
                 selectedFile = ResolveSdpPath(specifiedSdpPath!);
                 if (selectedFile == null)
                 {
@@ -57,24 +68,22 @@ namespace SnapdragonProfilerCLI.Modes
             }
             else
             {
-                // 交互模式：扫描并让用户选择
+                // Interactive: scan and let user choose
                 selectedFile = SelectSdpFileInteractively();
                 if (selectedFile == null) return;
             }
 
-            // AnalysisCmdBufferIndex: -1=all, 0=auto (most-DC CB), N>=1=specific
             int cmdBufIdx = config.GetInt("AnalysisCmdBufferIndex", 0);
             int? cmdBufferFilter = cmdBufIdx >= 1 ? (int?)cmdBufIdx
                                  : cmdBufIdx == 0 ? (int?)0
-                                 : null; // -1 = all
+                                 : null;
             if (cmdBufIdx == -1)
                 logger.Info("  CommandBuffer filter: ALL (AnalysisCmdBufferIndex=-1)");
             else if (cmdBufIdx == 0)
-                logger.Info("  CommandBuffer filter: AUTO (will select CmdBufferIdx with most DCs)");
+                logger.Info("  CommandBuffer filter: AUTO");
             else
-                logger.Info($"  CommandBuffer filter: {cmdBufferFilter} (specific)");
+                logger.Info($"  CommandBuffer filter: {cmdBufferFilter}");
 
-            // ── 扫描一次 captureId 列表，然后进入交互循环 ─────────────────────────
             var captureIds = ScanCaptureIds(selectedFile);
             if (captureIds.Count == 0)
             {
@@ -82,6 +91,50 @@ namespace SnapdragonProfilerCLI.Modes
                 return;
             }
 
+            // Resolve output directory: -output/-o arg → AnalysisDir/<basename> (default)
+            string resolvedOutput = ResolveOutputDir(selectedFile);
+            var analysisTarget = AnalysisTargetExtensions.Parse(targetArg);
+
+            // Resolve .sdp path → actual sdp.db path before calling pipeline
+            string? dbPath = fileService.FindDatabasePath(selectedFile);
+            if (dbPath == null)
+            {
+                logger.Error("Could not locate sdp.db. Ensure the .sdp archive or adjacent session directory is intact.");
+                return;
+            }
+            logger.Info($"  Database: {dbPath}");
+
+            // Non-interactive path: snapshotId specified or single snapshot
+            if (specifiedSdpPath != null)
+            {
+                List<uint> toRun;
+                if (specifiedSnapshotId.HasValue)
+                {
+                    uint sid = (uint)specifiedSnapshotId.Value;
+                    if (!captureIds.Contains(sid))
+                    {
+                        logger.Error($"snapshot_{sid} not found in SDP. Available: " +
+                            string.Join(", ", captureIds.Select(x => $"snapshot_{x}")));
+                        return;
+                    }
+                    toRun = new List<uint> { sid };
+                }
+                else
+                {
+                    // -s 1 or omitted = all
+                    toRun = captureIds;
+                }
+
+                foreach (var captureId in toRun)
+                {
+                    logger.Info($"\n--- Analyzing snapshot_{captureId} ---");
+                    try { pipeline.RunAnalysis(dbPath, resolvedOutput, captureId, cmdBufferFilter, analysisTarget); }
+                    catch (Exception ex) { logger.Error($"Analysis failed for snapshot_{captureId}: {ex.Message}"); }
+                }
+                return;
+            }
+
+            // Interactive loop
             while (true)
             {
                 Console.WriteLine($"\nFound {captureIds.Count} snapshot(s) in SDP:");
@@ -93,16 +146,8 @@ namespace SnapdragonProfilerCLI.Modes
                 while (true)
                 {
                     var key = Console.ReadKey(intercept: true);
-                    if (key.Key == ConsoleKey.Escape)
-                    {
-                        Console.WriteLine();
-                        return;
-                    }
-                    if (key.Key == ConsoleKey.Enter)
-                    {
-                        Console.WriteLine();
-                        break;
-                    }
+                    if (key.Key == ConsoleKey.Escape) { Console.WriteLine(); return; }
+                    if (key.Key == ConsoleKey.Enter) { Console.WriteLine(); break; }
                     if (key.Key == ConsoleKey.Backspace && input.Length > 0)
                     {
                         input = input.Substring(0, input.Length - 1);
@@ -115,78 +160,78 @@ namespace SnapdragonProfilerCLI.Modes
                     }
                 }
 
-                if (string.IsNullOrWhiteSpace(input))
-                    break;
-
+                if (string.IsNullOrWhiteSpace(input)) break;
                 if (!int.TryParse(input, out int sel) || sel < 0 || sel > captureIds.Count)
-                {
-                    Console.WriteLine("Invalid selection.");
-                    continue;
-                }
+                { Console.WriteLine("Invalid selection."); continue; }
 
-                var toRun = sel == 0 ? captureIds : new List<uint> { captureIds[sel - 1] };
-
-                foreach (var captureId in toRun)
+                var runList = sel == 0 ? captureIds : new List<uint> { captureIds[sel - 1] };
+                foreach (var captureId in runList)
                 {
                     logger.Info($"\n--- Analyzing snapshot_{captureId} ---");
-                    try
-                    {
-                        pipeline.RunAnalysis(selectedFile, outputPath, captureId, cmdBufferFilter);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Error($"Analysis failed for snapshot_{captureId}: {ex.Message}");
-                    }
+                    try { pipeline.RunAnalysis(dbPath, resolvedOutput, captureId, cmdBufferFilter, analysisTarget); }
+                    catch (Exception ex) { logger.Error($"Analysis failed for snapshot_{captureId}: {ex.Message}"); }
                 }
-
                 Console.WriteLine("\n=== Done. Select another snapshot or ESC to exit. ===");
             }
         }
-        
-        /// <summary>
-        /// 交互式选择 .sdp 文件
-        /// </summary>
         private string? SelectSdpFileInteractively()
         {
-            string testDir = config.Get("TestDirectory", outputPath);
-            
-            if (!Directory.Exists(testDir))
+            // Scan SdpDir first, fall back to ProjectDir, then legacy TestDirectory
+            string sdpDir = GetSdpDir();
+
+            if (!Directory.Exists(sdpDir))
             {
-                logger.Error($"Test directory does not exist: {testDir}");
-                logger.Info("Please configure correct TestDirectory path in config.ini");
-                return null;
+                // Fallback: legacy TestDirectory key
+                string testDir = config.Get("TestDirectory", outputPath);
+                if (Directory.Exists(testDir))
+                {
+                    logger.Info($"  SdpDir not found ({sdpDir}); falling back to TestDirectory ({testDir})");
+                    sdpDir = testDir;
+                }
+                else
+                {
+                    logger.Error($"SDP directory does not exist: {sdpDir}");
+                    logger.Info("Configure SdpDir (or TestDirectory) in config.ini");
+                    return null;
+                }
             }
-            
-            var sdpFiles = fileService.ScanSdpFiles(testDir);
-            
+
+            var sdpFiles = fileService.ScanSdpFiles(sdpDir);
+
             if (sdpFiles.Count == 0)
             {
-                logger.Warning("No .sdp files found");
+                logger.Warning($"No .sdp files found in {sdpDir}");
                 return null;
             }
-            
-            // 显示文件列表
-            Console.WriteLine($"\nFound {sdpFiles.Count} .sdp file(s):\n");
+
+            Console.WriteLine($"\nFound {sdpFiles.Count} .sdp file(s) in {sdpDir}:\n");
             for (int i = 0; i < sdpFiles.Count; i++)
             {
                 var file = sdpFiles[i];
                 Console.WriteLine($"  {i + 1}. {file.RelativePath}");
                 Console.WriteLine($"     Size: {file.SizeMB:F2} MB, Modified: {file.LastModified:yyyy-MM-dd HH:mm:ss}");
             }
-            
-            // 用户选择
+
             Console.Write("\nEnter file number to analyze: ");
             string? input = Console.ReadLine();
-            
+
             if (!int.TryParse(input, out int selection) || selection < 1 || selection > sdpFiles.Count)
             {
                 logger.Error("Invalid selection");
                 return null;
             }
-            
+
             string selectedPath = sdpFiles[selection - 1].FilePath;
             logger.Info($"\nSelected: {Path.GetFileName(selectedPath)}");
             return selectedPath;
+        }
+
+        private string GetSdpDir()
+        {
+            string projectDir = GetProjectDir();
+            string sdpDirRel  = config.Get("SdpDir", "sdp");
+            if (Path.IsPathRooted(sdpDirRel)) return sdpDirRel;
+            return Path.GetFullPath(Path.Combine(projectDir, sdpDirRel));
         }
         
         /// <summary>
@@ -224,89 +269,66 @@ namespace SnapdragonProfilerCLI.Modes
         }
 
         /// <summary>
-        /// 打开 SDP（ZIP），扫描 snapshot_* 目录，交互式让用户选择；只有一个时直接返回。
+        /// Resolve output directory for analysis products.
+        /// Priority: -output/-o arg → AnalysisDir/<sdp_basename> (default).
         /// </summary>
-        private uint SelectCaptureIdFromSdp(string sdpPath)
+        private string ResolveOutputDir(string sdpPath)
         {
-            var ids = new List<uint>();
-            try
+            if (!string.IsNullOrWhiteSpace(outputArg))
             {
-                // SDP 可能是 ZIP 文件，也可能是目录（session dir）
-                if (File.Exists(sdpPath))
-                {
-                    using var zip = ZipFile.OpenRead(sdpPath);
-                    foreach (var entry in zip.Entries)
-                    {
-                        // 条目名形如 "snapshot_3/1_screenshot.bmp" 或 "snapshot_3/"
-                        var parts = entry.FullName.Split('/');
-                        if (parts.Length >= 1 && parts[0].StartsWith("snapshot_"))
-                        {
-                            if (uint.TryParse(parts[0].Substring("snapshot_".Length), out uint id) && !ids.Contains(id))
-                                ids.Add(id);
-                        }
-                    }
-                }
-                else if (Directory.Exists(sdpPath))
-                {
-                    foreach (var dir in Directory.GetDirectories(sdpPath, "snapshot_*"))
-                    {
-                        if (uint.TryParse(Path.GetFileName(dir).Substring("snapshot_".Length), out uint id))
-                            ids.Add(id);
-                    }
-                }
+                // -o given: absolute or relative to AnalysisDir
+                if (Path.IsPathRooted(outputArg)) return outputArg!;
+                string analysisDir = GetAnalysisDir();
+                string resolved = Path.GetFullPath(Path.Combine(analysisDir, outputArg!));
+                Directory.CreateDirectory(resolved);
+                return resolved;
             }
-            catch (Exception ex)
-            {
-                logger.Warning($"Could not scan snapshots in SDP: {ex.Message}");
-            }
+            // Default: AnalysisDir/<sdp_basename>
+            string sdpBasename = Path.GetFileNameWithoutExtension(sdpPath);
+            string sessionDir  = Path.Combine(GetAnalysisDir(), sdpBasename);
+            Directory.CreateDirectory(sessionDir);
+            return sessionDir;
+        }
 
-            ids.Sort();
+        private string GetAnalysisDir()
+        {
+            string projectDir  = GetProjectDir();
+            string analysisRel = config.Get("AnalysisDir", "analysis");
+            if (Path.IsPathRooted(analysisRel)) return analysisRel;
+            return Path.GetFullPath(Path.Combine(projectDir, analysisRel));
+        }
 
-            if (ids.Count == 0)
-            {
-                Console.Write("  No snapshot_* dirs found in SDP. Enter capture ID manually: ");
-                string? manual = Console.ReadLine();
-                if (uint.TryParse(manual, out uint manualId) && manualId > 0) return manualId;
-                logger.Error("Invalid capture ID");
-                return 0;
-            }
-
-            if (ids.Count == 1)
-            {
-                logger.Info($"  Found 1 snapshot: snapshot_{ids[0]} — using it");
-                return ids[0];
-            }
-
-            // 多个 snapshot，让用户选
-            Console.WriteLine($"\nFound {ids.Count} snapshots in SDP:");
-            for (int i = 0; i < ids.Count; i++)
-                Console.WriteLine($"  {i + 1}. snapshot_{ids[i]}");
-            Console.Write($"\nSelect snapshot (1-{ids.Count}): ");
-            string? input = Console.ReadLine();
-            if (int.TryParse(input, out int sel) && sel >= 1 && sel <= ids.Count)
-                return ids[sel - 1];
-
-            logger.Error("Invalid selection");
-            return 0;
+        private string GetProjectDir()
+        {
+            string workDir    = config.Get("WorkingDirectory", AppDomain.CurrentDomain.BaseDirectory);
+            string projectRel = config.Get("ProjectDir", "project");
+            if (Path.IsPathRooted(projectRel)) return projectRel;
+            return Path.GetFullPath(Path.Combine(workDir, projectRel));
         }
 
         /// <summary>
-        /// 解析 .sdp 路径（相对路径 → 绝对路径）
+        /// Resolve SDP path: absolute → direct; relative → SdpDir, then ProjectDir.
         /// </summary>
         private string? ResolveSdpPath(string path)
         {
-            string testDir = config.Get("TestDirectory", outputPath);
-            string resolvedPath = fileService.ResolvePath(path, testDir);
-            
-            if (!File.Exists(resolvedPath) && !Directory.Exists(resolvedPath))
+            if (Path.IsPathRooted(path))
             {
-                logger.Error($"Specified SDP file not found: {resolvedPath}");
-                logger.Info($"  Searched at: {resolvedPath}");
+                if (File.Exists(path) || Directory.Exists(path)) return path;
+                logger.Error($"SDP not found: {path}");
                 return null;
             }
-            
-            logger.Info($"Analyzing specified file: {Path.GetFileName(resolvedPath)}");
-            return resolvedPath;
+            // Try SdpDir first
+            string sdpDir = GetSdpDir();
+            string attempt1 = Path.GetFullPath(Path.Combine(sdpDir, path));
+            if (File.Exists(attempt1) || Directory.Exists(attempt1))
+            { logger.Info($"SDP resolved via SdpDir: {attempt1}"); return attempt1; }
+            // Then ProjectDir
+            string attempt2 = Path.GetFullPath(Path.Combine(GetProjectDir(), path));
+            if (File.Exists(attempt2) || Directory.Exists(attempt2))
+            { logger.Info($"SDP resolved via ProjectDir: {attempt2}"); return attempt2; }
+
+            logger.Error($"SDP not found: '{path}'  (searched: {attempt1}  and  {attempt2})");
+            return null;
         }
     }
 }

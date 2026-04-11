@@ -20,6 +20,7 @@ namespace SnapdragonProfilerCLI.Modes
         // Dependencies injected from Application
         private readonly Config _config;
         private readonly string _testPath;
+        private readonly string _sdpOutputDir;  // resolved SDP output root (where .sdp files land)
         private readonly Func<string?, string?> _readLine;
         private readonly string? _customSdpOutputPath;
 
@@ -49,12 +50,39 @@ namespace SnapdragonProfilerCLI.Modes
         public string Name        => "Snapshot Capture";
         public string Description => "Connect device and capture single frame as .sdp file";
 
-        public SnapshotCaptureMode(Config config, string testPath, Func<string?, string?> readLine, string? sdpPath = null)
+        public SnapshotCaptureMode(
+            Config config,
+            string testPath,
+            Func<string?, string?> readLine,
+            string? sdpPath         = null,     // legacy (deprecated)
+            string? packageActivity = null,     // new: "pkg\activity" positional arg
+            string? outputArg       = null)     // -output/-o: snapshot output dir
         {
             _config              = config;
             _testPath            = testPath;
             _readLine            = readLine;
             _customSdpOutputPath = ResolveOutputPath(sdpPath, testPath);
+            _sdpOutputDir        = ResolveSdpOutputDir(outputArg, config, testPath);
+
+            // Parse package\activity positional arg and override config if provided
+            if (!string.IsNullOrWhiteSpace(packageActivity))
+            {
+                // Accept both '\' and '/' separator
+                char sep = packageActivity!.IndexOf('\\') >= 0 ? '\\' : '/';
+                var parts = packageActivity.Split(new[] { sep }, 2);
+                if (parts.Length == 2)
+                {
+                    _config.Set("PackageName",  parts[0].Trim());
+                    _config.Set("ActivityName", parts[1].Trim());
+                }
+                else
+                {
+                    // No separator: treat entire string as package name
+                    _config.Set("PackageName", packageActivity.Trim());
+                }
+            }
+
+            // (package\activity parsed; no non-interactive mode flags)
         }
 
         public void Run()
@@ -138,6 +166,7 @@ namespace SnapdragonProfilerCLI.Modes
                 bool autoStart = _config.GetBool("AutoStartCapture", false);
                 uint providerId = 0;
                 uint captureId  = 0;
+
                 Console.WriteLine("\n=== Ready to Capture ===");
                 Console.WriteLine("Press ENTER to capture a frame, or ESC to exit");
 
@@ -240,6 +269,7 @@ namespace SnapdragonProfilerCLI.Modes
                         _log.Info($"[Capture] === Capture Complete === data saved to: {captureSubDir}");
                         Console.WriteLine("\n=== Capture Complete ===");
                         Console.WriteLine("Data saved to: " + captureSubDir);
+
                         Console.WriteLine("Press ENTER to capture another frame, or ESC to exit");
                     }
                     catch (Exception ex)
@@ -309,6 +339,49 @@ namespace SnapdragonProfilerCLI.Modes
             return resolved;
         }
 
+        /// <summary>
+        /// Resolve the SDP output directory for snapshot sessions.
+        /// Default = SdpDir (ProjectDir/sdp).
+        /// If -output/-o is given:
+        ///   absolute  → use directly (mkdir)
+        ///   relative  → 1) SdpDir/arg  2) ProjectDir/arg  → create if not found
+        /// </summary>
+        private static string ResolveSdpOutputDir(string? outputArg, Config config, string testPathFallback)
+        {
+            string workDir     = config.Get("WorkingDirectory", AppDomain.CurrentDomain.BaseDirectory);
+            string projectRel  = config.Get("ProjectDir", "project");
+            string projectDir  = Path.IsPathRooted(projectRel)
+                ? projectRel
+                : Path.GetFullPath(Path.Combine(workDir, projectRel));
+            string sdpDirRel   = config.Get("SdpDir", "sdp");
+            string sdpDir      = Path.IsPathRooted(sdpDirRel)
+                ? sdpDirRel
+                : Path.GetFullPath(Path.Combine(projectDir, sdpDirRel));
+
+            if (string.IsNullOrWhiteSpace(outputArg))
+            {
+                // Default: SdpDir
+                Directory.CreateDirectory(sdpDir);
+                return sdpDir;
+            }
+
+            if (Path.IsPathRooted(outputArg))
+            {
+                Directory.CreateDirectory(outputArg!);
+                return outputArg!;
+            }
+
+            // Relative: try SdpDir first, then ProjectDir
+            string attempt1 = Path.GetFullPath(Path.Combine(sdpDir, outputArg!));
+            if (Directory.Exists(attempt1)) return attempt1;
+            string attempt2 = Path.GetFullPath(Path.Combine(projectDir, outputArg!));
+            if (Directory.Exists(attempt2)) return attempt2;
+
+            // Not found → create under SdpDir
+            Directory.CreateDirectory(attempt1);
+            return attempt1;
+        }
+
         private bool InitializeClient()
         {
             Console.WriteLine("Initializing Snapdragon Profiler Client...");
@@ -333,7 +406,7 @@ namespace SnapdragonProfilerCLI.Modes
 
                 var sessionSettings = new SessionSettings
                 {
-                    SessionDirectoryRootPath      = _testPath,
+                    SessionDirectoryRootPath      = _sdpOutputDir,
                     MaxTotalSessionsSizeMB        = 1024,
                     CreateTimestampedSubDirectory = true
                 };

@@ -1,117 +1,222 @@
 # SDPCLI Command Line Parameters
 
 ## Overview
-SDPCLI supports command line parameters for automated batch processing, in addition to the original interactive mode.
 
-## Usage Modes
+SDPCLI supports three run modes:
 
-### 1. Interactive Mode (Default)
-Run without parameters to enter interactive mode with menu selection:
-```batch
+| Mode | How to invoke |
+|------|---------------|
+| Interactive | No subcommand (`SDPCLI.exe`) |
+| Analysis | `SDPCLI.exe analysis <sdp>` |
+| Snapshot | `SDPCLI.exe snapshot <pkg\activity> -l|-c` |
+
+---
+
+## Subcommands
+
+### `analysis` — Analyze an existing .sdp file
+
+```
+SDPCLI.exe analysis <sdp_path>
+    [-s/-snapshot <N|1>]
+    [-t/-target <target>]
+    [-o/-output <dir>]
+    [--no-extract]
+    [--debug]
+```
+
+`<sdp_path>` is a positional argument (no flag keyword).
+
+**Path resolution** (in order):
+1. Absolute path → used as-is
+2. Relative → resolved against `SdpDir` (default: `<ProjectDir>/sdp`)
+3. Relative → resolved against `ProjectDir` (default: `<WorkingDirectory>/project`)
+
+---
+
+### `snapshot` — Capture a Vulkan snapshot from a connected device
+
+```
+SDPCLI.exe snapshot [<package\activity>]
+    {-l/-launch | -c/-capture}
+    [-o/-output <dir>]
+    [--debug]
+```
+
+`<package\activity>` overrides `PackageActivity` in config.ini.
+
+---
+
+### Interactive mode (default)
+
+```
 SDPCLI.exe
 ```
 
-### 2. Direct Analysis Mode
-Analyze a specific .sdp file directly:
-```batch
-SDPCLI.exe -mode analysis -sdp <path_to_sdp_file>
-```
+Presents a menu for both snapshot and analysis operations.
 
-### 3. Direct Capture Mode  
-Capture a single Vulkan snapshot from a connected device:
-```batch
-SDPCLI.exe -mode capture
-```
+---
 
-### 4. Texture Extraction Mode
-Extract a texture from an .sdp file and save as PNG:
-```batch
-SDPCLI.exe -mode extract-texture -sdp <path_to_sdp_file> -resource-id <resourceID>
-```
+## Flags
 
-### 5. Shader Extraction Mode
-Extract shader source (GLSL/SPIR-V) from an .sdp file:
-```batch
-SDPCLI.exe -mode extract-shader -sdp <path_to_sdp_file> -drawcall-id <drawcall>
-```
+### `-s` / `-snapshot <N>`
+Snapshot selector for analysis mode.
+- `1` or omitted → analyze **all** snapshots in the file
+- `N` (N ≥ 2) → analyze only `snapshot_N`
 
-## Parameters
+### `-t` / `-target <target>`
+Analysis target for incremental execution.  
+Processes only the selected step plus its cascaded prerequisites.
 
-### `-mode <mode_name>`
-Specifies the operation mode. Valid values:
-- `analysis` or `analyze` or `2` - Analysis mode
-- `capture` or `snapshot` or `1` - Capture mode
-- `extract-texture` or `texture` or `3` - Texture extraction mode
-- `extract-shader` or `shader` or `4` - Shader extraction mode
+| Value | Output | Auto-includes |
+|-------|--------|---------------|
+| `dc` | `dc.json` | — |
+| `shaders` | `shaders.json` + shader extraction | `dc` |
+| `textures` | `textures.json` + texture extraction | `dc` |
+| `buffers` | `buffers.json` + mesh extraction | `dc` |
+| `label` | `label.json` | `dc`, `shaders` |
+| `metrics` | `metrics.json` | `dc` |
+| `status` | `status.json` | `dc`, `label`, `metrics` |
+| `topdc` | `topdc.json` | `status` |
+| `analysis` | `snapshot_N_analysis.md` (LLM) | `topdc` |
+| `dashboard` | `snapshot_N_dashboard.md` | `topdc`, `status` |
 
-### `-sdp <file_path>`
-Specifies the .sdp file to work with (analysis, texture/shader extraction modes)
-- **Relative paths**: Resolved relative to the test directory (configured in config.ini as `TestDirectory`)
-- **Absolute paths**: Used as-is
-- Supports both file paths and directory paths (containing extracted sdp.db)
+Default: `all` (full pipeline).
 
-**Examples:**
-- `2026-03-20T20-36-12.sdp` → Looks in `<TestDirectory>/2026-03-20T20-36-12.sdp`
-- `D:\captures\my_capture.sdp` → Uses absolute path directly
+### `-o` / `-output <dir>`
+Output directory override.
+- **Analysis**: Overrides `AnalysisDir/<sdp_basename>/`. Relative paths resolved against `AnalysisDir` then `ProjectDir`.
+- **Snapshot**: Overrides `SdpDir`. Relative paths resolved against `SdpDir` then `ProjectDir`.
 
-### `-resource-id <id>`
-Resource ID of the texture to extract (texture extraction mode only).  
-Use Analysis mode or SQL queries to discover resource IDs:
-```sql
-SELECT resourceID, width, height, format FROM VulkanSnapshotTextures WHERE captureID=3 ORDER BY width*height DESC LIMIT 20;
-```
+### `--no-extract`
+Skip physical asset extraction (shaders/textures/meshes).  
+Only re-generates JSON output files from existing DB data.  
+Useful when re-labeling or re-running metrics without re-extracting files.
 
-### `-output <path>`
-Output file path (for texture extraction) or directory (for shader extraction).  
-Defaults to the project `test/` directory if not specified.
+### `-l` / `-launch`
+(Snapshot mode) Launch the target app but do **not** capture. Use to warm up the app before triggering capture separately.
 
-### `-capture-id <id>`
-Capture ID within the .sdp session (default: `3`). Rarely needs to be changed.
+### `-c` / `-capture`
+(Snapshot mode) Launch the target app and immediately capture a single frame.
 
-### `-drawcall-id <id>`
-DrawCall identifier for shader extraction. Supports two formats:
-- Dot notation: `"1.1.5"` (frame.submission.drawcall)
-- Simple integer: `"5"` (draw index)
+### `--debug`
+Enable debug-level logging to `.log/consolelog.txt`.
 
-### `-pipeline-id <id>`
-Pipeline resource ID for shader extraction (alternative to `-drawcall-id`).
+---
+
+## Legacy Flags (Deprecated)
+
+These flags are accepted for backward compatibility but will print a deprecation warning.
+
+| Old flag | Replacement |
+|----------|-------------|
+| `-mode analysis` | `analysis` (positional subcommand) |
+| `-mode capture` | `snapshot` (positional subcommand) |
+| `-sdp <path>` | `analysis <path>` (positional arg) |
+| `-stats-only` | `-t status` |
+| `-analysis-only` | `-t analysis` |
+| `-pass-mode stats` | `-t status` |
+| `-pass-mode analysis` | `-t analysis` |
+
+---
+
+## Config Keys (config.ini)
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `ProjectDir` | `<WorkingDirectory>/project` | Root for relative path resolution |
+| `SdpDir` | `sdp` (rel ProjectDir) | Where .sdp files are read/written |
+| `AnalysisDir` | `analysis` (rel ProjectDir) | Where analysis output is written |
+| `ShaderDir` | `shaders` | Shader extraction subdir (rel session) |
+| `TextureDir` | `textures` | Texture extraction subdir (rel session) |
+| `MeshDir` | `meshes` | Mesh extraction subdir (rel session) |
+| `DataDir` | `data` | JSON/MD products subdir (rel session) |
+
+---
 
 ## Examples
 
-### Example 1: Analyze file in test directory (relative path)
+### Analyze all snapshots (auto-resolves via SdpDir)
 ```batch
-SDPCLI.exe -mode analysis -sdp "2026-03-20T20-36-12.sdp"
+SDPCLI.exe analysis 2026-04-07T18-57-50.sdp
 ```
 
-### Example 2: Analyze with absolute path
+### Analyze snapshot 3 only
 ```batch
-SDPCLI.exe -mode analysis -sdp "D:\captures\my_capture.sdp"
+SDPCLI.exe analysis 2026-04-07T18-57-50.sdp -s 3
 ```
 
-### Example 3: Extract texture
+### Incremental: re-run labeling only (after updating rules)
 ```batch
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352
-SDPCLI.exe -mode extract-texture -sdp "test\capture.sdp" -resource-id 23352 -output "out\tex.png" -capture-id 3
+SDPCLI.exe analysis 2026-04-07T18-57-50.sdp -s 3 -t label
 ```
 
-### Example 4: Extract shaders for a DrawCall
+### Re-generate dashboard without re-extracting assets
 ```batch
-SDPCLI.exe -mode extract-shader -sdp "test\capture.sdp" -drawcall-id "1.1.5" -output "shaders\"
+SDPCLI.exe analysis 2026-04-07T18-57-50.sdp -s 3 -t dashboard --no-extract
 ```
 
-### Example 5: Batch analysis
+### Analysis with absolute path
+```batch
+SDPCLI.exe analysis D:\captures\game.sdp -s 3 -t metrics
+```
+
+### Snapshot capture (launch + capture)
+```batch
+SDPCLI.exe snapshot com.example.game/com.example.game.MainActivity -c
+```
+
+### Snapshot with custom output directory
+```batch
+SDPCLI.exe snapshot com.example.game/.MainActivity -c -o D:\sdp_output
+```
+
+### Batch analysis
 ```batch
 @echo off
-for %%f in (captures\*.sdp) do (
+for %%f in (project\sdp\*.sdp) do (
     echo Analyzing %%f...
-    SDPCLI.exe -mode analysis -sdp "%%f"
+    SDPCLI.exe analysis "%%f"
 )
 ```
 
-## Notes
+---
 
-1. **Build**: `dotnet build SDPCLI` → outputs to `bin\Debug\net472\SDPCLI.exe`
-2. **Output Files**: Reports generated in configured test directory (default: `SDPCLI\test\`)
-3. **Log Files**: Console output is saved to `bin\Debug\net472\.log\consolelog.txt`
-4. **Error Handling**: Exit code indicates success (0) or failure (non-zero)
-5. **Backward Compatibility**: Running without parameters maintains the original interactive experience
+## Output Structure
+
+```
+<AnalysisDir>/<sdp_basename>/
+  sdp.db, *.gfxrz            ← extracted SDP contents
+  shaders/                   ← pipeline_N_stage.spv  (shared, per-session)
+  textures/                  ← texture_N.png          (shared, per-session)
+  meshes/                    ← mesh_N.obj             (shared, per-session)
+  snapshot_N/
+    dc.json                  ← core DC params + render targets
+    shaders.json             ← shader stages + file refs
+    textures.json            ← texture metadata + file refs
+    buffers.json             ← vertex/index buffers + mesh refs
+    label.json               ← classification results
+    metrics.json             ← GPU performance counters
+    status.json              ← percentile statistics
+    topdc.json               ← top draw calls by attribution
+    snapshot_N_analysis.md   ← LLM attribution report
+    snapshot_N_dashboard.md  ← rule-based charts + tables
+    snapshot_N_index.json    ← manifest of all product files
+```
+
+---
+
+## Build and Run
+
+```batch
+dotnet build SDPCLI.sln -c Debug
+cd SDPCLI\bin\Debug\net472
+SDPCLI.exe analysis my_capture.sdp -s 3
+```
+
+Or use the helper script from the repo root:
+```batch
+SDPCLI.bat analysis my_capture.sdp -s 3
+```
+
+**Log files**: `SDPCLI\bin\Debug\net472\.log\consolelog.txt`

@@ -195,6 +195,251 @@ namespace SnapdragonProfilerCLI.Services.Analysis
             return path;
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // Sub-JSON writers — schema 3.0  (join key: api_id)
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>Writes dc.json — core DC params, render targets, binding summary.</summary>
+        public string WriteDcJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc => (object)new
+            {
+                dc_id          = dc.DrawCallNumber,
+                api_id         = dc.ApiID,
+                api_name       = dc.ApiName,
+                pipeline_id    = dc.PipelineID,
+                layout_id      = dc.LayoutID,
+                render_pass_id = dc.RenderPass,
+                vertex_count   = dc.VertexCount,
+                index_count    = dc.IndexCount,
+                instance_count = dc.InstanceCount,
+                render_targets = dc.RenderTargets.Select(r => new
+                {
+                    attachment_index = r.AttachmentIndex,
+                    attachment_type  = r.AttachmentType,
+                    resource_id      = r.AttachmentResourceID,
+                    renderpass_id    = r.RenderPassID,
+                    framebuffer_id   = r.FramebufferID,
+                    width            = r.Width,
+                    height           = r.Height,
+                    format           = r.FormatName,
+                }).ToArray(),
+                binding_summary = new
+                {
+                    typed_buffer_view_count = dc.BindingSummary.TypedBufferViewCount,
+                    small_buffer_count      = dc.BindingSummary.SmallBufferCount,
+                    has_per_instance_buffer = dc.BindingSummary.HasPerInstanceBuffer,
+                },
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "dc.json");
+        }
+
+        /// <summary>Writes label.json — DC classification results.</summary>
+        public string WriteLabelJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc => (object)new
+            {
+                dc_id  = dc.DrawCallNumber,
+                api_id = dc.ApiID,
+                label  = new
+                {
+                    category     = dc.Label.Category,
+                    subcategory  = dc.Label.Subcategory,
+                    detail       = dc.Label.Detail,
+                    reason_tags  = dc.Label.ReasonTags,
+                    confidence   = Math.Round(dc.Label.Confidence, 3),
+                    label_source = dc.Label.LabelSource,
+                },
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "label.json");
+        }
+
+        /// <summary>Writes metrics.json — GPU performance counters per DC.</summary>
+        public string WriteMetricsJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc =>
+            {
+                var m = dc.Metrics;
+                object? metricsNode = null;
+                if (m != null && m.All.Count > 0)
+                {
+                    var metricsObj = new JObject();
+                    foreach (var kv in m.All.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+                        metricsObj[DrawCallMetrics.NormalizeKey(kv.Key)] = kv.Value;
+                    metricsNode = metricsObj;
+                }
+                return (object)new
+                {
+                    dc_id             = dc.DrawCallNumber,
+                    api_id            = dc.ApiID,
+                    metrics_available = m != null,
+                    metrics           = metricsNode,
+                };
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "metrics.json");
+        }
+
+        /// <summary>Writes shaders.json — pipeline shader stages and extracted file paths.</summary>
+        public string WriteShadersJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            string shaderBaseDir, uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc =>
+            {
+                var shaderFiles = BuildShaderFileList(dc.PipelineID, shaderBaseDir);
+                var shaderStages = dc.Shaders.Select(s => new
+                {
+                    stage       = s.ShaderStageName,
+                    module_id   = s.ShaderModuleID,
+                    entry_point = s.EntryPoint,
+                    file        = shaderFiles.FirstOrDefault(f =>
+                        f.IndexOf($"pipeline_{dc.PipelineID}_",
+                            StringComparison.OrdinalIgnoreCase) >= 0
+                        && f.IndexOf(s.ShaderStageName.ToLowerInvariant().Substring(0, 2),
+                            StringComparison.OrdinalIgnoreCase) >= 0),
+                }).ToArray();
+                return (object)new
+                {
+                    dc_id         = dc.DrawCallNumber,
+                    api_id        = dc.ApiID,
+                    pipeline_id   = dc.PipelineID,
+                    shader_stages = shaderStages,
+                    shader_files  = shaderFiles,
+                };
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "shaders.json");
+        }
+
+        /// <summary>Writes textures.json — texture IDs, metadata, and extracted PNG paths.</summary>
+        public string WriteTexturesJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            string textureBaseDir, uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc =>
+            {
+                var textureFiles = dc.TextureIDs
+                    .Select(id =>
+                    {
+                        string fname = $"texture_{id}.png";
+                        return File.Exists(Path.Combine(textureBaseDir, fname))
+                            ? "../../textures/" + fname : null;
+                    })
+                    .Where(p => p != null)
+                    .ToArray();
+                return (object)new
+                {
+                    dc_id         = dc.DrawCallNumber,
+                    api_id        = dc.ApiID,
+                    texture_ids   = dc.TextureIDs,
+                    textures      = dc.Textures.Select(t => new
+                    {
+                        texture_id = t.TextureID,
+                        width      = t.Width,
+                        height     = t.Height,
+                        depth      = t.Depth,
+                        format     = t.FormatName,
+                        layers     = t.LayerCount,
+                        levels     = t.LevelCount,
+                    }).ToArray(),
+                    texture_files = textureFiles,
+                };
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "textures.json");
+        }
+
+        /// <summary>Writes buffers.json — vertex/index buffers and mesh OBJ path.</summary>
+        public string WriteBuffersJson(
+            DrawCallAnalysisReport report, string captureOutDir,
+            string meshBaseDir, uint captureId = 0, string sdpName = "")
+        {
+            var drawCalls = report.DrawCallResults.Select(dc =>
+            {
+                bool hasMesh = dc.ApiName.IndexOf("Dispatch",
+                    StringComparison.OrdinalIgnoreCase) < 0
+                    && dc.VertexBuffers.Count > 0
+                    && File.Exists(Path.Combine(meshBaseDir, $"mesh_{dc.ApiID}.obj"));
+                return (object)new
+                {
+                    dc_id          = dc.DrawCallNumber,
+                    api_id         = dc.ApiID,
+                    vertex_buffers = dc.VertexBuffers.Select(vb => new
+                        { binding = vb.Binding, buffer_id = vb.BufferID }).ToArray(),
+                    index_buffer   = dc.IndexBuffer == null ? null : (object)new
+                    {
+                        buffer_id  = dc.IndexBuffer.BufferID,
+                        offset     = dc.IndexBuffer.Offset,
+                        index_type = dc.IndexBuffer.IndexType,
+                    },
+                    mesh_file = hasMesh ? $"../../meshes/mesh_{dc.ApiID}.obj" : null,
+                };
+            }).ToList<object>();
+            return SaveSnapshotJson(drawCalls, captureOutDir, captureId, sdpName, "buffers.json");
+        }
+
+        /// <summary>
+        /// Writes/updates snapshot_{id}_index.json — manifest of all product files.
+        /// </summary>
+        public string WriteIndexJson(
+            string captureOutDir, uint captureId, string sdpName,
+            Dictionary<string, string> products)
+        {
+            var root = new
+            {
+                schema_version = "1.0",
+                snapshot_id    = captureId,
+                sdp_name       = sdpName,
+                generated_at   = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                products,
+            };
+            string json = JsonConvert.SerializeObject(root,
+                new JsonSerializerSettings { Formatting = Formatting.Indented });
+            Directory.CreateDirectory(captureOutDir);
+            string path = Path.Combine(captureOutDir,
+                captureId > 0 ? $"snapshot_{captureId}_index.json" : "snapshot_index.json");
+            File.WriteAllText(path, json, Encoding.UTF8);
+            return path;
+        }
+
+        // ── Private helpers ────────────────────────────────────────────────
+
+        private string SaveSnapshotJson(
+            List<object> drawCalls, string captureOutDir,
+            uint captureId, string sdpName, string fileName)
+        {
+            var root = new
+            {
+                schema_version = "3.0",
+                snapshot_id    = captureId,
+                sdp_name       = sdpName,
+                generated_at   = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                total_dc_count = drawCalls.Count,
+                draw_calls     = drawCalls,
+            };
+            string json = JsonConvert.SerializeObject(root, new JsonSerializerSettings
+            {
+                Formatting        = Formatting.Indented,
+                NullValueHandling = NullValueHandling.Ignore,
+            });
+            Directory.CreateDirectory(captureOutDir);
+            string path = Path.Combine(captureOutDir, fileName);
+            File.WriteAllText(path, json, Encoding.UTF8);
+            return path;
+        }
+
+        private static string[] BuildShaderFileList(long pipelineId, string shaderBaseDir)
+            => Directory.Exists(shaderBaseDir)
+                ? Directory.GetFiles(shaderBaseDir, $"pipeline_{pipelineId}_*")
+                    .OrderBy(f => f)
+                    .Select(f => "../../shaders/" + Path.GetFileName(f))
+                    .ToArray()
+                : Array.Empty<string>();
+
         // Step 3 (legacy): labeled CSV — kept for compatibility; prefer GenerateLabeledMetricsJson
         public string GenerateLabeledMetricsCsv(DrawCallAnalysisReport report, string outputDir)
         {

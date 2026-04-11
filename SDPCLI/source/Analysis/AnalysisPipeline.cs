@@ -20,6 +20,69 @@ namespace SnapdragonProfilerCLI.Analysis
     public enum PassMode { All, StatsOnly, AnalysisOnly }
 
     /// <summary>
+    /// Fine-grained target flags for incremental analysis.
+    /// Each flag represents one output file / step.
+    /// CLI -target/-t maps to these values.
+    /// </summary>
+    [Flags]
+    public enum AnalysisTarget
+    {
+        None      = 0,
+        Dc        = 1 << 0,   // dc.json
+        Shaders   = 1 << 1,   // shaders.json + extraction
+        Textures  = 1 << 2,   // textures.json + extraction
+        Buffers   = 1 << 3,   // buffers.json + mesh extraction
+        Label     = 1 << 4,   // label.json
+        Metrics   = 1 << 5,   // metrics.json
+        Status    = 1 << 6,   // status.json
+        TopDc     = 1 << 7,   // topdc.json
+        Analysis  = 1 << 8,   // analysis.md
+        Dashboard = 1 << 9,   // dashboard.md
+        All       = (1 << 10) - 1
+    }
+
+    public static class AnalysisTargetExtensions
+    {
+        /// <summary>
+        /// Expand a requested target set to include all cascade dependencies.
+        /// </summary>
+        public static AnalysisTarget ExpandWithDependencies(this AnalysisTarget requested)
+        {
+            var r = requested;
+            if (r.HasFlag(AnalysisTarget.Analysis))  r |= AnalysisTarget.TopDc;
+            if (r.HasFlag(AnalysisTarget.Dashboard)) r |= AnalysisTarget.TopDc | AnalysisTarget.Status;
+            if (r.HasFlag(AnalysisTarget.TopDc))     r |= AnalysisTarget.Status;
+            if (r.HasFlag(AnalysisTarget.Status))    r |= AnalysisTarget.Dc | AnalysisTarget.Label | AnalysisTarget.Metrics;
+            if (r.HasFlag(AnalysisTarget.Metrics))   r |= AnalysisTarget.Dc;
+            if (r.HasFlag(AnalysisTarget.Label))     r |= AnalysisTarget.Dc | AnalysisTarget.Shaders;
+            if (r.HasFlag(AnalysisTarget.Shaders))   r |= AnalysisTarget.Dc;
+            if (r.HasFlag(AnalysisTarget.Textures))  r |= AnalysisTarget.Dc;
+            if (r.HasFlag(AnalysisTarget.Buffers))   r |= AnalysisTarget.Dc;
+            return r;
+        }
+
+        /// <summary>Parse a -target/-t string to AnalysisTarget (case-insensitive).</summary>
+        public static AnalysisTarget Parse(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return AnalysisTarget.All;
+            return value!.Trim().ToLowerInvariant() switch
+            {
+                "dc"        => AnalysisTarget.Dc,
+                "shaders"   => AnalysisTarget.Shaders,
+                "textures"  => AnalysisTarget.Textures,
+                "buffers"   => AnalysisTarget.Buffers,
+                "label"     => AnalysisTarget.Label,
+                "metrics"   => AnalysisTarget.Metrics,
+                "status"    => AnalysisTarget.Status,
+                "topdc"     => AnalysisTarget.TopDc,
+                "analysis"  => AnalysisTarget.Analysis,
+                "dashboard" => AnalysisTarget.Dashboard,
+                _           => AnalysisTarget.All
+            };
+        }
+    }
+
+    /// <summary>
     /// Analysis Pipeline — 4-step orchestrator:
     ///   Step 1  Collect all DrawCalls (submit1 / cmd1 filtered)
     ///   Step 2  Label each DC (shader-name rules → Category + Detail)
@@ -57,9 +120,13 @@ namespace SnapdragonProfilerCLI.Analysis
             _llm                      = llm;
         }
 
-        /// <summary>Run the 4-step analysis pipeline.</summary>
-        public void RunAnalysis(string sdpPath, string outputDir, uint captureId,
-                                int? cmdBufferFilter = null)
+        /// <summary>
+        /// Run the 4-step analysis pipeline.
+        /// dbPath: absolute path to sdp.db (pre-extracted by SdpFileService.ExtractToAnalysis).
+        /// sessionDir: absolute path to analysisSessionDir (analysis/name/).
+        /// </summary>
+        public void RunAnalysis(string dbPath, string sessionDir, uint captureId,
+                                int? cmdBufferFilter = null, AnalysisTarget target = AnalysisTarget.All)
         {
             try
             {
@@ -67,57 +134,117 @@ namespace SnapdragonProfilerCLI.Analysis
                 PassMode passMode  = GetPassMode();
                 bool onlyReport    = config.GetBool("AnalysisOnlyGenerateReport", false)
                                    || passMode == PassMode.AnalysisOnly;
-                bool skipPassAGen  = passMode == PassMode.AnalysisOnly;  // skip A4/A5/A6 generation
-                bool skipPassB     = passMode == PassMode.StatsOnly;     // skip B1/B2/B3
+                bool skipPassAGen  = passMode == PassMode.AnalysisOnly;
+                bool skipPassB     = passMode == PassMode.StatsOnly;
+                bool noExtract     = config.GetBool("AnalysisNoExtract", false);
                 if (passMode != PassMode.All)
                 {
                     string pmCfg = config.Get("AnalysisPassMode", "all");
                     logger.Info("  \u2139 PassMode=" + passMode + " (AnalysisPassMode=" + pmCfg + ")");
                 }
                 if (onlyReport && passMode == PassMode.AnalysisOnly)
-                    logger.Info("  \u2139 AnalysisOnly — skipping extraction + Pass A generation; using existing JSONs");
-                // ── Setup: locate + open DB ───────────────────────────────────
-                string? dbPath = sdpFileService.FindDatabasePath(sdpPath);
-                if (string.IsNullOrEmpty(dbPath))
-                    throw new Exception("sdp.db not found in .sdp file");
+                    logger.Info("  \u2139 AnalysisOnly - skipping extraction + Pass A generation; using existing JSONs");
 
-                // Create unified DB entry point and run pre-flight validation
-                var db = new SdpDatabase(dbPath!, captureId);
-                logger.Info("Pre-flight: Validating database tables...");
-                db.ValidateForAnalysis(logger);
+                // Fine-grained target flags: expand cascades, compute per-step gates
+                AnalysisTarget effectiveTarget = target.ExpandWithDependencies();
+                bool targetIsAll       = (target == AnalysisTarget.All);
+                bool doExtractShaders  = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Shaders));
+                bool doExtractTextures = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Textures));
+                bool doLabel           = !onlyReport && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Label));
+                bool doMetrics         =                 targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Metrics);
+                bool doExtractMeshes   = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Buffers));
+                if (!targetIsAll)
+                    logger.Info($"  \u2139 Target={target} (effective: {effectiveTarget})");
+                if (noExtract)
+                    logger.Info("  \u2139 --no-extract: physical asset extraction skipped");
 
-                // ── Pre-compute session paths ────────────────────────────────────
-                string sdpName    = System.IO.Path.GetFileNameWithoutExtension(sdpPath);
-                string sessionDir = System.IO.Path.Combine(outputDir, sdpName);
+                // Sub-directory names from config (UI contract)
+                string shadersDirName  = config.Get("Session.ShadersDir",  "shaders");
+                string texturesDirName = config.Get("Session.TexturesDir", "textures");
+                string meshesDirName   = config.Get("Session.MeshesDir",   "meshes");
 
-                // ── Step 1: Collect all DrawCalls ────────────────────────────
-                logger.Info("Step 1: Collecting DrawCalls" +
-                    (cmdBufferFilter.HasValue ? $" (CmdBuffer={cmdBufferFilter})" : "") + "...");
-
-                var report = analysisService.AnalyzeAllDrawCalls(dbPath, captureId, cmdBufferFilter);
-
-                logger.Info($"  → {report.AnalyzedDrawCalls} DrawCalls collected" +
-                    $"  (pipelines={report.Statistics.TotalPipelines}" +
-                    $"  textures={report.Statistics.TotalTextures}" +
-                    $"  shaders={report.Statistics.TotalShaders})");
-
-                // ── Output folder: outputDir/<sdp-name>/snapshot_{captureId}/ ──
+                // Output folder: sessionDir/snapshot_{captureId}/
                 string captureOutDir  = System.IO.Path.Combine(sessionDir, $"snapshot_{captureId}");
                 System.IO.Directory.CreateDirectory(captureOutDir);
                 logger.Info($"  Session folder: {sessionDir}");
                 logger.Info($"  Capture output: {captureOutDir}");
+                string sdpName2      = System.IO.Path.GetFileName(sessionDir);
+                var indexProducts    = new System.Collections.Generic.Dictionary<string, string>();
 
-                // ── Step 1.5: Extract shaders and textures ────────────────────
-                // Shared across ALL snapshots in this session — placed at sessionDir level
-                // so that assets shared between multiple captures are only written once.
-                string shaderBaseDir  = System.IO.Path.Combine(sessionDir, "shaders");
-                string textureBaseDir = System.IO.Path.Combine(sessionDir, "textures");
+                // Stale index warning: compare snapshot_N_index.json mtime vs sdp.db mtime
+                WarnIfIndexStale(captureOutDir, dbPath, captureId, logger);
+
+                // Step 1.5: Extract shaders and textures
+                string shaderBaseDir  = System.IO.Path.Combine(sessionDir, shadersDirName);
+                string textureBaseDir = System.IO.Path.Combine(sessionDir, texturesDirName);
+
+                // ── B-only shortcut ────────────────────────────────────────────────
+                // When target is exclusively Analysis/Dashboard AND dc.json already exists
+                // on disk, skip the full DB pipeline (Steps 1–3.5) and load report from disk.
+                bool isBOnlyRequest = !targetIsAll &&
+                    (target & ~(AnalysisTarget.Analysis | AnalysisTarget.Dashboard)) == AnalysisTarget.None;
+                string dcJsonPath = System.IO.Path.Combine(captureOutDir, "dc.json");
+
+                Models.DrawCallAnalysisReport report;
+                SdpDatabase db = null!;
+
+                if (isBOnlyRequest && System.IO.File.Exists(dcJsonPath))
+                {
+                    logger.Info("Step 1: B-only shortcut — loading report from sub-JSONs...");
+                    var subJsonLoader = new Services.Analysis.SubJsonLoadService(logger);
+                    var loaded = subJsonLoader.LoadFromSubJsons(captureOutDir);
+                    if (loaded == null)
+                    {
+                        logger.Error($"  \u2718 Failed to load sub-JSONs from {captureOutDir}.");
+                        return;
+                    }
+                    report = loaded;
+                    logger.Info($"  \u2192 {report.AnalyzedDrawCalls} DCs loaded from disk");
+                    // Disable all pass-A generation steps (data already on disk)
+                    doExtractShaders  = false;
+                    doExtractTextures = false;
+                    doLabel           = false;
+                    doMetrics         = false;
+                    doExtractMeshes   = false;
+                    skipPassAGen      = true;
+                }
+                else if (isBOnlyRequest && !System.IO.File.Exists(dcJsonPath))
+                {
+                    logger.Error($"Prerequisites missing: dc.json not found in {captureOutDir}");
+                    logger.Error("  Run full pipeline first:       sdpcli analysis <sdp>");
+                    logger.Error("  Or run base extraction target: sdpcli analysis <sdp> -s N -t dc");
+                    return;
+                }
+                else
+                {
+                    // Normal path: DB query
+                    if (!System.IO.File.Exists(dbPath))
+                        throw new Exception($"sdp.db not found at: {dbPath}");
+
+                    db = new SdpDatabase(dbPath, captureId);
+                    logger.Info("Pre-flight: Validating database tables...");
+                    db.ValidateForAnalysis(logger);
+
+                    // Step 1: Collect all DrawCalls
+                    logger.Info("Step 1: Collecting DrawCalls" +
+                        (cmdBufferFilter.HasValue ? $" (CmdBuffer={cmdBufferFilter})" : "") + "...");
+
+                    report = analysisService.AnalyzeAllDrawCalls(dbPath, captureId, cmdBufferFilter);
+
+                    logger.Info($"  \u2192 {report.AnalyzedDrawCalls} DrawCalls collected" +
+                        $"  (pipelines={report.Statistics.TotalPipelines}" +
+                        $"  textures={report.Statistics.TotalTextures}" +
+                        $"  shaders={report.Statistics.TotalShaders})");
+                }
+
 
                 if (onlyReport)
                 {
                     logger.Info("\nStep 1.5: Extraction — SKIPPED (AnalysisOnlyGenerateReport=true)");
-                }
-                else
+                }                else if (!doExtractShaders && !doExtractTextures)
+                {
+                    logger.Info("\nStep 1.5: Extraction \u2014 SKIPPED (not required by target)");
+                }                else
                 {
                     logger.Info("\nStep 1.5: Extracting shaders and textures in parallel (shared, per-file dedup)...");
                     System.IO.Directory.CreateDirectory(shaderBaseDir);
@@ -198,6 +325,10 @@ namespace SnapdragonProfilerCLI.Analysis
                     logger.Info("\nStep 2: Labeling — SKIPPED, reloading from existing analysis output...");
                     LoadLabelsFromAnalysis(report, captureOutDir);
                 }
+                else if (!doLabel)
+                {
+                    logger.Info("\nStep 2: Labeling — SKIPPED (not required by target)");
+                }
                 else
                 {
                 logger.Info("\nStep 2: Labeling DrawCalls (parallel)...");
@@ -222,6 +353,12 @@ namespace SnapdragonProfilerCLI.Analysis
                 }
 
                 // ── Step 3: Join GPU performance metrics from DB ───────────────────────
+                if (!doMetrics)
+                {
+                    logger.Info("\nStep 3: Metrics join — SKIPPED (not required by target)");
+                }
+                else
+                {
                 logger.Info("\nStep 3: Joining GPU metrics from DB...");
 
                 var metrics = metricsService.LoadMetrics(dbPath!, captureId);
@@ -239,15 +376,18 @@ namespace SnapdragonProfilerCLI.Analysis
                 {
                     logger.Info("  ⚠ DrawCallMetrics table absent or empty — run 'SDPCLI import' first.");
                 }
+                } // end metrics
 
                 // ── Step 3.5: Extract meshes for all non-compute DrawCalls ────
-                string meshBaseDir = System.IO.Path.Combine(sessionDir, "meshes");
+                string meshBaseDir = System.IO.Path.Combine(sessionDir, meshesDirName);
 
                 if (onlyReport)
                 {
                     logger.Info("\nStep 3.5: Mesh extraction — SKIPPED (AnalysisOnlyGenerateReport=true)");
-                }
-                else
+                }                else if (!doExtractMeshes)
+                {
+                    logger.Info("\nStep 3.5: Mesh extraction \u2014 SKIPPED (not required by target)");
+                }                else
                 {
                     logger.Info("\nStep 3.5: Extracting meshes for non-compute DrawCalls...");
                     System.IO.Directory.CreateDirectory(meshBaseDir);
@@ -285,32 +425,67 @@ namespace SnapdragonProfilerCLI.Analysis
                     }
                 }
 
-                // Export labeled + metrics JSON to captureOutDir
-                // JSON annotates each DC with the shader, texture, and mesh file paths it references.
+                // Export sub-JSON files (schema 3.0) — gated per AnalysisTarget flag
                 if (!skipPassAGen)
                 {
-                string labeledJson = reportService.GenerateLabeledMetricsJson(
-                    report, captureOutDir, shaderBaseDir, textureBaseDir, meshBaseDir, captureId, sdpName);
-                logger.Info($"  → JSON: {labeledJson}");
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Dc))
+                    {
+                        string p = reportService.WriteDcJson(report, captureOutDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 dc.json: {p}");
+                        indexProducts["dc"] = p;
+                    }
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Shaders))
+                    {
+                        string p = reportService.WriteShadersJson(report, captureOutDir, shaderBaseDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 shaders.json: {p}");
+                        indexProducts["shaders"] = p;
+                    }
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Textures))
+                    {
+                        string p = reportService.WriteTexturesJson(report, captureOutDir, textureBaseDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 textures.json: {p}");
+                        indexProducts["textures"] = p;
+                    }
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Buffers))
+                    {
+                        string p = reportService.WriteBuffersJson(report, captureOutDir, meshBaseDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 buffers.json: {p}");
+                        indexProducts["buffers"] = p;
+                    }
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Label))
+                    {
+                        string p = reportService.WriteLabelJson(report, captureOutDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 label.json: {p}");
+                        indexProducts["label"] = p;
+                    }
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Metrics))
+                    {
+                        string p = reportService.WriteMetricsJson(report, captureOutDir, captureId, sdpName2);
+                        logger.Info($"  \u2192 metrics.json: {p}");
+                        indexProducts["metrics"] = p;
+                    }
                 }
                 else
                 {
-                    logger.Info("  → raw.json: SKIPPED (AnalysisOnly mode, using existing)");
+                    logger.Info("  \u2192 Sub-JSON: SKIPPED (AnalysisOnly mode, using existing)");
                 }
 
                 // ── Step A5: Status JSON (percentile stats, no LLM) ───────────
                 Services.Analysis.StatusJsonResult? statusResult = null;
-                if (!skipPassAGen)
+                if (!skipPassAGen && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Status)))
                 {
                 logger.Info("\nStep A5: Generating status.json...");
                 try
                 {
                     var statusService = new Services.Analysis.StatusJsonService();
                     statusResult = statusService.GenerateStatusJson(
-                        report, captureOutDir, captureId, sdpName);
-                    logger.Info($"  → Status: {statusResult.FilePath}");
+                        report, captureOutDir, captureId, sdpName2);
+                    logger.Info($"  \u2192 Status: {statusResult.FilePath}");
+                    indexProducts["status"] = statusResult.FilePath;
 
-                    // ── Step A6: TopDC JSON (attribution rule engine) ─────────
+                    // ── Step A6: TopDC JSON (attribution rule engine) ─────
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.TopDc))
+                    {
                     logger.Info("\nStep A6: Generating topdc.json...");
                     try
                     {
@@ -322,7 +497,7 @@ namespace SnapdragonProfilerCLI.Analysis
                         if (!System.IO.File.Exists(rulesPath))
                         {
                             rulesPath = System.IO.Path.Combine(
-                                System.IO.Path.GetDirectoryName(sdpPath) ?? ".", "..", "analysis", "attribution_rules.json");
+                                System.IO.Path.GetDirectoryName(dbPath) ?? ".", "..", "analysis", "attribution_rules.json");
                         }
 
                         if (!System.IO.File.Exists(rulesPath))
@@ -336,29 +511,39 @@ namespace SnapdragonProfilerCLI.Analysis
                             var topDcService = new Services.Analysis.TopDcJsonService(engine);
                             string topDcPath = topDcService.GenerateTopDcJson(
                                 report, statusResult!.GlobalPercentiles, statusResult!.CategoryStatsMap,
-                                captureOutDir, shaderBaseDir, meshBaseDir, captureId, sdpName);
-                            logger.Info($"  → TopDC: {topDcPath}");
+                                captureOutDir, shaderBaseDir, meshBaseDir, captureId, sdpName2);
+                            logger.Info($"  \u2192 TopDC: {topDcPath}");
+                            indexProducts["topdc"] = topDcPath;
                         }
                     }
                     catch (Exception topEx)
                     {
                         logger.Info($"  ⚠ topdc.json generation failed: {topEx.Message}");
                     }
+                    } // end if TopDc
                 }
                 catch (Exception statusEx)
                 {
-                    logger.Info($"  ⚠ status.json generation failed: {statusEx.Message}");
+                    logger.Info($"  \u26a0 status.json generation failed: {statusEx.Message}");
                 }
-                } // end if (!skipPassAGen)
+                } // end if (!skipPassAGen && Status)
+                else if (!skipPassAGen)
+                {
+                    logger.Info("\nStep A5+A6: SKIPPED (not required by target)");
+                }
                 else
                 {
                     logger.Info("\nStep A5+A6: SKIPPED (AnalysisOnly mode, using existing status.json / topdc.json)");
                 }
 
                 // ── Step B1: Per-DC LLM content analysis ──────────────────────
-                if (skipPassB)
+                bool runPassB = !skipPassB &&
+                    (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Analysis)
+                                 || effectiveTarget.HasFlag(AnalysisTarget.Dashboard));
+                if (!runPassB)
                 {
-                    logger.Info("\nStep B1/B2/B3: SKIPPED (StatsOnly mode)");
+                    logger.Info("\nStep B1/B2/B3: SKIPPED" +
+                        (skipPassB ? " (StatsOnly mode)" : " (not required by target)"));
                 }
                 else
                 {
@@ -370,39 +555,55 @@ namespace SnapdragonProfilerCLI.Analysis
                     logger.Info($"  → Analyzed {b1Count} DCs (cached to per_dc_content/)");
 
                     // ── Step B2: Per-category attribution report (LLM) ────────
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Analysis))
+                    {
                     logger.Info("\nStep B2: Attribution analysis report...");
                     try
                     {
                         var attrService = new Services.Analysis.AttributionReportService(
                             config, logger, _llm, contentService);
                         string analysisMd = attrService.GenerateAnalysisMd(
-                            report, captureOutDir, captureId, sdpName);
+                            report, captureOutDir, captureId, sdpName2);
                         logger.Info($"  → Analysis: {analysisMd}");
+                        indexProducts["analysis"] = analysisMd;
                     }
                     catch (Exception b2Ex)
                     {
                         logger.Info($"  ⚠ Step B2 failed: {b2Ex.Message}");
                     }
+                    } // end if Analysis
 
                     // ── Step B3: Dashboard (rule-based charts + tables) ───────
+                    if (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Dashboard))
+                    {
                     logger.Info("\nStep B3: Dashboard generation...");
                     try
                     {
                         var dashService = new Services.Analysis.DashboardGenerationService(config, logger);
                         string dashMd   = dashService.GenerateDashboard(
-                            report, captureOutDir, captureId, sdpName);
+                            report, captureOutDir, captureId, sdpName2);
                         logger.Info($"  → Dashboard: {dashMd}");
+                        indexProducts["dashboard"] = dashMd;
                     }
                     catch (Exception b3Ex)
                     {
                         logger.Info($"  ⚠ Step B3 failed: {b3Ex.Message}");
                     }
+                    } // end if Dashboard
                 }
                 catch (Exception b1Ex)
                 {
                     logger.Info($"  ⚠ Step B1 failed: {b1Ex.Message}");
                 }
-                } // end if (!skipPassB)
+                } // end if (runPassB)
+
+                // ── Index manifest ────────────────────────────────────────────
+                if (indexProducts.Count > 0)
+                {
+                    string indexPath = reportService.WriteIndexJson(
+                        captureOutDir, captureId, sdpName2, indexProducts);
+                    logger.Info($"  \u2192 Index: {indexPath}");
+                }
 
                 // ── Step 4: Summary report (DEPRECATED — pending removal) ──────
                 // logger.Info("\nStep 4: Generating summary...");
@@ -431,6 +632,32 @@ namespace SnapdragonProfilerCLI.Analysis
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Warns when snapshot_N_index.json is older than sdp.db, meaning a new capture
+        /// has been imported but analysis has not been re-run.
+        /// </summary>
+        private static void WarnIfIndexStale(string captureOutDir, string dbPath, uint captureId, ILogger logger)
+        {
+            try
+            {
+                string indexPath = System.IO.Path.Combine(captureOutDir,
+                    captureId > 0 ? $"snapshot_{captureId}_index.json" : "snapshot_index.json");
+                if (!System.IO.File.Exists(indexPath)) return;
+                if (!System.IO.File.Exists(dbPath))    return;
+
+                var indexMtime = System.IO.File.GetLastWriteTimeUtc(indexPath);
+                var dbMtime    = System.IO.File.GetLastWriteTimeUtc(dbPath);
+
+                if (dbMtime > indexMtime)
+                {
+                    var age = dbMtime - indexMtime;
+                    logger.Info($"  \u26a0 Index is stale: sdp.db is {(int)age.TotalMinutes} min newer than snapshot_{captureId}_index.json");
+                    logger.Info("    Re-run without -t to regenerate all outputs.");
+                }
+            }
+            catch { /* Non-critical; suppress all IO/parse errors */ }
+        }
 
         private PassMode GetPassMode()
         {

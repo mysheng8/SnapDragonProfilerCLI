@@ -21,7 +21,7 @@ namespace SnapdragonProfilerCLI
                 string exeDir      = AppDomain.CurrentDomain.BaseDirectory;
                 string logDir      = Path.Combine(exeDir, ".log");
                 string logFilePath = Path.Combine(logDir, "consolelog.txt");
-                bool   debugMode   = Array.Exists(args, a => a.ToLower() == "--debug");
+                bool   debugMode   = Array.Exists(args, a => a == "--debug");
 
                 AppLogger.Initialize(logFilePath, debugMode);
                 AppLogger.Banner("Snapdragon Profiler CLI");
@@ -30,74 +30,98 @@ namespace SnapdragonProfilerCLI
                 Console.WriteLine("=== Snapdragon Profiler Command Line Tool ===");
                 Console.WriteLine($"Log: {logFilePath}\n");
 
-                // 解析命令行参数
-                string? modeArg = null;
-                string? sdpArg = null;
+                // ── New CLI parser ─────────────────────────────────────────────
+                // Positional subcommands: snapshot | analysis | (none = interactive)
+                // First non-flag token = subcommand; second = positional arg (sdp path / pkg\activity)
+                string? subcommand    = null;   // "snapshot" | "analysis" | null
+                string? positionalArg = null;   // analysis→sdpPath; snapshot→packageActivity
+                string? outputArg     = null;
+                string? snapshotIdArg = null;   // -snapshot/-s <N>
+                string? targetArg     = null;   // -target/-t <value>
+                bool    noExtract     = false;  // --no-extract
+
+                // Legacy flags kept for backward compatibility (deprecated)
+                string? passModeArg   = null;
                 string? resourceIdArg = null;
-                string? outputArg = null;
-                string? captureIdArg = null;
+                string? captureIdArg  = null;
                 string? drawCallIdArg = null;
                 string? pipelineIdArg = null;
                 string? maxDrawCallsArg = null;
-                string? passModeArg = null;
-                
+
                 for (int i = 0; i < args.Length; i++)
                 {
-                    if (args[i].ToLower() == "-mode" && i + 1 < args.Length)
+                    string a = args[i];
+
+                    if (a == "--debug") { debugMode = true; continue; }
+
+                    // Positional (non-flag) tokens
+                    if (!a.StartsWith("-"))
                     {
-                        modeArg = args[i + 1];
-                        i++;
+                        if (subcommand    == null) { subcommand    = a.ToLower(); continue; }
+                        if (positionalArg == null) { positionalArg = a;          continue; }
+                        continue;
                     }
-                    else if (args[i].ToLower() == "-sdp" && i + 1 < args.Length)
+
+                    string lo = a.ToLower();
+
+                    // New flags
+                    if ((lo == "-snapshot" || lo == "-s") && i + 1 < args.Length)
+                        { snapshotIdArg = args[++i]; continue; }
+                    if ((lo == "-target" || lo == "-t") && i + 1 < args.Length)
+                        { targetArg = args[++i]; continue; }
+                    if ((lo == "-output" || lo == "-o") && i + 1 < args.Length)
+                        { outputArg = args[++i]; continue; }
+                    if (a == "--no-extract")
+                        { noExtract = true; continue; }
+
+                    // Legacy flags (deprecated, kept for transition)
+                    if (lo == "-mode" && i + 1 < args.Length)
                     {
-                        sdpArg = args[i + 1];
-                        i++;
+                        string legacyMode = args[++i].ToLower();
+                        if (legacyMode == "analysis" || legacyMode == "analyze" || legacyMode == "2")
+                            subcommand = "analysis";
+                        else if (legacyMode == "capture" || legacyMode == "snapshot" || legacyMode == "1")
+                            subcommand = "snapshot";
+                        Console.WriteLine($"[DEPRECATED] -mode flag is deprecated; use positional subcommand instead.");
+                        continue;
                     }
-                    else if (args[i].ToLower() == "-resource-id" && i + 1 < args.Length)
+                    if (lo == "-sdp" && i + 1 < args.Length)
                     {
-                        resourceIdArg = args[i + 1];
-                        i++;
+                        positionalArg = args[++i];
+                        if (subcommand == null) subcommand = "analysis";
+                        Console.WriteLine($"[DEPRECATED] -sdp flag is deprecated; use: sdpcli analysis <sdp_path>");
+                        continue;
                     }
-                    else if (args[i].ToLower() == "-output" && i + 1 < args.Length)
+                    if (lo == "-pass-mode" && i + 1 < args.Length)
                     {
-                        outputArg = args[i + 1];
-                        i++;
+                        passModeArg = args[++i];
+                        Console.WriteLine($"[DEPRECATED] -pass-mode is deprecated; use -target/-t instead (e.g. -t status or -t analysis)");
+                        continue;
                     }
-                    else if (args[i].ToLower() == "-capture-id" && i + 1 < args.Length)
-                    {
-                        captureIdArg = args[i + 1];
-                        i++;
-                    }
-                    else if (args[i].ToLower() == "-drawcall-id" && i + 1 < args.Length)
-                    {
-                        drawCallIdArg = args[i + 1];
-                        i++;
-                    }
-                    else if (args[i].ToLower() == "-pipeline-id" && i + 1 < args.Length)
-                    {
-                        pipelineIdArg = args[i + 1];
-                        i++;
-                    }
-                    else if (args[i].ToLower() == "-max-drawcalls" && i + 1 < args.Length)
-                    {
-                        maxDrawCallsArg = args[i + 1];
-                        i++;
-                    }
-                    else if (args[i].ToLower() == "-pass-mode" && i + 1 < args.Length)
-                    {
-                        passModeArg = args[i + 1];
-                        i++;
-                    }
-                    else if (args[i].ToLower() == "-stats-only")
+                    if (lo == "-stats-only")
                     {
                         passModeArg = "stats";
+                        Console.WriteLine("[DEPRECATED] -stats-only is deprecated; use: -t status");
+                        continue;
                     }
-                    else if (args[i].ToLower() == "-analysis-only")
+                    if (lo == "-analysis-only")
                     {
                         passModeArg = "analysis";
+                        Console.WriteLine("[DEPRECATED] -analysis-only is deprecated; use: -t analysis");
+                        continue;
                     }
+                    if ((lo == "-resource-id") && i + 1 < args.Length)
+                        { resourceIdArg = args[++i]; continue; }
+                    if ((lo == "-capture-id") && i + 1 < args.Length)
+                        { captureIdArg = args[++i]; continue; }
+                    if ((lo == "-drawcall-id") && i + 1 < args.Length)
+                        { drawCallIdArg = args[++i]; continue; }
+                    if ((lo == "-pipeline-id") && i + 1 < args.Length)
+                        { pipelineIdArg = args[++i]; continue; }
+                    if ((lo == "-max-drawcalls") && i + 1 < args.Length)
+                        { maxDrawCallsArg = args[++i]; continue; }
                 }
-                
+
                 // 环境准备: 设置DLL搜索路径
                 SetupEnvironment();
 
@@ -106,7 +130,19 @@ namespace SnapdragonProfilerCLI
 
                 // 运行应用程序业务逻辑
                 Application app = new Application(testPath);
-                app.Run(modeArg, sdpArg, resourceIdArg, outputArg, captureIdArg, drawCallIdArg, pipelineIdArg, maxDrawCallsArg, passModeArg);
+                app.Run(
+                    subcommand:     subcommand,
+                    positionalArg:  positionalArg,
+                    outputArg:      outputArg,
+                    snapshotIdArg:  snapshotIdArg,
+                    targetArg:      targetArg,
+                    noExtract:      noExtract,
+                    passModeArg:    passModeArg,
+                    resourceIdArg:  resourceIdArg,
+                    captureIdArg:   captureIdArg,
+                    drawCallIdArg:  drawCallIdArg,
+                    pipelineIdArg:  pipelineIdArg,
+                    maxDrawCallsArg: maxDrawCallsArg);
                 
                 // Output before closing DualWriter
                 Console.WriteLine("\nPress any key to exit...");
