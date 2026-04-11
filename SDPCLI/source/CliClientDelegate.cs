@@ -476,25 +476,33 @@ namespace SnapdragonProfilerCLI
                 if (proc != null && proc.IsValid())
                 {
                     ProcessProperties props = proc.GetProperties();
+                    string processName = props.name;
                     ProcessState state = props.state;
-                    
-                    AppLogger.Info("Delegate", $"[Process State Changed] PID={pid}, State={state}");
-                    
-                    // CRITICAL: Check if process will be kept or removed
-                    if (state != ProcessState.ProcessRunning)
+
+                    // Non-target processes: demote to DEBUG and return early
+                    bool isTarget = !string.IsNullOrEmpty(_targetPackageName)
+                                    && processName.Contains(_targetPackageName);
+                    if (!isTarget)
                     {
-                        AppLogger.Warn("Delegate", $"  Process state is {state} (not ProcessRunning) → GUI would REMOVE this process");
+                        AppLogger.Debug("Delegate", $"[Process State Changed] PID={pid} Name={processName}, State={state}");
+                        return;
                     }
-                    
-                    // Check linked metrics
+
+                    // Target process: full INFO logging
+                    AppLogger.Info("Delegate", $"[Process State Changed] PID={pid} Name={processName}, State={state}");
+
+                    if (state != ProcessState.ProcessRunning)
+                        AppLogger.Warn("Delegate", $"  Process state is {state} (not ProcessRunning) → will be removed");
+
+                    // Check linked metrics (target process only)
                     try
                     {
                         MetricIDList linkedMetrics = proc.GetLinkedMetrics();
                         AppLogger.Debug("Delegate", $"  Linked Metrics: {linkedMetrics.Count}");
-                        
+
                         if (linkedMetrics.Count == 0)
                         {
-                            AppLogger.Warn("Delegate", "  [No linked metrics] Process hasn't used GPU APIs yet — GUI would skip it");
+                            AppLogger.Warn("Delegate", "  [No linked metrics] Target process hasn't used GPU APIs yet");
                         }
                         else
                         {

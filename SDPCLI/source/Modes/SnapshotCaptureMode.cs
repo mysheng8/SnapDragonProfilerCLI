@@ -218,7 +218,7 @@ namespace SnapdragonProfilerCLI.Modes
                         // Tell delegate which captureId's API data (BufferID=2) to wait for
                         ((CliClientDelegate)_clientDelegate!).SetExpectedCaptureId(captureId);
 
-                        WaitForDataProcessed();
+                        var waitResult = WaitForDataProcessed(out double waitDataSeconds);
 
                         string? sessionPath = _sdpClient?.SessionManager?.GetSessionPath();
 
@@ -253,6 +253,28 @@ namespace SnapdragonProfilerCLI.Modes
                         // 置 null 确保下次 ENTER 创建新的 Capture 对象，SDK 分配新 captureId
                         _currentCapture = null;
 
+                        // C3: Write capture_result.json before adding to entries
+                        string captureResultStatus = (dsbBuffer != null) ? "complete" : "empty";
+                        string captureResultReason = (waitResult == CaptureDataWaitResult.Timeout) ? "timeout_180s" : "ok";
+                        try
+                        {
+                            string captureResultPath = Path.Combine(captureSubDir, "capture_result.json");
+                            string captureResultJson = $"{{\n" +
+                                $"  \"captureId\": {captureId},\n" +
+                                $"  \"timestamp\": \"{DateTime.Now:yyyy-MM-ddTHH:mm:ss}\",\n" +
+                                $"  \"status\": \"{captureResultStatus}\",\n" +
+                                $"  \"reason\": \"{captureResultReason}\",\n" +
+                                $"  \"waitDataSeconds\": {waitDataSeconds:F1},\n" +
+                                $"  \"dsbBufferAvailable\": {(dsbBuffer != null ? "true" : "false")}\n" +
+                                $"}}";
+                            File.WriteAllText(captureResultPath, captureResultJson);
+                            _log.Info($"[Capture] capture_result.json written: status={captureResultStatus}, waitDataSeconds={waitDataSeconds:F1}s");
+                        }
+                        catch (Exception jsonEx)
+                        {
+                            _log.Warning($"[Capture] Could not write capture_result.json: {jsonEx.Message}");
+                        }
+
                         _captureEntries.Add(new SessionSummaryService.CaptureEntry(captureId, captureSubDir));
 
                         // Wait for ImportCapture's device-side replay to finish (bufferID=1).
@@ -266,8 +288,11 @@ namespace SnapdragonProfilerCLI.Modes
                         else
                             _log.Info("[Capture] ImportCapture device replay confirmed complete");
 
-                        _log.Info($"[Capture] === Capture Complete === data saved to: {captureSubDir}");
-                        Console.WriteLine("\n=== Capture Complete ===");
+                        // C2: Distinguish complete vs empty capture status
+                        string captureStatus = (dsbBuffer != null) ? "COMPLETE" : "EMPTY";
+                        string captureReason = (waitResult == CaptureDataWaitResult.Timeout) ? " (180s timeout)" : "";
+                        _log.Info($"[Capture] === Capture {captureStatus}{captureReason} === data saved to: {captureSubDir}");
+                        Console.WriteLine($"\n=== Capture {captureStatus}{captureReason} ===");
                         Console.WriteLine("Data saved to: " + captureSubDir);
 
                         Console.WriteLine("Press ENTER to capture another frame, or ESC to exit");
@@ -477,24 +502,33 @@ namespace SnapdragonProfilerCLI.Modes
             catch (Exception ex) { Console.WriteLine(" Could not verify PID: " + ex.Message); }
         }
 
-        private void WaitForDataProcessed()
+        private enum CaptureDataWaitResult { Ready, Timeout }
+
+        private CaptureDataWaitResult WaitForDataProcessed(out double elapsedSeconds)
         {
             // Wait until the expected capture's API data (BufferID=2) arrives.
             // The event is set exclusively by OnDataProcessed when category=0x84000000,
             // bufferID=2, captureID=expected — so no polling needed.
             Console.WriteLine("\nWaiting for snapshot API data (BufferID=2)...");
             _log.Info("[WaitForData] Waiting for snapshot API data (BufferID=2) — timeout=180s");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             bool ready = _dataProcessedEvent.WaitOne(TimeSpan.FromSeconds(180));
+            sw.Stop();
+            elapsedSeconds = sw.Elapsed.TotalSeconds;
+
             if (!ready)
             {
-                _log.Warning("[WaitForData] API data not received within 180 seconds — replay may produce empty results.");
+                _log.Warning($"[WaitForData] API data not received within 180s — replay may produce empty results.");
                 Console.WriteLine(" WARNING: API data not received within 180 seconds — replay may produce empty results.");
+                return CaptureDataWaitResult.Timeout;
             }
+
+            if (elapsedSeconds > 30.0)
+                _log.Warning($"[WaitForData] API data took {elapsedSeconds:F1}s (>30s threshold — device under pressure)");
             else
-            {
-                _log.Info("[WaitForData] API data ready — proceeding to replay.");
-                Console.WriteLine("API data ready — proceeding to replay.");
-            }
+                _log.Info($"[WaitForData] API data ready in {elapsedSeconds:F1}s");
+            Console.WriteLine($"API data ready in {elapsedSeconds:F1}s — proceeding to replay.");
+            return CaptureDataWaitResult.Ready;
         }
 
         private BinaryDataPair? ReplayAndGetBuffers(uint captureId, ManualResetEvent importCompleteEvent)
