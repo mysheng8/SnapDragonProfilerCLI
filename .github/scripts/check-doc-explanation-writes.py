@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deny edit/create operations unless every target path is under docs/explanation/
+Deny edit/create operations unless every target path is under docs/explanations/
 and ends with .md.
 
 Intended use:
@@ -42,7 +42,7 @@ logging.basicConfig(
 log = logging.getLogger("check-doc-explanation-writes")
 
 
-ALLOWED_PREFIX = "docs/explanation/"
+ALLOWED_PREFIX = "docs/explanations/"
 ALLOWED_SUFFIX = ".md"
 # Include both VS Code internal camelCase names and agent-declared snake_case names.
 EDIT_TOOLS = {
@@ -128,12 +128,12 @@ def deny_response(reason: str, bad_paths: Iterable[str]) -> dict:
             "permissionDecision": "deny",
             "permissionDecisionReason": reason,
             "additionalContext": (
-                "Doc Explanation agent may edit only markdown files under docs/explanation/. "
+                "Doc Explanation agent may edit only markdown files under docs/explanations/. "
                 f"Blocked paths: {', '.join(bad_paths)}"
             ),
         },
         "systemMessage": (
-            "Blocked edit: only docs/explanation/*.md files are writable for Doc Explanation agent."
+            "Blocked edit: only docs/explanations/*.md files are writable for Doc Explanation agent."
         ),
     }
 
@@ -145,7 +145,7 @@ def ask_response(reason: str) -> dict:
             "hookEventName": "PreToolUse",
             "permissionDecision": "ask",
             "permissionDecisionReason": reason,
-            "additionalContext": "This hook allows edits only under docs/explanation/*.md.",
+            "additionalContext": "This hook allows edits only under docs/explanations/*.md.",
         },
     }
 
@@ -186,12 +186,12 @@ def main() -> int:
     if bad_paths:
         log.warning("DENY: disallowed paths -> %s", bad_paths)
         print(json.dumps(deny_response(
-            "Only docs/explanation/*.md files may be edited in this protected flow.",
+            "Only docs/explanations/*.md files may be edited in this protected flow.",
             bad_paths,
         )))
         return 0
 
-    log.debug("ALLOW: all paths under docs/explanation/*.md")
+    log.debug("ALLOW: all paths under docs/explanations/*.md")
     print(json.dumps(allow_response()))
     return 0
 

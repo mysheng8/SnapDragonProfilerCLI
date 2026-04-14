@@ -1,10 +1,10 @@
 ---
-name: code-index-sync
+name: index-sync
 tools: [search, read/readFile, edit/createFile, edit/editFiles]
 description: Automatically maintain and synchronize the repository code index by resolving modules, detecting existing entries, and applying safe updates.
 ---
 
-# Code Index Sync Workflow
+# Index Sync Workflow
 
 This workflow maintains the repository code index system in a **continuous and safe state**.
 

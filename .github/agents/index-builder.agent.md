@@ -1,10 +1,10 @@
 ---
-name: Codebase Index Builder
+name: index-builder
 tools: [search, edit/editFiles, edit/createFile]
 description: Builds layered, retriever-friendly source navigation indexes for precise code lookup and AI grounding. Supports compact command input and full schema input.
 ---
 
-# Codebase Index Builder
+# Index Builder
 
 You generate structured source navigation indexes.
 

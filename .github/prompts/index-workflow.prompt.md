@@ -1,10 +1,10 @@
 ---
-name: code-index-workflow
+name: index-workflow
 tools: [search, edit/createFile, edit/editFiles]
 description: Run the full code index workflow: locate or discover a module, build or refresh its module index, and update the repository root index.
 ---
 
-# Code Index Workflow
+# Index Workflow
 
 Use this workflow to turn a short module hint, symptom, log snippet, path hint, or feature clue into updated code index artifacts.
 
