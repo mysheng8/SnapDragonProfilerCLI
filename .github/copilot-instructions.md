@@ -1,300 +1,397 @@
-# Snapdragon Repository Instructions
+---
+name: AI Driven Development Guidelines
+---
 
-This repository uses a context-driven workflow for AI-assisted investigation, planning, and implementation.
+# AI Driven Development Guidelines
 
-These instructions apply to all AI work in this repository.
+This document defines a **generic, context-driven workflow system** for AI-assisted development.
+
+It is NOT project-specific.
+
+It can be applied to any codebase using:
+
+- context documents
+- code index
+- structured agents
+- controlled execution
+- documentation generation
 
 ---
 
-## 1. Main Goal
+# 🧠 Core Philosophy
 
-AI should help with:
+AI is not a single actor.
 
-- investigation
-- planning
-- implementation
-- documentation cleanup
-- context maintenance
+AI is a **system of roles**:
 
-AI must preserve repository knowledge quality and avoid producing stale or misleading documentation.
+- Understand (Investigator)
+- Decide (Planner via Investigator)
+- Execute (Executor)
+- Structure (Index Sync)
+- Explain and document (Doc Explanation)
 
----
+All actions must be:
 
-## 2. Repository Focus
-
-This repository is a command-line toolkit around Snapdragon Profiler, mainly for:
-
-- headless frame capture
-- offline analysis
-- data export
-- Android profiling support
-- report processing and tooling automation
-
-Main code and runtime entry points are under:
-
-- `SDPCLI/`
-- `dll/`
-- `docs/`
-- `profiler/`
+- context-aware
+- bounded
+- verifiable
+- traceable
 
 ---
 
-## 3. Source of Truth Order
-
-When reasoning about the repository, always prefer sources in this order:
-
-1. current code
-2. current config and scripts
-3. decisions
-4. plans
-5. implementations
-6. findings
-7. old chat-style notes
-
-Historical AI notes are not the source of truth if they conflict with the current repository state.
-
----
-
-## 4. Required Reading Order
-
-Before making code changes, design suggestions, or documentation updates, AI should read context in this order when relevant:
-
-1. `README.md`
-2. `docs/context/INDEX.md` if it exists
-3. repository/module index files such as `/INDEX.md` or `docs/index/INDEX.md` if they exist
-4. relevant context docs
-5. relevant code, config, scripts, and tests
-
-Do not scan the whole repository blindly when an index exists.
-
-If index files do not exist, use directory structure and local module READMEs to narrow scope first.
-
----
-
-## 5. Context Roles
-
-Use context documents according to their role:
-
-- **findings**
-  - investigation results
-  - evidence
-  - root cause analysis
-  - observations
-
-- **plans**
-  - intended solution
-  - implementation approach
-  - task breakdown
-  - expected changes
-
-- **implementations**
-  - actual execution record
-  - code changes made
-  - validation result
-  - deviations from plan
-  - remaining issues
-
-- **decisions**
-  - confirmed architectural rules
-  - constraints
-  - approved direction
-  - stable repository rules
-
-Do not treat findings or plans as ground truth when implementation or current code says otherwise.
-
----
-
-## 6. Mandatory Workflow
-
-For non-trivial work, follow this workflow:
-
-`finding -> plan -> implementation -> validation -> documentation update`
-
-Expected behavior:
-
-- investigate first when facts are unclear
-- produce or update a plan before large changes
-- record actual implementation results after execution
-- validate against current code or actual outputs
-- update durable documentation only after validation
-
-Do not jump directly from vague intent to code changes without checking context.
-
----
-
-## 7. Documentation Governance
-
-This repository contains AI-generated and AI-assisted documents.
-AI must keep documentation useful, current, and aligned with the actual repository state.
-
-### 7.1 Document Types
-
-Typical context document types:
-
-- findings
-- plans
-- implementations
-- decisions
-
-### 7.2 Documentation Rules
-
-AI should:
-
-- keep stable knowledge
-- remove or archive stale low-value notes
-- avoid duplicating the same knowledge across many files
-- prefer concise summaries over long raw dumps
-- promote only verified knowledge into durable docs
-
-AI should not:
-
-- copy temporary notes into README
-- keep outdated plans as if they were current
-- preserve incorrect implementation descriptions
-- treat speculative notes as facts
-
-### 7.3 README Policy
-
-`README.md` should remain lightweight.
-
-README should mainly contain:
-
-- project purpose
-- repository structure
-- quick start
-- important entry points
-- links to deeper docs
-
-README should not become a dump for investigation history, temporary plans, or verbose implementation logs.
-
-### 7.4 Promotion Policy
-
-Only promote content into durable docs when it is:
-
-- still correct
-- reusable
-- relevant to current design or current status
-- verified against current code, config, scripts, or validated outputs
-
-If knowledge is partially outdated, correct it before promoting it.
-
----
-
-## 8. Validation Rules
-
-Before claiming something is true, AI should verify it against one or more of:
-
-- current source code
-- current config files
-- current scripts
-- runtime entry points
-- actual command usage
-- generated outputs
-- build or execution results when available
-
-If confidence is low:
-
-- say so explicitly
-- mark it as needing review
-- avoid writing it as confirmed truth
-
-Never present an old plan as the current implementation state without checking.
-
----
-
-## 9. Implementation Record Rules
-
-When making meaningful changes, AI should create or update an implementation record when this repository uses implementation logs.
-
-Recommended location:
+# 🔁 System Workflow (High Level)
 
 ```text
-docs/context/implementations/
+Investigate → Plan → Execute → Validate → Document → Sync Index
 ```
 
-Recommended content:
+No step should be skipped.
 
-- what changed
-- why it changed
-- what was validated
-- where actual behavior differs from the original plan
-- remaining issues
-- next steps
+---
 
-Recommended naming:
+# 📦 Context System
+
+Persistent operational knowledge is stored under:
 
 ```text
-IMPL-YYYY-MM-DD-topic.md
+docs/context/
+├── INDEX.md
+├── findings/
+├── plans/
+├── implementations/
+├── decisions/
 ```
 
-If the repository later adopts another naming rule, follow the repository rule.
+These documents track:
+
+- what was observed
+- what was planned
+- what was actually implemented
+- what rules are now stable
 
 ---
 
-## 10. Code Change Behavior
+## Context Priority (CRITICAL)
 
-Before changing code, AI should:
+When interpreting system state, prefer:
 
-- identify the target module first
-- understand the relevant entry points
-- avoid unrelated edits
-- keep changes small and scoped
-- preserve existing conventions unless there is a clear reason to improve them
+```text
+decisions > implementations > plans > findings > code
+```
 
-For implementation work:
+Code is NOT always the only truth.
 
-- prefer minimal safe changes
-- explain assumptions
-- avoid fake completeness
-- do not claim validation that did not happen
+Code may be:
+
+- WIP
+- partially migrated
+- outdated
+- inconsistent with the latest plan
+- inconsistent with actual implementation history
 
 ---
 
-## 11. Language and Writing Style
+# 🧭 Code Index System
 
-Use clear technical writing.
+Structural routing knowledge is defined by:
 
-Preferred style:
+```text
+/INDEX.md
+docs/index/modules/*.md
+```
+
+Purpose:
+
+- define module boundaries
+- reduce search space
+- standardize navigation
+- prevent blind repository scanning
+
+---
+
+# 📝 Documentation System
+
+Project-facing explanation documents are stored under:
+
+```text
+docs/explanations/
+```
+
+These are different from `docs/context/`.
+
+- `docs/context/` = internal reasoning history and execution state
+- `docs/explanations/` = durable project documentation for understanding systems and pipelines
+
+This distinction is critical.
+
+---
+
+# 🧠 Agents Overview
+
+## 1. Investigator Agent
+
+Role:
+
+- analyze problems
+- gather evidence
+- generate findings
+- evolve plans
+
+Allowed writes:
+
+- docs/context/findings/
+- docs/context/plans/
+- docs/context/INDEX.md (if repository uses indexed context)
+
+Constraints:
+
+- NO code modification
+- NO implementation file edits
+
+Key behavior:
+
+- must read README + context first
+- must reuse existing knowledge
+- must read implementations when relevant
+- must not assume code is fully correct
+
+---
+
+## 2. Executor Agent
+
+Role:
+
+- implement approved plans
+- modify code safely
+- validate changes via build/test
+- write implementation records
+
+Allowed writes:
+
+- source files within approved scope
+- docs/context/implementations/
+- related stable docs only when explicitly required
+
+Constraints:
+
+- MUST resolve context first
+- MUST follow plan
+- MUST validate via build or equivalent repository-defined validation
+
+Key rules:
+
+- max 3 iterations by default
+- no scope expansion
+- no blind fixes
+- must record implementation outcome
+
+---
+
+## 3. Index Sync Workflow
+
+Role:
+
+- maintain code index consistency
+
+Capabilities:
+
+- detect existing modules
+- create or update module index
+- update root INDEX.md
+- detect boundary drift
+
+Critical rules:
+
+- NO automatic rename
+- NO automatic merge
+- NO automatic split
+- minimal updates only
+
+Purpose:
+
+- keep code routing current
+- keep module boundaries visible
+- reduce future search cost
+
+---
+
+## 4. Doc Explanation Agent
+
+Role:
+
+- write durable explanation documents for pipelines, systems, and architecture
+- convert code understanding into reusable project documentation
+
+This agent is a key part of repository documentation quality.
+
+### Allowed writes
+
+Doc Explanation is **DOCUMENT-ONLY**.
+
+It may write ONLY to:
+
+```text
+docs/explanations/
+```
+
+Optionally, it may touch `docs/context/` only for indexing or linking if the repository explicitly uses that pattern, but its primary and intended output location is:
+
+```text
+docs/explanations/
+```
+
+### Forbidden writes
+
+It MUST NEVER:
+
+- modify source code
+- modify build/config/scripts/tests
+- write implementation code
+- write explanation docs into arbitrary folders
+
+### Required behavior
+
+Before writing explanation docs, it MUST read:
+
+1. `docs/context/INDEX.md`
+2. relevant implementations
+3. relevant plans
+4. relevant findings
+5. `/INDEX.md`
+6. relevant module docs
+7. source code anchors
+
+This is required because source code may contain:
+
+- dirty code
+- stale code
+- WIP code
+- partially migrated code
+
+Therefore Doc Explanation must not trust source code blindly.
+
+### Required interpretation model
+
+When code and context disagree:
+
+- explain both
+- mark what appears current
+- mark what appears stale, WIP, or conflicting
+- avoid presenting old code paths as current design truth
+
+### Required output qualities
+
+Every explanation doc should clearly include:
+
+- module or subsystem scope
+- routing path or ModuleKey when available
+- code evidence
+- context-aware interpretation
+- code-vs-context reality check
+- debug/investigation tips
+
+Doc Explanation is not just summarization.
+
+It is **project documentation generation grounded in code, context, and index**.
+
+---
+
+# 🚨 Mandatory Reading Order
+
+Before any meaningful action:
+
+1. README.md
+2. docs/context/INDEX.md
+3. /INDEX.md
+4. relevant module index docs
+5. relevant context docs
+6. code/config/scripts/tests as needed
+
+Do not scan the full repository blindly when indexes exist.
+
+---
+
+# 🚨 Rules for All Agents
+
+## DO
+
+- use context first
+- verify with code
+- keep scope minimal
+- document important outcomes
+- prefer updating over duplicating
+- distinguish between context docs and explanation docs
+
+## DO NOT
+
+- modify code without plan
+- trust code blindly
+- ignore index layers
+- create duplicate modules
+- mix temporary notes into stable docs
+- write project documentation into context folders unless explicitly intended
+
+---
+
+# 🔍 Validation Rules
+
+Before claiming correctness:
+
+- check code
+- check context
+- check actual behavior if available
+- check implementation records when repository uses them
+
+If uncertain:
+
+- state uncertainty
+- do not assert as fact
+
+---
+
+# 🧾 Documentation Rules
+
+Good docs are:
 
 - concise
 - structured
-- explicit about uncertainty
-- grounded in repository evidence
+- verified
+- reusable
+- clearly scoped
 
 Avoid:
 
-- vague summaries
-- inflated wording
-- pretending assumptions are verified
-- mixing temporary notes with durable documentation
-
-When updating docs, favor practical descriptions over abstract process language.
+- stale notes
+- duplicated content
+- speculative conclusions
+- mixing execution logs into explanation docs
 
 ---
 
-## 12. Failure Modes to Avoid
+# ⚙️ Default Behavior
 
-Avoid these common mistakes:
+If unclear:
 
-- guessing code state without checking code
-- reusing stale findings as current truth
-- writing plans that are disconnected from actual implementation
-- updating README with temporary or noisy details
-- losing implementation history after changes
-- changing code before locating the correct module and context
-
----
-
-## 13. Practical Default Behavior
-
-If unsure what to do:
-
-1. read README
-2. locate relevant module or context docs
-3. inspect current code/config/scripts
+1. read context
+2. resolve module
+3. inspect code
 4. summarize current state
-5. identify stale or conflicting notes
-6. update plan or implementation record
-7. only then update durable docs
+5. identify gaps or stale logic
+6. update findings/plan/implementation as appropriate
+7. write durable explanation docs only into `docs/explanations/`
 
-The repository should evolve toward fewer but more reliable documents.
+---
+
+# 🎯 Goal
+
+Build a system where:
+
+- AI decisions are traceable
+- knowledge is persistent
+- code understanding improves over time
+- documentation remains useful
+- errors are contained, not amplified
+
+This is not generic automation.
+
+This is **controlled intelligence augmentation for software development and documentation**.

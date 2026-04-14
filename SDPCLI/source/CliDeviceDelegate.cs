@@ -1,4 +1,5 @@
 using System;
+using SnapdragonProfilerCLI.Logging;
 
 namespace SnapdragonProfilerCLI
 {
@@ -9,17 +10,17 @@ namespace SnapdragonProfilerCLI
     {
         public override void OnDeviceConnected(string name)
         {
-            Console.WriteLine($"[DeviceDelegate] Device connected: {name}");
+            AppLogger.Info("DeviceDelegate", $"Device connected: {name}");
         }
 
         public override void OnDeviceDisconnected(string name)
         {
-            Console.WriteLine($"[DeviceDelegate] Device disconnected: {name}");
+            AppLogger.Info("DeviceDelegate", $"Device disconnected: {name}");
         }
 
         public override void OnDeviceStateChanged(string name)
         {
-            Console.WriteLine($"[DeviceDelegate] Device state changed: {name}");
+            AppLogger.Info("DeviceDelegate", $"Device state changed: {name}");
         }
     }
 }

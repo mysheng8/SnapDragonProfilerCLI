@@ -349,6 +349,19 @@ When searching for context:
 
 ---
 
+### PLAN-2026-04-11-http-server-mode.md
+- topic: HTTP Server Mode — REST API for launch / capture / analysis with async job management
+- status: implemented (see IMPL-2026-04-14-http-server-mode.md)
+
+### IMPL-2026-04-14-http-server-mode.md
+- topic: HTTP Server Mode — implementation record
+- status: completed (build 0 errors)
+- summary: 21 new files under SDPCLI/source/Server/ + Modes/ServerMode.cs; AnalysisPipeline.cs completedTargets; Main.cs/Application.cs server subcommand
+  - session
+  - device-session
+
+---
+
 ### PLAN-2026-04-03-3d-model-extraction.md
 - topic: 3D model extraction from vertex/index buffers + analysis pipeline mesh integration
 - based_on:

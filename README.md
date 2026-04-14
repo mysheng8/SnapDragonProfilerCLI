@@ -8,20 +8,28 @@ Snapdragon Profiler 的命令行辅助工具集，用于无头模式抓帧、离
 
 ```
 snapdragon/
-├── SDPCLI/                  # 主工具（C# CLI）— see SDPCLI/README.md
-│   ├── source/              # 源代码
-│   ├── config.ini           # 运行配置（PackageName、RenderingAPI 等）
-│   └── android/             # Profiler 服务端 APK（arm64 / armeabi-v7a）
-│
-├── project/                 # 运行时数据（WorkingDirectory/project/）
-│   ├── sdp/                 # snapshot 会话输出（<timestamp>/）
-│   └── analysis/            # analysis 分析输出（<sdp_basename>/snapshot_N/）
-│
-├── dll/                     # SDPCore / QGLPlugin 原生 DLL 及 C# wrapper
-├── docs/                    # 文档与分析记录
-├── meminfo_poll.ps1         # 手机内存实时监控脚本
-├── monitor_crash.ps1        # logcat 崩溃监控脚本
-└── SDPCLI.bat               # 快速启动入口
+├── SDPCLI/                  # 主工具（C# CLI）
+│   ├── source/
+│   │   ├── Modes/           # InteractiveMode, AnalysisMode, SnapshotCaptureMode, ServerMode
+│   │   ├── Services/        # Capture & Analysis 业务逻辑服务层
+│   │   ├── Server/          # HTTP API server（ServerMode 使用）
+│   │   ├── Tools/           # TextureExtractor, ShaderExtractor
+│   │   ├── Logging/         # AppLogger（双通道：文件 + 控制台）
+│   │   ├── Data/            # SdpDatabase, CSV/DB 导入
+│   │   ├── Models/          # VulkanSnapshotModel
+│   │   ├── Main.cs          # CLI 入口，参数解析
+│   │   ├── Application.cs   # subcommand 路由
+│   │   ├── SDPClient.cs     # SDPCore SDK 封装
+│   │   └── Config.cs        # config.ini 读取
+│   ├── config.ini           # 运行时配置
+│   └── SDPCLI.sln
+├── dll/                     # Native DLL + C# wrapper 引用
+│   └── plugins/             # QGLPlugin, SDPClientFramework 等预编译 DLL
+├── docs/
+│   ├── context/             # AI 上下文（findings / plans / implementations）
+│   └── index/               # 代码模块索引
+├── project/                 # 运行时工作目录（sdp输出、analysis结果）
+└── SDPCLI.bat               # 启动入口
 ```
 
 ---
@@ -29,68 +37,213 @@ snapdragon/
 ## 🚀 Quick Start
 
 ```powershell
-# build
 dotnet build SDPCLI
-
-# run (interactive mode)
 .\SDPCLI.bat
 ```
 
-更多用法、配置项、模式说明见：
+---
 
-👉 `SDPCLI/README.md`
+## 🖥️ Server Mode
+
+```powershell
+sdpcli server --port 5000
+```
+
+启动本地 HTTP REST API 服务（localhost only），支持脚本 / CI 远程控制抓帧和分析。详见 [SDPCLI/README.md](SDPCLI/README.md#server-模式http-api)。
 
 ---
 
-## 🧩 Main Components
+# 🧠 AI Workflow & Project Rules (CRITICAL)
 
-### SDPCLI
-核心 CLI 工具，负责：
+This repository uses a **context-driven AI system**.
 
-- 控制 Snapdragon Profiler
-- 抓取 frame 数据（.sdp）
-- 解析和导出分析结果
-- 调用 plugins 进行数据处理
-
-### dll
-包含：
-
-- `SDPCore.dll`
-- `QGLPlugin.dll`
-- 对应 C# wrapper
-
-用于与 Snapdragon Profiler SDK 交互。
-
-
-### scripts
-
-- `meminfo_poll.ps1` → 实时监控设备内存
-- `monitor_crash.ps1` → logcat 崩溃检测
+All AI actions MUST follow these rules.
 
 ---
 
-## 📚 Documentation
+## 🔁 Core Workflow
 
-- `SDPCLI/README.md`  
-  → CLI 使用说明与配置
+```
+Investigate → Plan → Execute → Validate → Document → Index Sync
+```
 
-- `docs/`  
-  → 分析文档、实验记录、AI 辅助输出
-
-- `docs/context/`  
-  → 结构化的分析发现、计划、决策等
-
-- `docs/index/`
-  → 代码索引与模块概览
-
-（注：AI workflow 和文档治理规则见 `.copilot-instructions.md`）
+No step should be skipped.
 
 ---
 
-## 🧭 Notes
+## 📦 Context System (Source of Evolution)
 
-- 本仓库同时用于：
-  - 工具开发
-  - profiling 分析
-  - 自动化实验
-- 文档可能包含 AI 辅助生成内容，请以代码和实际结果为准，谨慎参考分析结论。
+```
+docs/context/
+├── INDEX.md
+├── findings/
+├── plans/
+├── implementations/
+├── decisions/
+```
+
+### Priority (CRITICAL)
+
+```
+decisions > implementations > plans > findings > code
+```
+
+Code is NOT always truth.
+
+---
+
+## 🧭 Code Index System (Routing Layer)
+
+```
+/INDEX.md
+docs/index/modules/*.md
+```
+
+Purpose:
+
+- module routing
+- scope control
+- avoid blind search
+
+---
+
+## 📝 Documentation System (Project Knowledge)
+
+```
+docs/explanations/
+```
+
+This is the **ONLY place for durable project explanations**.
+
+### 🚨 CRITICAL RULE
+
+- explanations MUST NOT be written into `docs/context/`
+- `docs/context/` = internal state
+- `docs/explanations/` = project knowledge
+
+---
+
+## 🤖 Agent Responsibilities
+
+### Investigator
+
+- analyze
+- write findings / plans
+- NEVER modify code
+
+---
+
+### Executor
+
+- implement approved plan
+- MUST validate (build/test)
+- MUST write:
+
+```
+docs/context/implementations/
+```
+
+---
+
+### Index Sync
+
+- maintain module index
+- detect drift
+- update `/INDEX.md`
+
+Rules:
+
+- NO rename
+- NO merge
+- NO split
+
+---
+
+### Doc Explanation (CRITICAL ROLE)
+
+This agent is responsible for **project documentation generation**.
+
+#### Allowed:
+
+```
+docs/explanations/
+```
+
+#### Forbidden:
+
+- code changes
+- writing into random folders
+
+#### MUST:
+
+1. read context (implementations first)
+2. read index
+3. then read code
+
+#### MUST NOT:
+
+- trust code blindly
+- ignore WIP / outdated logic
+
+#### MUST output:
+
+- ModuleKey
+- SourceScope
+- code evidence
+- context vs code analysis
+
+---
+
+## 🚨 Mandatory Reading Order
+
+Before ANY work:
+
+1. README.md
+2. docs/context/INDEX.md
+3. /INDEX.md
+4. module docs
+5. context docs
+6. code
+
+---
+
+## 🚨 Global Rules
+
+### DO
+
+- use context first
+- validate with code
+- keep scope minimal
+- update instead of duplicating
+
+### DO NOT
+
+- modify code without plan
+- trust code blindly
+- ignore index
+- mix explanation into context
+
+---
+
+## 🔍 Validation
+
+Before claiming correctness:
+
+- check code
+- check implementations
+- check real output if possible
+
+If unsure:
+
+- say it clearly
+
+---
+
+## 🎯 Goal
+
+Build a system where:
+
+- knowledge is persistent
+- behavior is controlled
+- code understanding improves over time
+- documentation stays reliable

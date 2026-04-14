@@ -33,11 +33,13 @@ namespace SnapdragonProfilerCLI
                 // ── New CLI parser ─────────────────────────────────────────────
                 // Positional subcommands: snapshot | analysis | (none = interactive)
                 // First non-flag token = subcommand; second = positional arg (sdp path / pkg\activity)
-                string? subcommand    = null;   // "snapshot" | "analysis" | null
+                string? subcommand    = null;   // "snapshot" | "analysis" | "server" | null
                 string? positionalArg = null;   // analysis→sdpPath; snapshot→packageActivity
                 string? outputArg     = null;
                 string? snapshotIdArg = null;   // -snapshot/-s <N>
                 string? targetArg     = null;   // -target/-t <value>
+                string? portArg       = null;   // --port <N> for server mode
+                string? hostArg       = null;   // --host <h> (reserved)
                 bool    noExtract     = false;  // --no-extract
 
                 // Legacy flags kept for backward compatibility (deprecated)
@@ -73,6 +75,10 @@ namespace SnapdragonProfilerCLI
                         { outputArg = args[++i]; continue; }
                     if (a == "--no-extract")
                         { noExtract = true; continue; }
+                    if ((lo == "--port") && i + 1 < args.Length)
+                        { portArg = args[++i]; continue; }
+                    if ((lo == "--host") && i + 1 < args.Length)
+                        { hostArg = args[++i]; continue; }
 
                     // Legacy flags (deprecated, kept for transition)
                     if (lo == "-mode" && i + 1 < args.Length)
@@ -137,6 +143,8 @@ namespace SnapdragonProfilerCLI
                     snapshotIdArg:  snapshotIdArg,
                     targetArg:      targetArg,
                     noExtract:      noExtract,
+                    portArg:        portArg,
+                    hostArg:        hostArg,
                     passModeArg:    passModeArg,
                     resourceIdArg:  resourceIdArg,
                     captureIdArg:   captureIdArg,

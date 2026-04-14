@@ -126,7 +126,8 @@ namespace SnapdragonProfilerCLI.Analysis
         /// sessionDir: absolute path to analysisSessionDir (analysis/name/).
         /// </summary>
         public void RunAnalysis(string dbPath, string sessionDir, uint captureId,
-                                int? cmdBufferFilter = null, AnalysisTarget target = AnalysisTarget.All)
+                                int? cmdBufferFilter = null, AnalysisTarget target = AnalysisTarget.All,
+                                AnalysisTarget completedTargets = AnalysisTarget.None)
         {
             try
             {
@@ -150,7 +151,9 @@ namespace SnapdragonProfilerCLI.Analysis
                 bool targetIsAll       = (target == AnalysisTarget.All);
                 bool doExtractShaders  = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Shaders));
                 bool doExtractTextures = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Textures));
-                bool doLabel           = !onlyReport && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Label));
+                bool doLabel           = !onlyReport
+                                       && !completedTargets.HasFlag(AnalysisTarget.Label)
+                                       && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Label));
                 bool doMetrics         =                 targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Metrics);
                 bool doExtractMeshes   = !onlyReport && !noExtract && (targetIsAll || effectiveTarget.HasFlag(AnalysisTarget.Buffers));
                 if (!targetIsAll)
@@ -324,6 +327,13 @@ namespace SnapdragonProfilerCLI.Analysis
                 {
                     logger.Info("\nStep 2: Labeling — SKIPPED, reloading from existing analysis output...");
                     LoadLabelsFromAnalysis(report, captureOutDir);
+                }
+                else if (!doLabel && completedTargets.HasFlag(AnalysisTarget.Label)
+                         && effectiveTarget.HasFlag(AnalysisTarget.Label))
+                {
+                    // Label was completed in a prior phase — load from label.json instead of re-running
+                    logger.Info("\nStep 2: Labeling — SKIPPED (already completed), loading from label.json...");
+                    LoadLabelsFromLabelJson(report, captureOutDir);
                 }
                 else if (!doLabel)
                 {
@@ -949,6 +959,73 @@ namespace SnapdragonProfilerCLI.Analysis
                 }
             }
             logger.Info($"  → Restored labels for {csvMatched} / {report.DrawCallResults.Count} DCs");
+        }
+
+        /// <summary>
+        /// Load labels from label.json written by a prior pipeline phase.
+        /// Format: root["draw_calls"][]["dc_id"] + ["label"].category/detail/...
+        /// Used by AnalysisJobRunner when Label was completed as a separate phase and
+        /// a subsequent phase (e.g. Status) needs label data in-memory.
+        /// </summary>
+        private void LoadLabelsFromLabelJson(DrawCallAnalysisReport report, string captureOutDir)
+        {
+            // Find label.json (or snapshot_*_label.json)
+            string? path = null;
+            if (System.IO.Directory.Exists(captureOutDir))
+            {
+                string direct = System.IO.Path.Combine(captureOutDir, "label.json");
+                if (System.IO.File.Exists(direct))
+                    path = direct;
+                else
+                    path = System.IO.Directory.GetFiles(captureOutDir, "*label.json")
+                        .OrderByDescending(f => System.IO.File.GetLastWriteTime(f))
+                        .FirstOrDefault();
+            }
+
+            if (path == null)
+            {
+                logger.Warning("  ⚠ label.json not found — DC labels will be empty for downstream steps");
+                return;
+            }
+
+            logger.Info($"  Loading labels from: {System.IO.Path.GetFileName(path)}");
+            try
+            {
+                string text = System.IO.File.ReadAllText(path, System.Text.Encoding.UTF8);
+                var root    = Newtonsoft.Json.Linq.JObject.Parse(text);
+                var arr     = (root["draw_calls"] ?? root["drawcalls"]) as Newtonsoft.Json.Linq.JArray;
+                if (arr == null) { logger.Warning("  ⚠ draw_calls array missing in label.json"); return; }
+
+                int matched = 0;
+                foreach (var token in arr)
+                {
+                    string? dcId = token["dc_id"]?.ToString();
+                    if (string.IsNullOrEmpty(dcId)) continue;
+
+                    var lNode = token["label"];
+                    if (lNode == null) continue;
+
+                    var label = new Models.DrawCallLabel
+                    {
+                        Category    = lNode["category"]?.ToString()    ?? "Scene",
+                        Subcategory = lNode["subcategory"]?.ToString() ?? "",
+                        Detail      = lNode["detail"]?.ToString()      ?? "",
+                        ReasonTags  = (lNode["reason_tags"] as Newtonsoft.Json.Linq.JArray)
+                                        ?.Select(t => t.ToString()).ToArray()
+                                      ?? Array.Empty<string>(),
+                        Confidence  = lNode["confidence"]?.ToObject<float>() ?? 0.70f,
+                        LabelSource = lNode["label_source"]?.ToString()  ?? "rule",
+                    };
+
+                    var dc = report.DrawCallResults.FirstOrDefault(d => d.DrawCallNumber == dcId);
+                    if (dc != null) { dc.Label = label; matched++; }
+                }
+                logger.Info($"  → Restored labels for {matched} / {report.DrawCallResults.Count} DCs");
+            }
+            catch (Exception ex)
+            {
+                logger.Warning($"  ⚠ Failed to parse label.json: {ex.Message}");
+            }
         }
     }
 }

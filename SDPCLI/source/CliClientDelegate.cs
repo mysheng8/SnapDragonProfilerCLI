@@ -58,17 +58,17 @@ namespace SnapdragonProfilerCLI
         
         public CliClientDelegate() : base()
         {
-            Console.WriteLine("[CliClientDelegate] Constructor called");
-            Console.WriteLine($"[CliClientDelegate] Type: {this.GetType().Name}");
-            Console.WriteLine($"[CliClientDelegate] Base type: {this.GetType().BaseType?.Name}");
+            AppLogger.Debug("Delegate", "Constructor called");
+            AppLogger.Debug("Delegate", $"Type: {this.GetType().Name}");
+            AppLogger.Debug("Delegate", $"Base type: {this.GetType().BaseType?.Name}");
             
             // Verify that our override methods are visible
             var methods = this.GetType().GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
             var overrideMethods =methods.Where(m => m.Name.StartsWith("OnClient") || m.Name.StartsWith("OnProcess")).ToList();
-            Console.WriteLine($"[CliClientDelegate] Found {overrideMethods.Count} callback methods:");
+            AppLogger.Debug("Delegate", $"Found {overrideMethods.Count} callback methods:");
             foreach (var method in overrideMethods.Take(5))
             {
-                Console.WriteLine($"  - {method.Name} (DeclaringType: {method.DeclaringType?.Name})");
+                AppLogger.Debug("Delegate", $"  - {method.Name} (DeclaringType: {method.DeclaringType?.Name})");
             }
         }
 

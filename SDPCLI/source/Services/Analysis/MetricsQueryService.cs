@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.Globalization;
 using System.Linq;
 using SnapdragonProfilerCLI.Data;
+using SnapdragonProfilerCLI.Logging;
 using SnapdragonProfilerCLI.Models;
 
 namespace SnapdragonProfilerCLI.Services.Analysis
@@ -117,12 +118,12 @@ namespace SnapdragonProfilerCLI.Services.Analysis
                     };
                 }
 
-                Console.WriteLine($"  MetricsQueryService: {result.Count} DCs matched " +
+                AppLogger.Debug("MetricsQuery", $"{result.Count} DCs matched " +
                     $"({apiIdToDrawIdx.Count} params / {drawIdxToMetrics.Count} metric draw IDs)");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  ⚠ MetricsQueryService.LoadMetrics failed: {ex.Message}");
+                AppLogger.Warn("MetricsQuery", $"LoadMetrics failed: {ex.Message}");
             }
             return result;
         }

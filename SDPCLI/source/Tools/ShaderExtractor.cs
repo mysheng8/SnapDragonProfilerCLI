@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using SnapdragonProfilerCLI.Data;
+using SnapdragonProfilerCLI.Logging;
 
 namespace SnapdragonProfilerCLI.Tools
 {
@@ -55,16 +56,16 @@ namespace SnapdragonProfilerCLI.Tools
         /// </summary>
         public bool ExtractShadersForDrawCall(string drawCallId, string outputDir)
         {
-            Console.WriteLine($"\n=== Extracting Shaders for DrawCall: {drawCallId} ===");
+            AppLogger.Info("Shader", $"=== Extracting Shaders for DrawCall: {drawCallId} ===");
 
             uint? pipelineId = _db.ResolvePipelineFromDrawCall(drawCallId);
             if (pipelineId == null)
             {
-                Console.WriteLine($"  ✗ Could not find pipeline for drawcall '{drawCallId}'");
+                AppLogger.Warn("Shader", $"Could not find pipeline for drawcall '{drawCallId}'");
                 return false;
             }
 
-            Console.WriteLine($"  Pipeline ID: {pipelineId}");
+            AppLogger.Info("Shader", $"Pipeline ID: {pipelineId}");
             return ExtractShadersForPipeline(pipelineId.Value, outputDir);
         }
 
@@ -73,7 +74,7 @@ namespace SnapdragonProfilerCLI.Tools
         /// </summary>
         public bool ExtractShadersForPipeline(uint pipelineId, string outputDir)
         {
-            Console.WriteLine($"\n=== Extracting Shaders for Pipeline: {pipelineId} ===");
+            AppLogger.Info("Shader", $"=== Extracting Shaders for Pipeline: {pipelineId} ===");
             return ExtractShadersForPipelineInternal(pipelineId, outputDir);
         }
 
@@ -82,11 +83,11 @@ namespace SnapdragonProfilerCLI.Tools
             var stages = _db.GetShaderStages(pipelineId);
             if (stages.Count == 0)
             {
-                Console.WriteLine($"  ✗ No shader stages found for pipeline {pipelineId}");
+                AppLogger.Warn("Shader", $"No shader stages found for pipeline {pipelineId}");
                 return false;
             }
 
-            Console.WriteLine($"  Found {stages.Count} shader stage(s):");
+            AppLogger.Info("Shader", $"Found {stages.Count} shader stage(s):");
 
             Directory.CreateDirectory(outputDir);
             bool allOk = true;
@@ -94,7 +95,7 @@ namespace SnapdragonProfilerCLI.Tools
             foreach (var stage in stages)
             {
                 string stageName = GetStageName(stage.StageType);
-                Console.WriteLine($"\n  [{stageName.ToUpper()}] ModuleID={stage.ShaderModuleID}, Entry='{stage.EntryPoint}'");
+                AppLogger.Debug("Shader", $"[{stageName.ToUpper()}] ModuleID={stage.ShaderModuleID}, Entry='{stage.EntryPoint}'");
 
                 string baseName = $"pipeline_{pipelineId}_{stageName}";
                 bool ok = true;
@@ -124,11 +125,11 @@ namespace SnapdragonProfilerCLI.Tools
             byte[]? spirv = _db.ReadSpirvBytes(shaderModuleId);
             if (spirv == null || spirv.Length == 0)
             {
-                Console.WriteLine($"    ⚠ No SPIR-V data in ByteBuffers for module {shaderModuleId}");
+                AppLogger.Warn("Shader", $"No SPIR-V data in ByteBuffers for module {shaderModuleId}");
                 return false;
             }
             File.WriteAllBytes(outputPath, spirv);
-            Console.WriteLine($"    ✓ SPIR-V: {outputPath} ({spirv.Length:N0} bytes)");
+            AppLogger.Info("Shader", $"SPIR-V: {outputPath} ({spirv.Length:N0} bytes)");
             return true;
         }
 
@@ -137,11 +138,11 @@ namespace SnapdragonProfilerCLI.Tools
             string? text = _db.ReadShaderDisasm(pipelineId, stageType);
             if (text == null)
             {
-                Console.WriteLine($"    ⚠ No disassembly text available for stage {GetStageName(stageType).ToUpper()}");
+                AppLogger.Warn("Shader", $"No disassembly text available for stage {GetStageName(stageType).ToUpper()}");
                 return true; // Not fatal
             }
             File.WriteAllText(outputPath, text, System.Text.Encoding.UTF8);
-            Console.WriteLine($"    ✓ GLSL/Disasm: {outputPath} ({text.Length:N0} chars)");
+            AppLogger.Info("Shader", $"GLSL/Disasm: {outputPath} ({text.Length:N0} chars)");
             return true;
         }
 
@@ -187,7 +188,7 @@ namespace SnapdragonProfilerCLI.Tools
                 using var proc = System.Diagnostics.Process.Start(psi);
                 if (proc == null)
                 {
-                    Console.WriteLine($"    ✗ {label}: Failed to start spirv-cross");
+                    AppLogger.Warn("Shader", $"{label}: Failed to start spirv-cross");
                     return;
                 }
 
@@ -197,17 +198,17 @@ namespace SnapdragonProfilerCLI.Tools
                 if (proc.ExitCode == 0 && File.Exists(outputPath))
                 {
                     long size = new FileInfo(outputPath).Length;
-                    Console.WriteLine($"    ✓ {label}: {outputPath} ({size:N0} chars)");
+                    AppLogger.Info("Shader", $"{label}: {outputPath} ({size:N0} chars)");
                 }
                 else
                 {
                     string msg = stderr.Trim().Replace("\n", " ");
-                    Console.WriteLine($"    ✗ {label}: spirv-cross failed (exit {proc.ExitCode}){(msg.Length > 0 ? ": " + msg : "")}");
+                    AppLogger.Warn("Shader", $"{label}: spirv-cross failed (exit {proc.ExitCode}){(msg.Length > 0 ? ": " + msg : "")}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"    ✗ {label}: {ex.Message}");
+                AppLogger.Warn("Shader", $"{label}: {ex.Message}");
             }
         }
 
@@ -225,19 +226,19 @@ namespace SnapdragonProfilerCLI.Tools
         /// </summary>
         public void ListPipelines(int maxRows = 30)
         {
-            Console.WriteLine($"\n=== Pipelines in capture (captureID={_db.CaptureId}) ===");
-            Console.WriteLine($"{"PipelineID",-14} {"LayoutID",-12} {"RenderPass",-12}");
-            Console.WriteLine(new string('-', 42));
+            AppLogger.Info("Shader", $"=== Pipelines in capture (captureID={_db.CaptureId}) ===");
+            AppLogger.Info("Shader", $"{"PipelineID",-14} {"LayoutID",-12} {"RenderPass",-12}");
+            AppLogger.Info("Shader", new string('-', 42));
 
             var pipelines = _db.ListPipelines(maxRows);
             int idx = 1;
             foreach (var (resourceID, layoutID, renderPass) in pipelines)
             {
-                Console.WriteLine($"{resourceID,-14} {layoutID,-12} {renderPass,-12}  DrawCall ~{idx}");
+                AppLogger.Info("Shader", $"{resourceID,-14} {layoutID,-12} {renderPass,-12}  DrawCall ~{idx}");
                 idx++;
             }
 
-            Console.WriteLine($"\nTip: use -drawcall-id <N> or -pipeline-id <ID> to extract shaders.");
+            AppLogger.Info("Shader", "Tip: use -drawcall-id <N> or -pipeline-id <ID> to extract shaders.");
         }
     }
 }

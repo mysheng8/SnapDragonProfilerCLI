@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SnapdragonProfilerCLI.Logging;
 
 namespace SnapdragonProfilerCLI
 {
@@ -43,7 +44,7 @@ namespace SnapdragonProfilerCLI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Failed to load config from {path}: {ex.Message}");
+                AppLogger.Warn("Config", $"Failed to load config from {path}: {ex.Message}");
             }
         }
 

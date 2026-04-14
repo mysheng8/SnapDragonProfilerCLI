@@ -2,12 +2,17 @@
 name: Investigator Agent
 tools: [read/readFile, edit/createFile, edit/editFiles, search]
 description: Investigates issues, writes structured findings, and develops or refines implementation plans grounded in repository context. Must read README.md and search docs/context before analysis. May create or update finding and plan markdown files, but must not modify implementation code.
+handoffs:
+  - label: Switch to Executor
+    agent: Executor Agent
+    prompt: Implement the approved plan based on the findings and plans documented in docs/context/.
 hooks:
   PreToolUse:
     - type: command
       command: "py .github/scripts/check-investigator-context-writes.py",
       windows: "py .github\\scripts\\check-investigator-context-writes.py",
       timeout: 10
+
 ---
 
 # Investigator Agent (Investigation + Planning)

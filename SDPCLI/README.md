@@ -1,10 +1,10 @@
 # Snapdragon Profiler Command Line Tool
 
 **无头模式的 Snapdragon Profiler CLI 工具**，实现 GUI 的核心功能，支持：
-- **Capture 模式**：连接设备，截取 Vulkan 帧，导出 .sdp 文件
-- **Analysis 模式**：离线分析 .sdp 文件，查询 DrawCall、Shader、Texture 等数据
-- **Texture Extraction 模式**：从 .sdp 文件中提取纹理并导出为 PNG
-- **Shader Extraction 模式**：从 .sdp 文件中提取 GLSL/SPIR-V Shader 代码
+- **snapshot 模式**：连接设备，截取 Vulkan 帧，导出 .sdp 文件（包含 DrawCall CSV、数据库、截图）
+- **analysis 模式**：离线分析 .sdp 文件，查询 DrawCall、Shader、Texture 等数据，生成分析报告
+- **server 模式**：启动 HTTP API 服务，提供 REST 接口供自动化调用
+- **交互模式**：无参数启动时显示菜单选择模式
 
 ---
 
@@ -30,25 +30,22 @@ dotnet build SDPCLI
 
 ### 运行模式
 
-#### **模式 1：snapshot（设备抓帧）**
-连接手机，启动 app，截取 Vulkan 帧：
+#### **snapshot 模式（设备抓帧）**
+
+连接手机，启动 app，截取 Vulkan 帧，自动导出 CSV + DB + 截图：
 
 ```powershell
-cd SDPCLI\bin\Debug\net472
-
-# 交互模式（进入菜单）
+# 交互模式（显示菜单）
 SDPCLI.exe
 
-# 直接抓帧（指定包名\活动）
-SDPCLI.exe snapshot com.your.app\ActivityName -c
+# 直接指定包名
+SDPCLI.exe snapshot com.your.app\ActivityName
 
-# 只启动不抓帧
-SDPCLI.exe snapshot com.your.app\ActivityName -l
-```
+# 指定输出目录
+SDPCLI.exe snapshot com.your.app\ActivityName -o D:\captures
 
-或者通过项目根目录的批处理脚本：
-```batch
-SDPCLI.bat
+# 跳过资产提取，只写 JSON/CSV
+SDPCLI.exe snapshot com.your.app\ActivityName --no-extract
 ```
 
 配置文件 `config.ini`（可省略，交互模式会提示输入）：
@@ -60,62 +57,219 @@ CaptureType=4     # 4=Snapshot
 AutoStartCapture=false
 ```
 
-**输出位置**：`<ProjectDir>/sdp/<timestamp>/`（默认 `<WorkingDirectory>/project/sdp/`）
+**输出位置**：`<SdpDir>/<timestamp>/snapshot_N/`（默认 `<WorkingDirectory>/project/sdp/`）
 
-#### **模式 2：analysis（离线分析）**
-分析已有的 .sdp 文件，生成 DrawCall 报告：
+#### **analysis 模式（离线分析）**
+
+分析已有的 .sdp 文件，生成 DrawCall 报告、属性标注 JSON：
 
 ```powershell
-# 分析所有 snapshot（路径相对于 SdpDir）
-SDPCLI.exe analysis 2026-04-11T09-50-42.sdp
+# 分析所有 snapshot
+SDPCLI.exe analysis path\to\capture.sdp
 
 # 只分析 snapshot_3
-SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3
+SDPCLI.exe analysis path\to\capture.sdp -s 3
 
-# 只重新生成 label（增量，不重新提取 shader/texture）
-SDPCLI.exe analysis 2026-04-11T09-50-42.sdp -s 3 -t label
+# 指定分析通道
+SDPCLI.exe analysis path\to\capture.sdp -s 3 -t status
+SDPCLI.exe analysis path\to\capture.sdp -s 3 -t analysis
+SDPCLI.exe analysis path\to\capture.sdp -s 3 -t label
+
+# 指定输出目录
+SDPCLI.exe analysis path\to\capture.sdp -s 3 -o D:\analysis-out
 ```
 
 **输出位置**：`<ProjectDir>/analysis/<sdp_basename>/snapshot_N/`
 
-#### **模式 3：extract-texture（纹理提取）**
-从 .sdp 文件中提取纹理，保存为 PNG：
+#### **server 模式（HTTP API）**
 
 ```powershell
-SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352
+# 默认端口 5000
+SDPCLI.exe server
 
-# 指定 captureID 和输出路径
-SDPCLI.exe extract-texture 2026-04-11T09-50-42.sdp -resource-id 23352 -capture-id 3 -output out\texture.png
+# 指定端口
+SDPCLI.exe server --port 8080
 ```
 
-#### **模式 4：extract-shader（Shader 提取）**
-从 .sdp 文件中提取 Shader 代码（SPIR-V/GLSL）：
+详见 [Server 模式说明](#server-模式http-api-1)。
+
+---
+
+---
+
+## Server 模式（HTTP API）
+
+`sdpcli server` 启动本地 HTTP REST API 服务（仅 localhost），供脚本 / CI / 前端远程控制抓帧和分析流程。
+
+### 启动
 
 ```powershell
-SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42
-
-# 指定输出目录
-SDPCLI.exe extract-shader 2026-04-11T09-50-42.sdp -pipeline-id 42 -output shaders\
+SDPCLI.exe server              # 默认端口 5000
+SDPCLI.exe server --port 8080  # 指定端口
 ```
 
-详细参数说明见 `CLI_PARAMETERS.md`。
+`config.ini` 可选配置：
+
+```ini
+Server.Port=5000
+Server.JobTtlMinutes=60
+```
+
+### REST API
+
+所有操作均为异步 Job，返回 `202 + { jobId }`，客户端轮询 `GET /api/jobs/{id}` 等待完成。
+
+| Method | Path | 说明 |
+|--------|------|------|
+| `GET` | `/api/status` | 服务健康检查 |
+| `GET` | `/api/device` | 当前设备 / Session 状态 |
+| `POST` | `/api/connect` | 连接设备（async，返回 jobId） |
+| `POST` | `/api/disconnect` | 断开设备 |
+| `POST` | `/api/session/launch` | 启动目标 App（async，返回 jobId） |
+| `POST` | `/api/capture` | 触发 GPU Snapshot（async，返回 jobId） |
+| `POST` | `/api/analysis` | 启动 SDP 离线分析（async，返回 jobId） |
+| `GET` | `/api/jobs` | 列出所有 Job（按创建时间倒序） |
+| `GET` | `/api/jobs/{id}` | 查询单个 Job 状态 / 进度 / 结果 |
+| `POST` | `/api/jobs/{id}/cancel` | 取消 Job（分析 Job 在当前 phase 后停止） |
+| `DELETE` | `/api/jobs/{id}` | 删除已结束的 Job |
+
+### Request Body 示例
+
+```jsonc
+// POST /api/connect
+{ "deviceId": "192.168.1.100:5555" }  // 可选，省略则自动发现
+
+// POST /api/session/launch
+{ "packageActivity": "com.example.app/com.example.MainActivity" }
+
+// POST /api/capture
+{ "outputDir": "D:/captures", "label": "frame001" }  // 均可选
+
+// POST /api/analysis
+{
+  "sdpPath":    "D:/captures/2026-04-14.sdp",  // 必填，绝对路径
+  "snapshotId": 2,                              // 必填，>= 2
+  "outputDir":  "D:/analysis-out",             // 可选
+  "targets":    "label,metrics,status"         // 可选，默认 all
+}
+```
+
+### 典型工作流
+
+```
+POST /api/connect          → 202 { jobId: "con-20260414-..." }
+GET  /api/jobs/con-...     → { status: "Completed" }
+
+POST /api/session/launch   → 202 { jobId: "lnc-..." }
+GET  /api/jobs/lnc-...     → { status: "Completed" }
+
+POST /api/capture          → 202 { jobId: "cap-..." }
+GET  /api/jobs/cap-...     → { status: "Completed", result: { captureId, sdpPath } }
+
+POST /api/analysis  { "sdpPath": "...", "snapshotId": 2 }
+                           → 202 { jobId: "ana-..." }
+GET  /api/jobs/ana-...     → { status: "Completed", progress: 100 }
+```
+
+### Job 状态与 phase
+
+GET /api/jobs/{id} 返回体：
+
+```jsonc
+{
+  "id":        "cap-20260414-120000-001",
+  "type":      "Capture",
+  "status":    "Running",
+  "phase":     "waiting_data",   // 当前执行阶段
+  "progress":  35,               // 0-100
+  "createdAt": "2026-04-14T12:00:00Z",
+  "result":    null,
+  "error":     null
+}
+```
+
+| Status | 说明 |
+|--------|------|
+| `Pending` | 已创建，等待线程池调度 |
+| `Running` | 执行中，`phase` 指示当前步骤 |
+| `Cancelling` | 已请求取消，当前 phase 仍在运行 |
+| `Completed` | 成功完成，`result` 包含输出路径等 |
+| `Failed` | 异常失败，`error` 包含原因 |
+| `Cancelled` | 已取消 |
+
+**Analysis Job 的 phase 序列**：`collect_dc` → `extract_assets` → `label_drawcalls` → `join_metrics` → `generate_stats` → `report_llm` → `dashboard`
+
+**Capture Job 的 phase 序列**：`starting_capture` → `waiting_capture` → `waiting_data` → `importing` → `exporting` → `screenshot` → `archiving`
+
+### 设备状态机
+
+```
+Disconnected → Connecting → Connected → Launching → SessionActive → Capturing
+```
+
+同一时间只允许一个 Capture Job 进行（状态机守卫返回 409）。Analysis Job 不受设备状态约束，可并发。
+
+### 安全说明
+
+- 仅绑定 `localhost`，不开放外部访问
+- `POST /api/analysis` 的 `sdpPath` 必须是绝对路径且以 `.sdp` 结尾，拒绝含 `..` 的路径
 
 ---
 
 ## 项目目标
 
 **用 CLI 替代 GUI** —— 实现 Snapdragon Profiler GUI 的核心功能：
-1. **Capture**：自动连接设备、启动 app、截取帧、replay、导出 .sdp
-2. **Analysis**：读取 .sdp、查询数据库、解析二进制 buffer、导出分析结果（DrawCall 报告）
-3. **Texture Extraction**：从 .sdp 的 SQLite 数据库中提取纹理数据，转换为 PNG
-4. **Shader Extraction**：从 .sdp 中提取 GLSL/SPIR-V Shader 代码
+1. **Snapshot**：自动连接设备、启动 app、截取帧、replay、导出 .sdp + CSV + DB
+2. **Analysis**：读取 .sdp、查询数据库、解析二进制 buffer、生成 DrawCall 分析报告（CSV + 属性标注 JSON）
+3. **Server**： HTTP API 接口，支持自动化脚本、CI/CD 层调用 Capture + Analysis
+4. **Texture / Shader 提取**：内嵌在 Analysis 模式中，导出 PNG / SPIR-V / GLSL
 5. **自动化**：批量处理多个 .sdp 文件，生成 CSV 报告
+
+## 命令行参数
+
+### 子命令
+
+| 子命令 | 说明 |
+|-----------|------|
+| `snapshot` | 连接设备抓帧模式 |
+| `analysis` | 离线分析 .sdp 文件 |
+| `server` | 启动 HTTP API 服务 |
+| （无） | 交互模式，显示菜单 |
+
+### 位置参数
+
+| 位置 | 适用子命令 | 说明 |
+|--------|----------|------|
+| 第 2 位 | `analysis` | .sdp 文件路径 |
+| 第 2 位 | `snapshot` | `pkg\Activity` 包名\活动 |
+
+### 选项标志
+
+| 标志 | 简写 | 适用子命令 | 说明 |
+|--------|------|----------|------|
+| `-output <dir>` | `-o` | all | 输出目录覆盖默认路径 |
+| `-snapshot <N>` | `-s` | `analysis` | 已分析的 snapshot ID |
+| `-target <mode>` | `-t` | `analysis` | 分析通道：`status` / `analysis` / `label` |
+| `--no-extract` | 无 | all | 跳过资产提取，只写 JSON/CSV |
+| `--port <N>` | 无 | `server` | HTTP 端口，默认 5000 |
+| `--host <h>` | 无 | `server` | 绑定地址（保留，默认 localhost） |
+| `--debug` | 无 | all | 开启 DEBUG 日志模式 |
+
+### 已废弃标志（向后兼容）
+
+| 旧标志 | 替代方式 |
+|--------|--------|
+| `-mode 1\|2` | `snapshot` / `analysis` 子命令 |
+| `-sdp <path>` | `analysis <path>` |
+| `-pass-mode <v>` | `-t <v>` |
+| `-stats-only` | `-t status` |
+| `-analysis-only` | `-t analysis` |
 
 ## 架构说明
 
 ### 设计原则
 - **无头模式**：无 GUI，纯命令行，适合 CI/CD 集成
-- **四模式架构**：Capture（在线）、Analysis（离线）、Texture Extraction、Shader Extraction 独立运行
+- **三模式架构**：Snapshot（在线抓帧）、Analysis（离线分析）、Server（HTTP API）独立运行；交互模式为无参数入口
 - **直接引用预编译 DLL**：使用 `SDPClientFramework.dll`、`QGLPlugin.dll` 等，**不修改不重新编译**
 - **API 完全兼容**：通过公开的 `public` API 调用，如 `ProcessorPlugin.GetLocalBuffer()`
 - **参考 GUI 源码**：`dll/project/*` 仅作参考，理解 API 用法和数据结构

@@ -92,12 +92,14 @@ namespace SnapdragonProfilerCLI
         /// Application entry point - routes to InteractiveMode, AnalysisMode, or SnapshotCaptureMode.
         /// </summary>
         public void Run(
-            string? subcommand      = null,   // "snapshot" | "analysis" | null = interactive
+            string? subcommand      = null,   // "snapshot" | "analysis" | "server" | null = interactive
             string? positionalArg   = null,   // analysis->sdpPath; snapshot->packageActivity
             string? outputArg       = null,
             string? snapshotIdArg   = null,
             string? targetArg       = null,
             bool    noExtract       = false,  // --no-extract: skip asset extraction, only write JSONs
+            string? portArg         = null,   // --port <N> for server mode
+            string? hostArg         = null,   // --host <h> for server mode (reserved, always localhost)
             // Legacy / deprecated pass-through
             string? passModeArg     = null,
             string? resourceIdArg   = null,
@@ -124,6 +126,14 @@ namespace SnapdragonProfilerCLI
                     packageActivity: positionalArg,
                     outputArg:       outputArg);
             }
+            else if (subcommand == "server")
+            {
+                Console.WriteLine("\n=== Snapdragon Profiler CLI - Server Mode ===");
+                int  port = portArg != null && int.TryParse(portArg, out int p) ? p
+                           : config.GetInt("Server.Port", 5000);
+                string host = hostArg ?? "localhost";
+                mode = new Server.ServerMode(config, testPath, port, host);
+            }
             else if (subcommand == null)
             {
                 mode = new InteractiveMode(config, testPath, SafeReadLine,
@@ -132,7 +142,7 @@ namespace SnapdragonProfilerCLI
             }
             else
             {
-                Console.WriteLine($"Error: Unknown subcommand '{subcommand}'. Valid: snapshot, analysis");
+                Console.WriteLine($"Error: Unknown subcommand '{subcommand}'. Valid: snapshot, analysis, server");
                 return;
             }
 

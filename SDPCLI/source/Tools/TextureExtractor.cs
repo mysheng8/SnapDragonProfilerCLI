@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using SnapdragonProfilerCLI.Data;
+using SnapdragonProfilerCLI.Logging;
 using TextureConverter;
 
 namespace SnapdragonProfilerCLI.Tools
@@ -34,25 +35,25 @@ namespace SnapdragonProfilerCLI.Tools
         {
             try
             {
-                Console.WriteLine($"\n=== Extracting Texture {resourceId} ===");
+                AppLogger.Info("Texture", $"=== Extracting Texture {resourceId} ===");
 
                 // 1. 查询 texture 元数据
                 var metadata = _db.GetTextureMetadata(resourceId);
                 if (metadata == null)
                 {
-                    Console.WriteLine($"  ⚠ Texture {resourceId} not found in database");
+                    AppLogger.Warn("Texture", $"Texture {resourceId} not found in database");
                     return false;
                 }
 
-                Console.WriteLine($"  Size: {metadata.Width}x{metadata.Height}" +
+                AppLogger.Debug("Texture", $"Size: {metadata.Width}x{metadata.Height}" +
                     (metadata.Depth > 1 ? $"x{metadata.Depth} (3D texture, extracting first slice)" : ""));
-                Console.WriteLine($"  Format: {metadata.Format} ({GetFormatName(metadata.Format)})");
-                Console.WriteLine($"  Layers: {metadata.LayerCount}, Levels: {metadata.LevelCount}");
+                AppLogger.Debug("Texture", $"Format: {metadata.Format} ({GetFormatName(metadata.Format)})");
+                AppLogger.Debug("Texture", $"Layers: {metadata.LayerCount}, Levels: {metadata.LevelCount}");
 
                 // Skip textures with invalid dimensions
                 if (metadata.Width <= 0 || metadata.Height <= 0)
                 {
-                    Console.WriteLine($"  ⚠ Skipping: width or height is 0");
+                    AppLogger.Warn("Texture", $"Skipping: width or height is 0");
                     return false;
                 }
 
@@ -60,11 +61,11 @@ namespace SnapdragonProfilerCLI.Tools
                 byte[]? textureData = _db.ReadTextureBytes(resourceId);
                 if (textureData == null || textureData.Length == 0)
                 {
-                    Console.WriteLine($"  ⚠ No texture data found in VulkanSnapshotByteBuffers");
+                    AppLogger.Warn("Texture", $"No texture data found in VulkanSnapshotByteBuffers");
                     return false;
                 }
 
-                Console.WriteLine($"  Data size: {textureData.Length} bytes");
+                AppLogger.Debug("Texture", $"Data size: {textureData.Length} bytes");
 
                 // For 3D textures, only extract the first slice.
                 // Slice size = width * height * bytesPerPixel (uncompressed) or tile-aligned.
@@ -82,25 +83,25 @@ namespace SnapdragonProfilerCLI.Tools
                             byte[] slice = new byte[sliceBytes];
                             Array.Copy(textureData, 0, slice, 0, sliceBytes);
                             textureData = slice;
-                            Console.WriteLine($"  3D slice: using first {sliceBytes} bytes of {metadata.Depth} slices");
+                            AppLogger.Debug("Texture", $"3D slice: using first {sliceBytes} bytes of {metadata.Depth} slices");
                         }
                     }
                 }
 
                 // 3. 将 VkFormat 映射到 TFormats
                 TextureConverter.TFormats tFormat = VkFormatToTFormat(metadata.Format);
-                Console.WriteLine($"  TFormat: {tFormat}");
+                AppLogger.Debug("Texture", $"TFormat: {tFormat}");
 
                 // 4. 构建输入数据（ASTC 格式需添加文件头）
                 byte[] inputData = textureData;
                 if (IsAstcFormat(metadata.Format))
                 {
                     (byte xBlocks, byte yBlocks) = GetAstcBlockSize(metadata.Format);
-                    Console.WriteLine($"  ASTC block size: {xBlocks}x{yBlocks}");
+                    AppLogger.Debug("Texture", $"ASTC block size: {xBlocks}x{yBlocks}");
                     TextureConverterHelper.AddAstcHeader(
                         out inputData, textureData, xBlocks, yBlocks,
                         (uint)extractWidth, (uint)extractHeight);
-                    Console.WriteLine($"  Added ASTC header: {inputData.Length} bytes total");
+                    AppLogger.Debug("Texture", $"Added ASTC header: {inputData.Length} bytes total");
                 }
 
                 // 5. 使用 TextureConverterHelper 转换为 RGBA
@@ -115,12 +116,12 @@ namespace SnapdragonProfilerCLI.Tools
 
                 if (rgbaData == null)
                 {
-                    Console.WriteLine($"  ⚠ Failed to convert texture format {metadata.Format} to RGBA");
-                    Console.WriteLine($"  ℹ TFormat mapping: {tFormat}");
+                    AppLogger.Warn("Texture", $"Failed to convert texture format {metadata.Format} to RGBA");
+                    AppLogger.Debug("Texture", $"TFormat mapping: {tFormat}");
                     return false;
                 }
 
-                Console.WriteLine($"  ✓ Converted to RGBA: {rgbaData.Length} bytes");
+                AppLogger.Info("Texture", $"Converted to RGBA: {rgbaData.Length} bytes");
 
                 // 5. 创建 Bitmap 并保存为 PNG
                 Bitmap bitmap = new Bitmap(extractWidth, extractHeight, PixelFormat.Format32bppArgb);
@@ -141,13 +142,12 @@ namespace SnapdragonProfilerCLI.Tools
                 bitmap.Save(finalPath, ImageFormat.Png);
                 bitmap.Dispose();
 
-                Console.WriteLine($"  ✓ Saved to: {finalPath}");
+                AppLogger.Info("Texture", $"Saved to: {finalPath}");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  ❌ Error: {ex.Message}");
-                Console.WriteLine($"  Stack: {ex.StackTrace}");
+                AppLogger.Exception("Texture", ex, "Error extracting texture");
                 return false;
             }
         }

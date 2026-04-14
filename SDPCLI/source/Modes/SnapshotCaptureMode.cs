@@ -89,22 +89,22 @@ namespace SnapdragonProfilerCLI.Modes
         {
             try
             {
-                Console.WriteLine("\n=== Capture Mode ===\n");
+                AppLogger.Info("Snapshot", "=== Capture Mode ===");
                 if (_customSdpOutputPath != null)
-                    Console.WriteLine("Custom output path: " + _customSdpOutputPath);
+                    AppLogger.Info("Snapshot", "Custom output path: " + _customSdpOutputPath);
 
                 Utility.ConfigureNativeDllSearchPaths();
 
                 if (!InitializeClient())
                 {
-                    Console.WriteLine("Failed to initialize client. Exiting...");
+                    AppLogger.Error("Snapshot", "Failed to initialize client. Exiting...");
                     return;
                 }
 
                 var deviceService = new DeviceConnectionService(_config, _readLine);
                 if (!deviceService.CheckAndInstallAPKs())
                 {
-                    Console.WriteLine("Failed to install Profiler APKs. Exiting...");
+                    AppLogger.Error("Snapshot", "Failed to install Profiler APKs. Exiting...");
                     Cleanup();
                     return;
                 }
@@ -112,23 +112,23 @@ namespace SnapdragonProfilerCLI.Modes
                 _connectedDevice = deviceService.Connect(_sdpClient!);
                 if (_connectedDevice == null)
                 {
-                    Console.WriteLine("Failed to connect to device. Exiting...");
+                    AppLogger.Error("Snapshot", "Failed to connect to device. Exiting...");
                     Cleanup();
                     return;
                 }
 
-                Console.WriteLine("\n--- Launch Application ---");
+                AppLogger.Info("Snapshot", "--- Launch Application ---");
                 string? packageName = _config.Get("PackageName");
                 if (string.IsNullOrWhiteSpace(packageName))
                 {
                     Console.Write("Enter app package name: ");
                     packageName = _readLine("");
                 }
-                else { Console.WriteLine("Using package from config: " + packageName); }
+                else { AppLogger.Info("Snapshot", "Using package from config: " + packageName); }
 
                 if (string.IsNullOrWhiteSpace(packageName))
                 {
-                    Console.WriteLine("No package name provided. Exiting...");
+                    AppLogger.Error("Snapshot", "No package name provided. Exiting...");
                     Cleanup();
                     return;
                 }
@@ -136,7 +136,7 @@ namespace SnapdragonProfilerCLI.Modes
                 var appService = new AppLaunchService(_config, _readLine, _sdpClient!, _connectedDevice!, _clientDelegate!);
                 if (!appService.SelectAndLaunch(packageName!))
                 {
-                    Console.WriteLine("Failed to launch app. Exiting...");
+                    AppLogger.Error("Snapshot", "Failed to launch app. Exiting...");
                     Cleanup();
                     return;
                 }
@@ -148,19 +148,19 @@ namespace SnapdragonProfilerCLI.Modes
                 bool initialDiscovery = appService.WaitForProcess();
                 _verifiedProcessPid  = appService.VerifiedProcessPid;
 
-                if (!initialDiscovery) { Console.WriteLine("\n WARNING: Initial process discovery timed out."); }
-                else { Console.WriteLine("\n Process verified (PID: " + _verifiedProcessPid + ")"); }
+                if (!initialDiscovery) { AppLogger.Warn("Snapshot", "Initial process discovery timed out."); }
+                else { AppLogger.Info("Snapshot", "Process verified (PID: " + _verifiedProcessPid + ")"); }
 
                 if (_verifiedProcessPid > 0)
                     RefreshPidIfNeeded();
 
                 if (_clientDelegate is CliClientDelegate sd0)
                 {
-                    Console.WriteLine("\nProcess discovery status:");
-                    Console.WriteLine("  - Total processes discovered: " + sd0.GetDiscoveredProcessCount());
-                    Console.WriteLine(_verifiedProcessPid > 0
-                        ? "  - Target process: VERIFIED (PID: " + _verifiedProcessPid + ")"
-                        : "  - Target process: UNVERIFIED");
+                    AppLogger.Info("Snapshot", "Process discovery status:");
+                    AppLogger.Info("Snapshot", "  Total processes discovered: " + sd0.GetDiscoveredProcessCount());
+                    AppLogger.Info("Snapshot", _verifiedProcessPid > 0
+                        ? "  Target process: VERIFIED (PID: " + _verifiedProcessPid + ")"
+                        : "  Target process: UNVERIFIED");
                 }
 
                 bool autoStart = _config.GetBool("AutoStartCapture", false);
@@ -197,7 +197,7 @@ namespace SnapdragonProfilerCLI.Modes
 
                         if (!capSvc.StartCapture())
                         {
-                            Console.WriteLine("Failed to start capture. Press ENTER to retry or ESC to exit.");
+                            AppLogger.Error("Snapshot", "Failed to start capture. Press ENTER to retry or ESC to exit.");
                             continue;
                         }
                         _currentCapture = capSvc.CurrentCapture;
@@ -205,15 +205,15 @@ namespace SnapdragonProfilerCLI.Modes
                         if (_activatedMetricNames.Count == 0 && capSvc.ActivatedMetricNames.Count > 0)
                             _activatedMetricNames = capSvc.ActivatedMetricNames;
 
-                        Console.WriteLine("\nCapture in progress...");
+                        AppLogger.Info("Snapshot", "Capture in progress...");
                         bool completed = _captureCompleteEvent.WaitOne(TimeSpan.FromSeconds(30));
                         if (!completed)
                         {
-                            Console.WriteLine(" WARNING: Capture did not complete within 30 seconds. Press ENTER to retry or ESC to exit.");
+                            AppLogger.Warn("Snapshot", "Capture did not complete within 30 seconds. Press ENTER to retry or ESC to exit.");
                             continue;
                         }
                         (providerId, captureId) = ((CliClientDelegate)_clientDelegate!).GetLastCompletedCapture();
-                        Console.WriteLine("Capture completed: Provider=" + providerId + ", Capture=" + captureId);
+                        AppLogger.Info("Snapshot", "Capture completed: Provider=" + providerId + ", Capture=" + captureId);
 
                         // Tell delegate which captureId's API data (BufferID=2) to wait for
                         ((CliClientDelegate)_clientDelegate!).SetExpectedCaptureId(captureId);
@@ -227,7 +227,7 @@ namespace SnapdragonProfilerCLI.Modes
                         string captureSubDir = Path.Combine(baseDir, $"snapshot_{captureId}");
                         Directory.CreateDirectory(captureSubDir);
                         _log.Info($"Capture sub-directory created: {captureSubDir}");
-                        Console.WriteLine($"Capture sub-directory: {captureSubDir}");
+                        AppLogger.Debug("Snapshot", $"Capture sub-directory: {captureSubDir}");
 
                         _log.Info($"[Replay] Starting ReplayAndGetBuffers for captureId={captureId}");
                         BinaryDataPair? dsbBuffer = ReplayAndGetBuffers(captureId, _importCompleteEvent);
@@ -292,25 +292,24 @@ namespace SnapdragonProfilerCLI.Modes
                         string captureStatus = (dsbBuffer != null) ? "COMPLETE" : "EMPTY";
                         string captureReason = (waitResult == CaptureDataWaitResult.Timeout) ? " (180s timeout)" : "";
                         _log.Info($"[Capture] === Capture {captureStatus}{captureReason} === data saved to: {captureSubDir}");
-                        Console.WriteLine($"\n=== Capture {captureStatus}{captureReason} ===");
-                        Console.WriteLine("Data saved to: " + captureSubDir);
+                        AppLogger.Info("Snapshot", $"=== Capture {captureStatus}{captureReason} ===");
+                        AppLogger.Info("Snapshot", "Data saved to: " + captureSubDir);
 
                         Console.WriteLine("Press ENTER to capture another frame, or ESC to exit");
                     }
                     catch (Exception ex)
                     {
                         _log.Error($"[Capture] Exception in capture loop: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-                        Console.WriteLine("\nError during capture: " + ex.Message);
-                        Console.WriteLine("Stack trace: " + ex.StackTrace);
-                        Console.WriteLine("\nPress ENTER to retry or ESC to exit");
+                        AppLogger.Error("Snapshot", "Error during capture: " + ex.Message);
+                        AppLogger.Debug("Snapshot", "Stack trace: " + ex.StackTrace);
                     }
                 }
 
-                Console.WriteLine("\n=== Exiting Capture Loop ===");
+                AppLogger.Info("Snapshot", "=== Exiting Capture Loop ===");
             }
             finally
             {
-                Console.WriteLine("\n=== Cleanup ===");
+                AppLogger.Info("Snapshot", "=== Cleanup ===");
                 // 整个 session 结束时才打包一次 .sdp（包含所有 capture 数据）
                 string? finalSessionPath = _sdpClient?.SessionManager?.GetSessionPath();
                 if (finalSessionPath != null)
@@ -339,17 +338,17 @@ namespace SnapdragonProfilerCLI.Modes
                             _activatedMetricNames,
                             _captureEntries);
                     }
-                    catch (Exception sumEx) { Console.WriteLine(" Warning: Could not write session summary: " + sumEx.Message); }
+                    catch (Exception sumEx) { AppLogger.Warn("Snapshot", "Could not write session summary: " + sumEx.Message); }
 
                     try { new SessionArchiveService().CreateSessionArchive(finalSessionPath); }
-                    catch (Exception archEx) { Console.WriteLine(" Warning: Could not create session archive: " + archEx.Message); }
+                    catch (Exception archEx) { AppLogger.Warn("Snapshot", "Could not create session archive: " + archEx.Message); }
                 }
                 try
                 {
                     bool closed = _sdpClient?.SessionManager?.CloseSession() ?? false;
-                    if (closed) Console.WriteLine("Session closed");
+                    if (closed) AppLogger.Info("Snapshot", "Session closed");
                 }
-                catch (Exception ex) { Console.WriteLine(" Warning: Error closing session: " + ex.Message); }
+                catch (Exception ex) { AppLogger.Warn("Snapshot", "Error closing session: " + ex.Message); }
                 Cleanup();
             }
         }
@@ -409,23 +408,23 @@ namespace SnapdragonProfilerCLI.Modes
 
         private bool InitializeClient()
         {
-            Console.WriteLine("Initializing Snapdragon Profiler Client...");
+            AppLogger.Info("Snapshot", "Initializing Snapdragon Profiler Client...");
             try
             {
-                Console.WriteLine("Initializing SdpApp event system...");
-                try { Sdp.Helpers.Globalization.SetLocale(); Console.WriteLine("Globalization initialized"); }
-                catch (Exception ex) { Console.WriteLine(" Globalization.SetLocale() failed: " + ex.Message); }
+                AppLogger.Info("Snapshot", "Initializing SdpApp event system...");
+                try { Sdp.Helpers.Globalization.SetLocale(); AppLogger.Info("Snapshot", "Globalization initialized"); }
+                catch (Exception ex) { AppLogger.Warn("Snapshot", "Globalization.SetLocale() failed: " + ex.Message); }
 
                 var platform = new ConsolePlatform();
                 try
                 {
-                    if (!Sdp.SdpApp.Init(platform)) { Console.WriteLine("ERROR: SdpApp.Init() returned false"); return false; }
+                    if (!Sdp.SdpApp.Init(platform)) { AppLogger.Error("Snapshot", "SdpApp.Init() returned false"); return false; }
                 }
-                catch (Exception ex) { Console.WriteLine("ERROR: SdpApp.Init() threw: " + ex.Message); return false; }
-                Console.WriteLine("SdpApp initialized\n");
+                catch (Exception ex) { AppLogger.Error("Snapshot", "SdpApp.Init() threw: " + ex.Message); return false; }
+                AppLogger.Info("Snapshot", "SdpApp initialized");
 
-                try { new QGLPlugin.QGLPlugin(); Console.WriteLine("QGLPlugin instantiated\n"); }
-                catch (Exception ex) { Console.WriteLine(" QGLPlugin failed: " + ex.Message + "\n"); }
+                try { new QGLPlugin.QGLPlugin(); AppLogger.Info("Snapshot", "QGLPlugin instantiated"); }
+                catch (Exception ex) { AppLogger.Warn("Snapshot", "QGLPlugin failed: " + ex.Message); }
 
                 _sdpClient = new SDPClient();
 
@@ -449,17 +448,17 @@ namespace SnapdragonProfilerCLI.Modes
                                   : LogLevel.LOG_DEBUG;
 
                 bool ok = _sdpClient.Initialize(sessionSettings, simpleDelegate, enableConsoleLog: true, logLevel: logLevel);
-                if (!ok) { Console.WriteLine("ERROR: SDPClient.Initialize() failed"); return false; }
+                if (!ok) { AppLogger.Error("Snapshot", "SDPClient.Initialize() failed"); return false; }
 
                 _sdpClient.SetCaptureCompleteEvent(_captureCompleteEvent);
                 _clientDelegate = simpleDelegate;
-                Console.WriteLine("Client initialized successfully");
+                AppLogger.Info("Snapshot", "Client initialized successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error during initialization: " + ex.Message);
-                if (ex.InnerException != null) Console.WriteLine("  Inner: " + ex.InnerException.Message);
+                AppLogger.Error("Snapshot", "Error during initialization: " + ex.Message);
+                if (ex.InnerException != null) AppLogger.Debug("Snapshot", "  Inner: " + ex.InnerException.Message);
                 return false;
             }
         }
@@ -468,14 +467,14 @@ namespace SnapdragonProfilerCLI.Modes
         {
             if (_isCleanedUp) return;
             _isCleanedUp = true;
-            Console.WriteLine("\nCleaning up...");
+            AppLogger.Info("Snapshot", "Cleaning up...");
             try
             {
                 if (_sdpClient != null) { _sdpClient.Shutdown(); _sdpClient.Dispose(); _sdpClient = null; }
                 _connectedDevice = null; _currentCapture = null; _clientDelegate = null;
-                Console.WriteLine("Cleanup completed");
+                AppLogger.Info("Snapshot", "Cleanup completed");
             }
-            catch (Exception ex) { Console.WriteLine("Error during cleanup: " + ex.Message); }
+            catch (Exception ex) { AppLogger.Warn("Snapshot", "Error during cleanup: " + ex.Message); }
         }
 
         private void RefreshPidIfNeeded()
@@ -488,18 +487,18 @@ namespace SnapdragonProfilerCLI.Modes
                 p.Start(); string output = p.StandardOutput.ReadToEnd(); p.WaitForExit();
                 if (!output.Contains(_targetPackageName))
                 {
-                    Console.WriteLine("\nPID " + _verifiedProcessPid + " no longer valid - trying pidof...");
+                    AppLogger.Warn("Snapshot", "PID " + _verifiedProcessPid + " no longer valid - trying pidof...");
                     var p2 = new System.Diagnostics.Process { StartInfo = new System.Diagnostics.ProcessStartInfo
                         { FileName = "adb", Arguments = "shell pidof " + _targetPackageName,
                           RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true }};
                     p2.Start(); string pidOut = p2.StandardOutput.ReadToEnd().Trim(); p2.WaitForExit();
-                    if (uint.TryParse(pidOut, out uint newPid)) { _verifiedProcessPid = newPid; Console.WriteLine("  Found new PID: " + newPid); }
-                    else { Console.WriteLine("  App not running. Aborting."); Cleanup(); throw new InvalidOperationException("App process not found."); }
+                    if (uint.TryParse(pidOut, out uint newPid)) { _verifiedProcessPid = newPid; AppLogger.Info("Snapshot", "  Found new PID: " + newPid); }
+                    else { AppLogger.Error("Snapshot", "  App not running. Aborting."); Cleanup(); throw new InvalidOperationException("App process not found."); }
                 }
-                else { Console.WriteLine("PID " + _verifiedProcessPid + " still valid"); }
+                else { AppLogger.Debug("Snapshot", "PID " + _verifiedProcessPid + " still valid"); }
             }
             catch (InvalidOperationException) { throw; }
-            catch (Exception ex) { Console.WriteLine(" Could not verify PID: " + ex.Message); }
+            catch (Exception ex) { AppLogger.Warn("Snapshot", "Could not verify PID: " + ex.Message); }
         }
 
         private enum CaptureDataWaitResult { Ready, Timeout }
@@ -509,7 +508,7 @@ namespace SnapdragonProfilerCLI.Modes
             // Wait until the expected capture's API data (BufferID=2) arrives.
             // The event is set exclusively by OnDataProcessed when category=0x84000000,
             // bufferID=2, captureID=expected — so no polling needed.
-            Console.WriteLine("\nWaiting for snapshot API data (BufferID=2)...");
+            AppLogger.Info("Snapshot", "Waiting for snapshot API data (BufferID=2)...");
             _log.Info("[WaitForData] Waiting for snapshot API data (BufferID=2) — timeout=180s");
             var sw = System.Diagnostics.Stopwatch.StartNew();
             bool ready = _dataProcessedEvent.WaitOne(TimeSpan.FromSeconds(180));
@@ -519,7 +518,7 @@ namespace SnapdragonProfilerCLI.Modes
             if (!ready)
             {
                 _log.Warning($"[WaitForData] API data not received within 180s — replay may produce empty results.");
-                Console.WriteLine(" WARNING: API data not received within 180 seconds — replay may produce empty results.");
+                AppLogger.Warn("Snapshot", "API data not received within 180 seconds — replay may produce empty results.");
                 return CaptureDataWaitResult.Timeout;
             }
 
@@ -527,13 +526,13 @@ namespace SnapdragonProfilerCLI.Modes
                 _log.Warning($"[WaitForData] API data took {elapsedSeconds:F1}s (>30s threshold — device under pressure)");
             else
                 _log.Info($"[WaitForData] API data ready in {elapsedSeconds:F1}s");
-            Console.WriteLine($"API data ready in {elapsedSeconds:F1}s — proceeding to replay.");
+            AppLogger.Info("Snapshot", $"API data ready in {elapsedSeconds:F1}s — proceeding to replay.");
             return CaptureDataWaitResult.Ready;
         }
 
         private BinaryDataPair? ReplayAndGetBuffers(uint captureId, ManualResetEvent importCompleteEvent)
         {
-            Console.WriteLine("\n=== Replaying Snapshot Data ===");
+            AppLogger.Info("Snapshot", "=== Replaying Snapshot Data ===");
             _log.Info($"[ImportCapture] Entering ReplayAndGetBuffers captureId={captureId}");
             BinaryDataPair? dsbBuffer = null;
             try
@@ -541,32 +540,32 @@ namespace SnapdragonProfilerCLI.Modes
                 if (_currentCapture == null || !_currentCapture.IsValid())
                 {
                     _log.Warning("[ImportCapture] Capture is null or invalid — skipping replay");
-                    Console.WriteLine(" Capture not valid - skipping replay");
+                    AppLogger.Warn("Snapshot", "Capture not valid - skipping replay");
                     return null;
                 }
                 string? sessionPath = _sdpClient?.SessionManager?.GetSessionPath();
                 if (sessionPath == null)
                 {
                     _log.Warning("[ImportCapture] Session path unavailable — skipping replay");
-                    Console.WriteLine(" Session path unavailable - skipping replay");
+                    AppLogger.Warn("Snapshot", "Session path unavailable - skipping replay");
                     return null;
                 }
 
                 string dbPath = System.IO.Path.Combine(sessionPath, "sdp.db");
                 _log.Info($"[ImportCapture] Calling QGLPluginService.ImportCapture captureId={captureId} db={dbPath}");
-                Console.WriteLine("Replaying gfxr for Capture ID: " + captureId + "  DB: " + dbPath);
+                AppLogger.Info("Snapshot", "Replaying gfxr for Capture ID: " + captureId + "  DB: " + dbPath);
 
                 bool imported = QGLPluginService.ImportCapture(captureId, dbPath);
                 _log.Info($"[ImportCapture] ImportCapture returned: {imported}");
                 if (!imported)
                 {
                     _log.Warning("[ImportCapture] ImportCapture returned false — no replay data");
-                    Console.WriteLine(" ImportCapture returned false");
+                    AppLogger.Warn("Snapshot", "ImportCapture returned false");
                     return null;
                 }
 
                 _log.Info("[ImportCapture] ImportCapture succeeded — polling VulkanSnapshotGraphicsPipelines");
-                Console.WriteLine("ImportCapture succeeded - polling DB...");
+                AppLogger.Info("Snapshot", "ImportCapture succeeded - polling DB...");
                 int lastRows = -1, stable = 0;
                 for (int i = 0; i < 90; i++)
                 {
@@ -583,7 +582,7 @@ namespace SnapdragonProfilerCLI.Modes
                             if (++stable >= 3)
                             {
                                 _log.Info($"[ImportCapture] DB stable at {rows} pipelines (i={i})");
-                                Console.WriteLine("DB stable: " + rows + " pipelines");
+                                AppLogger.Info("Snapshot", "DB stable: " + rows + " pipelines");
                                 break;
                             }
                         }
@@ -592,7 +591,7 @@ namespace SnapdragonProfilerCLI.Modes
                             if (rows != lastRows && lastRows >= 0)
                             {
                                 _log.Debug($"[ImportCapture] DB importing: {rows} rows ({i}s)");
-                                Console.WriteLine("  Importing: " + rows + " rows (" + i + "s)");
+                                AppLogger.Debug("Snapshot", "  Importing: " + rows + " rows (" + i + "s)");
                             }
                             stable = 0;
                         }
@@ -603,14 +602,14 @@ namespace SnapdragonProfilerCLI.Modes
                         if (i % 5 == 0)
                         {
                             _log.Debug($"[ImportCapture] DB not ready ({i}s): {dbEx.Message}");
-                            Console.WriteLine("  Waiting for DB access... (" + i + "s)");
+                            AppLogger.Debug("Snapshot", "  Waiting for DB access... (" + i + "s)");
                         }
                     }
                 }
                 if (stable < 3)
                 {
                     _log.Warning($"[ImportCapture] DB polling timed out — last row count: {lastRows}");
-                    Console.WriteLine(" DB polling timed out (last: " + lastRows + " rows)");
+                    AppLogger.Warn("Snapshot", "DB polling timed out (last: " + lastRows + " rows)");
                 }
 
                 // Wait for bufferID=1 (ImportCapture trailing event) before fetching DSBbuffer.
@@ -619,7 +618,7 @@ namespace SnapdragonProfilerCLI.Modes
                 // stabilises too fast (e.g. 0-row table) and GetCachedSnapshotDsbBuffer returns
                 // null, producing no CSVs (observed in snapshot_3 of 2026-04-07T16-16-40).
                 _log.Info("[ImportCapture] Waiting for ImportCapture trailing event (bufferID=1) — DSB available after this");
-                Console.WriteLine("Waiting for device replay complete (DSB ready)...");
+                AppLogger.Info("Snapshot", "Waiting for device replay complete (DSB ready)...");
                 bool dsbReady = importCompleteEvent.WaitOne(TimeSpan.FromSeconds(60));
                 if (!dsbReady)
                     _log.Warning("[ImportCapture] importCompleteEvent timeout (60s) — DSB may be null");
@@ -627,26 +626,26 @@ namespace SnapdragonProfilerCLI.Modes
                     _log.Info("[ImportCapture] importCompleteEvent fired — DSB should be cached");
 
                 _log.Info($"[ImportCapture] Getting cached buffers for captureId={captureId}");
-                Console.WriteLine("\n[DEBUG] Getting buffers - session=" + sessionPath + "  captureId=" + captureId);
+                AppLogger.Debug("Snapshot", "Getting buffers - session=" + sessionPath + "  captureId=" + captureId);
                 if (_clientDelegate is CliClientDelegate csd)
                 {
                     dsbBuffer = csd.GetCachedSnapshotDsbBuffer(captureId);
                     if (dsbBuffer != null)
                     {
                         _log.Info($"[ImportCapture] DsbBuffer retrieved: {dsbBuffer.size} bytes");
-                        Console.WriteLine("  DsbBuffer: " + dsbBuffer.size + " bytes");
+                        AppLogger.Info("Snapshot", "DsbBuffer: " + dsbBuffer.size + " bytes");
                     }
                     else
                     {
                         _log.Warning("[ImportCapture] No cached DsbBuffer found");
-                        Console.WriteLine("  No cached DsbBuffer");
+                        AppLogger.Warn("Snapshot", "No cached DsbBuffer");
                     }
                 }
             }
             catch (Exception ex)
             {
                 _log.Error($"[ImportCapture] Replay threw exception: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-                Console.WriteLine(" Replay failed: " + ex.Message);
+                AppLogger.Error("Snapshot", "Replay failed: " + ex.Message);
             }
             return dsbBuffer;
         }
@@ -656,7 +655,7 @@ namespace SnapdragonProfilerCLI.Modes
             try
             {
                 _log.Info($"[ExportDrawCall] Entering ExportDrawCallData captureId={captureId}");
-                Console.WriteLine("\n[DEBUG] Exporting DrawCall data...");
+                AppLogger.Debug("Snapshot", "Exporting DrawCall data...");
 
                 BinaryDataPair? apiBuffer = null;
                 if (_clientDelegate is CliClientDelegate csd)
@@ -665,12 +664,12 @@ namespace SnapdragonProfilerCLI.Modes
                 if (apiBuffer == null || apiBuffer.size == 0)
                 {
                     _log.Warning("[ExportDrawCall] SnapshotApiBuffer not available — skipping DrawCall export");
-                    Console.WriteLine(" SnapshotApiBuffer not available - skipping DrawCall export");
+                    AppLogger.Warn("Snapshot", "SnapshotApiBuffer not available - skipping DrawCall export");
                     return;
                 }
                 _log.Info($"[ExportDrawCall] ApiBuffer={apiBuffer.size}B DsbBuffer={dsbBuffer.size}B — calling LoadSnapshot");
 
-                Console.WriteLine("Loading snapshot (api=" + apiBuffer.size + "B, dsb=" + dsbBuffer.size + "B)...");
+                AppLogger.Info("Snapshot", "Loading snapshot (api=" + apiBuffer.size + "B, dsb=" + dsbBuffer.size + "B)...");
                 var model = new VulkanSnapshotModel();
                 model.LoadSnapshot(captureId, apiBuffer, dsbBuffer);
                 _log.Info($"[ExportDrawCall] LoadSnapshot completed for captureId={captureId}");
@@ -701,7 +700,7 @@ namespace SnapdragonProfilerCLI.Modes
                     else
                     {
                         _log.Warning("[ExportDrawCall] SnapshotMetricsBuffer not available — skipping DrawCallMetrics export");
-                        Console.WriteLine(" SnapshotMetricsBuffer not available — skipping DrawCallMetrics export");
+                        AppLogger.Warn("Snapshot", "SnapshotMetricsBuffer not available — skipping DrawCallMetrics export");
                     }
                 }
 
@@ -713,14 +712,14 @@ namespace SnapdragonProfilerCLI.Modes
             catch (Exception ex)
             {
                 _log.Error($"[ExportDrawCall] Export threw exception: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-                Console.WriteLine(" DrawCall export failed: " + ex.Message + "\n" + ex.StackTrace);
+                AppLogger.Error("Snapshot", "DrawCall export failed: " + ex.Message);
             }
         }
 
         private static void ExportCsv(string label, string? path)
         {
-            if (path != null) Console.WriteLine(label + " CSV exported: " + System.IO.Path.GetFileName(path));
-            else Console.WriteLine(" Failed to export " + label);
+            if (path != null) AppLogger.Info("Snapshot", label + " CSV exported: " + System.IO.Path.GetFileName(path));
+            else AppLogger.Warn("Snapshot", "Failed to export " + label);
         }
     }
 }

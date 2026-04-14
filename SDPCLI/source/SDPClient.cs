@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using SnapdragonProfilerCLI.Logging;
 
 namespace SnapdragonProfilerCLI
 {
@@ -92,13 +93,13 @@ namespace SnapdragonProfilerCLI
             
             if (IsInitialized)
             {
-                Console.WriteLine("⚠ WARNING: SDPClient already initialized");
+                AppLogger.Warn("SDPClient", "SDPClient already initialized");
                 return true;
             }
             
             try
             {
-                Console.WriteLine("=== Initializing SDPCore Client ===");
+                AppLogger.Info("SDPClient", "=== Initializing SDPCore Client ===");
                 
                 // 1. 配置 DLL 搜索路径（Windows 需要）
                 Utility.ConfigureNativeDllSearchPaths();
@@ -113,24 +114,24 @@ namespace SnapdragonProfilerCLI
                 if (!Directory.Exists(settings.SessionDirectoryRootPath))
                 {
                     Directory.CreateDirectory(settings.SessionDirectoryRootPath);
-                    Console.WriteLine($"✓ Created output directory: {settings.SessionDirectoryRootPath}");
+                    AppLogger.Info("SDPClient", $"Created output directory: {settings.SessionDirectoryRootPath}");
                 }
                 
                 // 4. 初始化 Client
                 client = new Client();
                 if (!client.Init(settings))
                 {
-                    Console.WriteLine("✗ ERROR: Client.Init() failed");
+                    AppLogger.Error("SDPClient", "Client.Init() failed");
                     return false;
                 }
-                Console.WriteLine("✓ Client initialized");
+                AppLogger.Info("SDPClient", "Client initialized");
                 
                 // 5. 注册客户端委托
                 clientDelegate = clientCallback;
                 if (clientDelegate != null)
                 {
                     client.RegisterEventDelegate(clientDelegate);
-                    Console.WriteLine("✓ Client delegate registered");
+                    AppLogger.Info("SDPClient", "Client delegate registered");
                 }
                 
                 // 6. 初始化各个 Manager
@@ -145,17 +146,17 @@ namespace SnapdragonProfilerCLI
                 // 8. 启动后台更新线程
                 StartUpdateThread();
                 
-                Console.WriteLine("✓ SDPCore client initialized successfully\n");
+                AppLogger.Info("SDPClient", "SDPCore client initialized successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Failed to initialize SDPClient: {ex.Message}");
-                Console.WriteLine($"   Exception Type: {ex.GetType().Name}");
+                AppLogger.Error("SDPClient", $"Failed to initialize SDPClient: {ex.Message}");
+                AppLogger.Debug("SDPClient", $"Exception Type: {ex.GetType().Name}");
                 
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"   Inner Exception: {ex.InnerException.Message}");
+                    AppLogger.Debug("SDPClient", $"Inner Exception: {ex.InnerException.Message}");
                 }
                 
                 return false;
@@ -172,7 +173,7 @@ namespace SnapdragonProfilerCLI
                 return;
             }
             
-            Console.WriteLine("\n=== Shutting Down SDPCore Client ===");
+            AppLogger.Info("SDPClient", "=== Shutting Down SDPCore Client ===");
             
             try
             {
@@ -180,27 +181,27 @@ namespace SnapdragonProfilerCLI
                 StopUpdateThread();
                 
                 // 2. 清理 managers（顺序很重要）
-                Console.WriteLine("[DEBUG] Clearing managers...");
+                AppLogger.Debug("SDPClient", "Clearing managers...");
                 sessionManager = null;
                 captureManager = null;
                 processManager = null;
                 metricManager = null;
                 deviceManager = null;
-                Console.WriteLine("✓ Managers cleared");
+                AppLogger.Info("SDPClient", "Managers cleared");
                 
                 // 3. 关闭 Client (WARNING: This may hang or terminate process)
                 if (client != null)
                 {
                     try
                     {
-                        Console.WriteLine("[DEBUG] About to call client.Shutdown()...");
-                        Console.WriteLine("[DEBUG] (This may take a while or cause process exit)");
+                        AppLogger.Debug("SDPClient", "About to call client.Shutdown()...");
+                        AppLogger.Debug("SDPClient", "(This may take a while or cause process exit)");
                         client.Shutdown();
-                        Console.WriteLine("✓ Client shut down");
+                        AppLogger.Info("SDPClient", "Client shut down");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠ Warning during Client.Shutdown(): {ex.Message}");
+                        AppLogger.Warn("SDPClient", $"Warning during Client.Shutdown(): {ex.Message}");
                     }
                     client = null;
                 }
@@ -212,11 +213,11 @@ namespace SnapdragonProfilerCLI
                     logSink = null;
                 }
                 
-                Console.WriteLine("✓ SDPCore client shut down successfully");
+                AppLogger.Info("SDPClient", "SDPCore client shut down successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ Error during shutdown: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Error during shutdown: {ex.Message}");
             }
         }
         
@@ -237,15 +238,15 @@ namespace SnapdragonProfilerCLI
             
             try
             {
-                Console.WriteLine($"\n=== Connecting to Device: {serialNumber} ===");
+                AppLogger.Info("SDPClient", $"=== Connecting to Device: {serialNumber} ===");
                 
                 // 1. 查找设备
-                Console.WriteLine("Searching for device...");
+                AppLogger.Info("SDPClient", "Searching for device...");
                 deviceManager!.FindDevices();
                 Thread.Sleep(2000); // 等待设备发现
                 
                 DeviceList devices = deviceManager.GetDevices();
-                Console.WriteLine($"Found {devices.Count} device(s)");
+                AppLogger.Info("SDPClient", $"Found {devices.Count} device(s)");
                 
                 Device? targetDevice = null;
                 foreach (Device device in devices)
@@ -254,7 +255,7 @@ namespace SnapdragonProfilerCLI
                     {
                         // Device 没有 GetID() 方法，使用索引或直接比较 Name
                         string? deviceName = device.GetName();
-                        Console.WriteLine($"  - {deviceName ?? "Unknown"}");
+                        AppLogger.Debug("SDPClient", $"  - {deviceName ?? "Unknown"}");
                         
                         // 使用 Name 来匹配，因为 Serial 也包含在 Name 中
                         if (deviceName != null && deviceName.Contains(serialNumber))
@@ -266,17 +267,17 @@ namespace SnapdragonProfilerCLI
                 
                 if (targetDevice == null)
                 {
-                    Console.WriteLine($"✗ Device not found: {serialNumber}");
+                    AppLogger.Error("SDPClient", $"Device not found: {serialNumber}");
                     return null;
                 }
                 
                 string foundDeviceName = targetDevice.GetName();
-                Console.WriteLine($"✓ Found target device: {foundDeviceName}");
+                AppLogger.Info("SDPClient", $"Found target device: {foundDeviceName}");
                 
                 // 2. 注册设备委托
                 deviceDelegate = new CliDeviceDelegate();
                 targetDevice.RegisterEventDelegate(deviceDelegate);
-                Console.WriteLine("✓ Device delegate registered");
+                AppLogger.Info("SDPClient", "Device delegate registered");
                 
                 // 3. 等待设备进入 Ready 状态
                 if (!WaitForDeviceReady(targetDevice, 60))
@@ -293,12 +294,12 @@ namespace SnapdragonProfilerCLI
                 // 5. 等待 native SDK 触发 OnClientConnected（会自动调用一次，无需手动调用）
                 Thread.Sleep(1000);
                 
-                Console.WriteLine($"✓ Successfully connected to {foundDeviceName}\n");
+                AppLogger.Info("SDPClient", $"Successfully connected to {foundDeviceName}");
                 return targetDevice;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Failed to connect device: {ex.Message}");
+                AppLogger.Error("SDPClient", $"Failed to connect device: {ex.Message}");
                 return null;
             }
         }
@@ -316,13 +317,13 @@ namespace SnapdragonProfilerCLI
             try
             {
                 string? deviceName = device.GetName();
-                Console.WriteLine($"Disconnecting device: {deviceName ?? "Unknown"}");
+                AppLogger.Info("SDPClient", $"Disconnecting device: {deviceName ?? "Unknown"}");
                 device.Disconnect();
-                Console.WriteLine("✓ Device disconnected");
+                AppLogger.Info("SDPClient", "Device disconnected");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ Warning during disconnect: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Warning during disconnect: {ex.Message}");
             }
         }
         
@@ -350,22 +351,22 @@ namespace SnapdragonProfilerCLI
                 // 如果已提供设备序列号，直接连接
                 if (!string.IsNullOrEmpty(deviceSerial))
                 {
-                    Console.WriteLine($"Using configured device: {deviceSerial}");
+                    AppLogger.Info("SDPClient", $"Using configured device: {deviceSerial}");
                     return ConnectDevice(deviceSerial!, basePort, timeoutSeconds);
                 }
                 
                 // 未提供设备序列号，需要发现和选择设备
-                Console.WriteLine("No device serial configured, searching for devices...");
+                AppLogger.Info("SDPClient", "No device serial configured, searching for devices...");
                 
                 deviceManager!.FindDevices();
                 Thread.Sleep(2000);
                 
                 DeviceList devices = deviceManager.GetDevices();
-                Console.WriteLine($"Found {devices.Count} device(s)");
+                AppLogger.Info("SDPClient", $"Found {devices.Count} device(s)");
                 
                 if (devices.Count == 0)
                 {
-                    Console.WriteLine("✗ No devices found. Please connect a device via ADB.");
+                    AppLogger.Error("SDPClient", "No devices found. Please connect a device via ADB.");
                     return null;
                 }
                 
@@ -377,7 +378,7 @@ namespace SnapdragonProfilerCLI
                     Device firstDevice = devices[0];
                     string? deviceName = firstDevice.GetName();
                     selectedSerial = deviceName ?? "Unknown";
-                    Console.WriteLine($"Auto-selected device: {deviceName}");
+                    AppLogger.Info("SDPClient", $"Auto-selected device: {deviceName}");
                 }
                 else
                 {
@@ -404,13 +405,13 @@ namespace SnapdragonProfilerCLI
                     
                     Device selectedDevice = devices[selectedIndex];
                     selectedSerial = selectedDevice.GetName() ?? "Unknown";
-                    Console.WriteLine($"Selected device: {selectedSerial}");
+                    AppLogger.Info("SDPClient", $"Selected device: {selectedSerial}");
                 }
                 
                 // 验证选择的序列号不为空
                 if (string.IsNullOrEmpty(selectedSerial))
                 {
-                    Console.WriteLine("✗ ERROR: Failed to get device serial number");
+                    AppLogger.Error("SDPClient", "Failed to get device serial number");
                     return null;
                 }
                 
@@ -419,7 +420,7 @@ namespace SnapdragonProfilerCLI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Failed to select and connect device: {ex.Message}");
+                AppLogger.Error("SDPClient", $"Failed to select and connect device: {ex.Message}");
                 return null;
             }
         }
@@ -440,38 +441,35 @@ namespace SnapdragonProfilerCLI
             
             try
             {
-                Console.WriteLine("\n=== Starting Application ===");
+                AppLogger.Info("SDPClient", "=== Starting Application ===");
                 
                 // 验证设备状态
                 var state = device.GetDeviceState();
                 if (state != DeviceConnectionState.Connected)
                 {
-                    Console.WriteLine($"✗ ERROR: Device not in Connected state (current: {state})");
-                    Console.WriteLine("   StartApp requires Connected state to send commands.");
+                    AppLogger.Error("SDPClient", $"Device not in Connected state (current: {state})");
+                    AppLogger.Debug("SDPClient", "StartApp requires Connected state to send commands.");
                     return 0;
                 }
                 
-                Console.WriteLine($"Device state: {state} ✓");
+                AppLogger.Info("SDPClient", $"Device state: {state}");
                 
                 // 获取 packageName（executablePath 包含 package/activity）
                 string execPath = settings.executablePath ?? "unknown";
-                Console.WriteLine($"Starting app: {execPath}");
+                AppLogger.Info("SDPClient", $"Starting app: {execPath}");
                 
                 // 调用 StartApp
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Calling device.StartApp()...");
+                AppLogger.Debug("SDPClient", $"[{DateTime.Now:HH:mm:ss.fff}] Calling device.StartApp()...");
                 AppStartResponse response = device.StartApp(settings);
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartApp() returned");
+                AppLogger.Debug("SDPClient", $"[{DateTime.Now:HH:mm:ss.fff}] StartApp() returned");
                 
-                Console.WriteLine($"\n=== AppStartResponse ===");
-                Console.WriteLine($"  result: {response.result}");
-                Console.WriteLine($"  pid: {response.pid}");
-                Console.WriteLine("=========================\n");
+                AppLogger.Debug("SDPClient", $"AppStartResponse: result={response.result}, pid={response.pid}");
                 
                 if (response.result)
                 {
                     if (response.pid > 0)
                     {
-                        Console.WriteLine($"✓ Application started successfully (PID: {response.pid})");
+                        AppLogger.Info("SDPClient", $"Application started successfully (PID: {response.pid})");
                         return response.pid;
                     }
                     else
@@ -479,8 +477,8 @@ namespace SnapdragonProfilerCLI
                         // StartApp succeeded but PID is 0
                         // This is NORMAL for asynchronous app launch
                         // App is starting but ProcessManager hasn't discovered it yet
-                        Console.WriteLine("⚠ StartApp succeeded but PID is 0 (app starting asynchronously)");
-                        Console.WriteLine("  Waiting for app to launch (3 seconds)...");
+                        AppLogger.Warn("SDPClient", "StartApp succeeded but PID is 0 (app starting asynchronously)");
+                        AppLogger.Debug("SDPClient", "Waiting for app to launch (3 seconds)...");
                         
                         // Wait for app to start and ProcessManager to discover it
                         Thread.Sleep(3000);
@@ -490,7 +488,7 @@ namespace SnapdragonProfilerCLI
                             ? execPath.Split('/')[0] 
                             : execPath;
                         
-                        Console.WriteLine($"  Attempting to get PID via ADB for package: {packageName}");
+                        AppLogger.Debug("SDPClient", $"Attempting to get PID via ADB for package: {packageName}");
                         
                         // Try to get PID via adb
                         try
@@ -512,50 +510,46 @@ namespace SnapdragonProfilerCLI
                             
                             if (uint.TryParse(pidOutput, out uint retrievedPid))
                             {
-                                Console.WriteLine($"✓ Retrieved PID via ADB: {retrievedPid}");
-                                Console.WriteLine("  App started successfully (use this PID for process discovery)");
+                                AppLogger.Info("SDPClient", $"Retrieved PID via ADB: {retrievedPid}");
+                                AppLogger.Debug("SDPClient", "App started successfully (use this PID for process discovery)");
                                 return retrievedPid;
                             }
                             else
                             {
-                                Console.WriteLine($"⚠ Could not get PID from ADB yet (output: '{pidOutput}')");
-                                Console.WriteLine("  App may still be initializing");
-                                Console.WriteLine("  Returning 0 - caller should wait for OnProcessAdded callback");
+                                AppLogger.Warn("SDPClient", $"Could not get PID from ADB yet (output: '{pidOutput}')");
+                                AppLogger.Debug("SDPClient", "App may still be initializing");
+                                AppLogger.Debug("SDPClient", "Returning 0 - caller should wait for OnProcessAdded callback");
                                 return 0;
                             }
                         }
                         catch (Exception pidEx)
                         {
-                            Console.WriteLine($"⚠ Error getting PID via ADB: {pidEx.Message}");
-                            Console.WriteLine("  Returning 0 - caller should wait for OnProcessAdded callback");
+                            AppLogger.Warn("SDPClient", $"Error getting PID via ADB: {pidEx.Message}");
+                            AppLogger.Debug("SDPClient", "Returning 0 - caller should wait for OnProcessAdded callback");
                             return 0;
                         }
                     }
                 }
                 else
                 {
-                    Console.WriteLine("✗ StartApp failed (result = false)");
+                    AppLogger.Error("SDPClient", "StartApp failed (result = false)");
                     return 0;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Exception during StartApp: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                AppLogger.Error("SDPClient", $"Exception during StartApp: {ex.Message}");
+                AppLogger.Debug("SDPClient", $"Stack trace: {ex.StackTrace}");
                 
                 // 诊断信息
                 string execPath = settings.executablePath ?? "unknown";
-                Console.WriteLine("");
-                Console.WriteLine("=== Debug Suggestions ===");
-                Console.WriteLine("1. Monitor device logs in real-time:");
-                Console.WriteLine("   adb logcat -v time | findstr /I \"SDPCore sdp SnapdragonProfiler\"");
-                Console.WriteLine("");
-                Console.WriteLine("2. Check if service is running on device:");
-                Console.WriteLine("   adb shell ps | findstr sdp");
-                Console.WriteLine("");
-                Console.WriteLine("3. Try manual launch to test app:");
-                Console.WriteLine($"   adb shell am start {execPath}");
-                Console.WriteLine("=========================\n");
+                AppLogger.Debug("SDPClient", "=== Debug Suggestions ===");
+                AppLogger.Debug("SDPClient", "1. Monitor device logs in real-time:");
+                AppLogger.Debug("SDPClient", "   adb logcat -v time | findstr /I \"SDPCore sdp SnapdragonProfiler\"");
+                AppLogger.Debug("SDPClient", "2. Check if service is running on device:");
+                AppLogger.Debug("SDPClient", "   adb shell ps | findstr sdp");
+                AppLogger.Debug("SDPClient", "3. Try manual launch to test app:");
+                AppLogger.Debug("SDPClient", $"   adb shell am start {execPath}");
                 
                 return 0;
             }
@@ -573,23 +567,23 @@ namespace SnapdragonProfilerCLI
             
             try
             {
-                Console.WriteLine($"Stopping app: {packageName}");
+                AppLogger.Info("SDPClient", $"Stopping app: {packageName}");
                 bool result = device.StopApp(packageName);
                 
                 if (result)
                 {
-                    Console.WriteLine("✓ App stopped");
+                    AppLogger.Info("SDPClient", "App stopped");
                 }
                 else
                 {
-                    Console.WriteLine("⚠ StopApp returned false");
+                    AppLogger.Warn("SDPClient", "StopApp returned false");
                 }
                 
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ Warning during StopApp: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Warning during StopApp: {ex.Message}");
                 return false;
             }
         }
@@ -611,13 +605,13 @@ namespace SnapdragonProfilerCLI
             
             try
             {
-                Console.WriteLine("\n=== Starting Capture ===");
+                AppLogger.Info("SDPClient", "=== Starting Capture ===");
                 
                 // 创建捕获（返回 captureId）
                 uint captureId = captureManager?.CreateCapture(captureType) ?? 0;
                 if (captureId == 0)
                 {
-                    Console.WriteLine("✗ Failed to create capture");
+                    AppLogger.Error("SDPClient", "Failed to create capture");
                     return null;
                 }
                 
@@ -625,25 +619,25 @@ namespace SnapdragonProfilerCLI
                 Capture? capture = captureManager?.GetCapture(captureId);
                 if (capture == null)
                 {
-                    Console.WriteLine("✗ Failed to get capture object");
+                    AppLogger.Error("SDPClient", "Failed to get capture object");
                     return null;
                 }
                 
-                Console.WriteLine($"✓ Created capture (ID: {captureId})");
+                AppLogger.Info("SDPClient", $"Created capture (ID: {captureId})");
                 
                 // 启动捕获（直接传入 settings）
                 if (!capture.Start(settings))
                 {
-                    Console.WriteLine("✗ Failed to start capture");
+                    AppLogger.Error("SDPClient", "Failed to start capture");
                     return null;
                 }
                 
-                Console.WriteLine("✓ Capture started");
+                AppLogger.Info("SDPClient", "Capture started");
                 return capture;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Failed to start capture: {ex.Message}");
+                AppLogger.Error("SDPClient", $"Failed to start capture: {ex.Message}");
                 return null;
             }
         }
@@ -663,21 +657,21 @@ namespace SnapdragonProfilerCLI
             
             if (captureCompleteEvent == null)
             {
-                Console.WriteLine("⚠ WARNING: No capture complete event configured");
+                AppLogger.Warn("SDPClient", "No capture complete event configured");
                 return false;
             }
             
-            Console.WriteLine($"Waiting for capture to complete (timeout: {timeoutSeconds}s)...");
+            AppLogger.Info("SDPClient", $"Waiting for capture to complete (timeout: {timeoutSeconds}s)...");
             
             bool completed = captureCompleteEvent.WaitOne(timeoutSeconds * 1000);
             
             if (completed)
             {
-                Console.WriteLine("✓ Capture completed successfully");
+                AppLogger.Info("SDPClient", "Capture completed successfully");
             }
             else
             {
-                Console.WriteLine($"⚠ Capture did not complete within {timeoutSeconds} seconds");
+                AppLogger.Warn("SDPClient", $"Capture did not complete within {timeoutSeconds} seconds");
             }
             
             return completed;
@@ -695,13 +689,13 @@ namespace SnapdragonProfilerCLI
             
             try
             {
-                Console.WriteLine("Stopping capture...");
+                AppLogger.Info("SDPClient", "Stopping capture...");
                 capture.Stop();
-                Console.WriteLine("✓ Capture stopped");
+                AppLogger.Info("SDPClient", "Capture stopped");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ Warning during capture stop: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Warning during capture stop: {ex.Message}");
             }
         }
         
@@ -740,16 +734,16 @@ namespace SnapdragonProfilerCLI
                     _ => "UNKNOWN"
                 };
                 
-                Console.WriteLine($"✓ SDPCore logging enabled (level: {levelName})");
+                AppLogger.Info("SDPClient", $"SDPCore logging enabled (level: {levelName})");
                 
                 if (logLevel == LogLevel.LOG_DEBUG)
                 {
-                    Console.WriteLine("  → DEBUG level captures all SDPCore internal messages");
+                    AppLogger.Debug("SDPClient", "DEBUG level captures all SDPCore internal messages");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ WARNING: Could not setup logging: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Could not setup logging: {ex.Message}");
             }
         }
         
@@ -757,48 +751,48 @@ namespace SnapdragonProfilerCLI
         {
             try
             {
-                Console.WriteLine("\n=== Initializing Managers ===");
+                AppLogger.Info("SDPClient", "=== Initializing Managers ===");
                 
                 // MetricManager（Snapshot 捕获需要）
                 try
                 {
                     metricManager = MetricManager.Get();
-                    Console.WriteLine("✓ MetricManager initialized");
+                    AppLogger.Info("SDPClient", "MetricManager initialized");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠ WARNING: MetricManager init failed: {ex.Message}");
-                    Console.WriteLine("  Snapshot capture may not work without MetricManager");
+                    AppLogger.Warn("SDPClient", $"MetricManager init failed: {ex.Message}");
+                    AppLogger.Warn("SDPClient", "Snapshot capture may not work without MetricManager");
                 }
                 
                 // 其他必需的 managers
                 NetworkManager.Get();
                 processManager = ProcessManager.Get();
-                Console.WriteLine("✓ NetworkManager & ProcessManager initialized");
+                AppLogger.Info("SDPClient", "NetworkManager & ProcessManager initialized");
                 
                 // DeviceManager
                 deviceManager = DeviceManager.Get();
                 if (deviceManager == null)
                 {
-                    Console.WriteLine("✗ ERROR: Failed to get DeviceManager");
+                    AppLogger.Error("SDPClient", "Failed to get DeviceManager");
                     return false;
                 }
-                Console.WriteLine("✓ DeviceManager initialized");
+                AppLogger.Info("SDPClient", "DeviceManager initialized");
                 
                 // SessionManager（Client.Init 已创建）
                 sessionManager = SessionManager.Get();
-                Console.WriteLine("✓ SessionManager obtained");
+                AppLogger.Info("SDPClient", "SessionManager obtained");
                 
                 // CaptureManager
                 captureManager = CaptureManager.Get();
-                Console.WriteLine("✓ CaptureManager obtained");
+                AppLogger.Info("SDPClient", "CaptureManager obtained");
                 
-                Console.WriteLine("✓ All managers initialized\n");
+                AppLogger.Info("SDPClient", "All managers initialized");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"✗ ERROR: Failed to initialize managers: {ex.Message}");
+                AppLogger.Error("SDPClient", $"Failed to initialize managers: {ex.Message}");
                 return false;
             }
         }
@@ -814,24 +808,24 @@ namespace SnapdragonProfilerCLI
             {
                 deviceManager.SetDeleteServiceFilesOnExit(false);
                 deviceManager.SetInstallerTimeout(120);
-                Console.WriteLine("✓ DeviceManager configured");
+                AppLogger.Info("SDPClient", "DeviceManager configured");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ WARNING: Failed to configure DeviceManager: {ex.Message}");
+                AppLogger.Warn("SDPClient", $"Failed to configure DeviceManager: {ex.Message}");
             }
         }
         
         private bool WaitForDeviceReady(Device device, int maxWaitSeconds)
         {
-            Console.WriteLine("\nWaiting for device to reach Ready state...");
+            AppLogger.Info("SDPClient", "Waiting for device to reach Ready state...");
             
             DeviceConnectionState currentState = device.GetDeviceState();
-            Console.WriteLine($"Initial state: {currentState}");
+            AppLogger.Info("SDPClient", $"Initial state: {currentState}");
             
             if (currentState == DeviceConnectionState.Connected)
             {
-                Console.WriteLine("✓ Device already in Connected state");
+                AppLogger.Info("SDPClient", "Device already in Connected state");
                 return true;
             }
             
@@ -841,78 +835,75 @@ namespace SnapdragonProfilerCLI
                 
                 if (currentState == DeviceConnectionState.Ready)
                 {
-                    Console.WriteLine($"✓ Device reached Ready state after {i+1} seconds");
+                    AppLogger.Info("SDPClient", $"Device reached Ready state after {i+1} seconds");
                     
                     // 给服务额外时间初始化
-                    Console.WriteLine("Waiting 3 seconds for service initialization...");
+                    AppLogger.Debug("SDPClient", "Waiting 3 seconds for service initialization...");
                     Thread.Sleep(3000);
                     return true;
                 }
                 else if (currentState == DeviceConnectionState.InstallFailed)
                 {
-                    Console.WriteLine("✗ Device installation failed!");
+                    AppLogger.Error("SDPClient", "Device installation failed!");
                     return false;
                 }
                 else if (currentState == DeviceConnectionState.Connected)
                 {
-                    Console.WriteLine("✓ Device already connected");
+                    AppLogger.Info("SDPClient", "Device already connected");
                     return true;
                 }
                 
                 // 每 5 秒显示进度
                 if ((i + 1) % 5 == 0)
                 {
-                    Console.WriteLine($"[{i+1}/{maxWaitSeconds}] Still waiting... Current state: {currentState}");
+                    AppLogger.Debug("SDPClient", $"[{i+1}/{maxWaitSeconds}] Still waiting... Current state: {currentState}");
                 }
                 
                 Thread.Sleep(1000);
             }
             
-            Console.WriteLine($"⚠ WARNING: Device did not reach Ready state within {maxWaitSeconds} seconds!");
-            Console.WriteLine($"   Final state: {currentState}");
+            AppLogger.Warn("SDPClient", $"Device did not reach Ready state within {maxWaitSeconds} seconds!");
+            AppLogger.Warn("SDPClient", $"Final state: {currentState}");
             return false;
         }
         
         private bool EstablishNetworkConnection(Device device, uint basePort, int timeoutSeconds)
         {
-            Console.WriteLine($"\n=== Establishing Network Connection ===");
-            Console.WriteLine($"Using base port: {basePort}");
+            AppLogger.Info("SDPClient", "=== Establishing Network Connection ===");
+            AppLogger.Info("SDPClient", $"Using base port: {basePort}");
             
             // 重置日志捕获的端口
             ConsoleLogSink.ResetCapturedPort();
             
             // 调用 Connect
-            Console.WriteLine($"Calling device.Connect({timeoutSeconds}, {basePort})...");
+            AppLogger.Debug("SDPClient", $"Calling device.Connect({timeoutSeconds}, {basePort})...");
             device.Connect((uint)timeoutSeconds, basePort);
             
             // 等待连接建立
-            Console.WriteLine("\nWaiting for connection state: Connected...");
+            AppLogger.Info("SDPClient", "Waiting for connection state: Connected...");
             
             for (int i = 0; i < timeoutSeconds; i++)
             {
                 Thread.Sleep(1000);
                 DeviceConnectionState state = device.GetDeviceState();
-                Console.WriteLine($"[{i+1}/{timeoutSeconds}] Connection state: {state}");
+                AppLogger.Debug("SDPClient", $"[{i+1}/{timeoutSeconds}] Connection state: {state}");
                 
                 if (state == DeviceConnectionState.Connected)
                 {
-                    Console.WriteLine($"✓ Network connection established");
+                    AppLogger.Info("SDPClient", "Network connection established");
                     return true;
                 }
                 else if (state == DeviceConnectionState.InstallFailed || state == DeviceConnectionState.Unknown)
                 {
-                    Console.WriteLine($"✗ Connection failed with state: {state}");
+                    AppLogger.Error("SDPClient", $"Connection failed with state: {state}");
                     return false;
                 }
             }
             
             DeviceConnectionState finalState = device.GetDeviceState();
-            Console.WriteLine($"\n⚠ WARNING: Failed to reach Connected state!");
-            Console.WriteLine($"   Final state: {finalState}");
-            Console.WriteLine("\n   Possible reasons:");
-            Console.WriteLine("   1. Network connection to device service failed");
-            Console.WriteLine("   2. Device service not responding on network port");
-            Console.WriteLine("   3. Firewall blocking connection");
+            AppLogger.Warn("SDPClient", "Failed to reach Connected state!");
+            AppLogger.Warn("SDPClient", $"Final state: {finalState}");
+            AppLogger.Warn("SDPClient", "Possible reasons: 1. Network connection to device service failed  2. Device service not responding on network port  3. Firewall blocking connection");
             
             return false;
         }
@@ -922,11 +913,11 @@ namespace SnapdragonProfilerCLI
         {
             if (updateThread != null && updateThread.IsAlive)
             {
-                Console.WriteLine("⚠ WARNING: Update thread already running");
+                AppLogger.Warn("SDPClient", "Update thread already running");
                 return;
             }
             
-            Console.WriteLine("Starting SDPCore event processing thread...");
+            AppLogger.Info("SDPClient", "Starting SDPCore event processing thread...");
             isRunning = true;
             
             updateThread = new Thread(UpdateThreadProc)
@@ -936,7 +927,7 @@ namespace SnapdragonProfilerCLI
             };
             
             updateThread.Start();
-            Console.WriteLine("✓ SDPCore event processing thread started");
+            AppLogger.Info("SDPClient", "SDPCore event processing thread started");
         }
         
         private void StopUpdateThread()
@@ -946,16 +937,16 @@ namespace SnapdragonProfilerCLI
                 return;
             }
             
-            Console.WriteLine("Stopping SDPCore event processing thread...");
+            AppLogger.Info("SDPClient", "Stopping SDPCore event processing thread...");
             isRunning = false;
             
             if (!updateThread.Join(2000))
             {
-                Console.WriteLine("⚠ Warning: Update thread did not stop gracefully");
+                AppLogger.Warn("SDPClient", "Update thread did not stop gracefully");
             }
             else
             {
-                Console.WriteLine("✓ SDPCore event processing thread stopped");
+                AppLogger.Info("SDPClient", "SDPCore event processing thread stopped");
             }
             
             updateThread = null;
@@ -963,7 +954,7 @@ namespace SnapdragonProfilerCLI
         
         private void UpdateThreadProc()
         {
-            Console.WriteLine("[UpdateThread] Started");
+            AppLogger.Debug("SDPClient", "UpdateThread started");
             
             while (isRunning)
             {
@@ -978,11 +969,11 @@ namespace SnapdragonProfilerCLI
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[UpdateThread] Exception: {ex.Message}");
+                    AppLogger.Warn("SDPClient", $"UpdateThread exception: {ex.Message}");
                 }
             }
             
-            Console.WriteLine("[UpdateThread] Stopped");
+            AppLogger.Debug("SDPClient", "UpdateThread stopped");
         }
         
         // ==================== IDisposable ====================

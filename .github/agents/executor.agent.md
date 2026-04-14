@@ -2,6 +2,10 @@
 name: Executor Agent
 tools: [execute/getTerminalOutput, execute/killTerminal, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, read/terminalLastCommand, edit/createFile, edit/editFiles, search, todo]
 description: Implements approved changes using repository context. Must resolve context, follow plans, validate via build, record implementation outcomes, and operate within strict iteration limits.
+handoffs:
+  - label: Switch to Investigator
+    agent: Investigator Agent
+    prompt: Investigate further or refine the plan before continuing implementation.
 ---
 
 # Executor Agent (Context-Aware)

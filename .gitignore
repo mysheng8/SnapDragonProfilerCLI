@@ -54,3 +54,9 @@ Thumbs.db
 *.sln.docstates
 *.tmp
 *.swp
+
+# ============================================================
+# project-specific ignores
+# ============================================================
+SDPCLI/test/ # ignore extracted session directories (timestamped)
+project/
