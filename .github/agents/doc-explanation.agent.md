@@ -2,6 +2,12 @@
 name: doc-explanation
 tools: [search, read/readFile, edit/createFile, edit/editFiles]
 description: Writes Diátaxis Explanation docs grounded in source code, strongly bound to Code Index and Context (findings/plans/implementations), with strict guard and language enforcement.
+hooks:
+  PreToolUse:
+    - type: command
+      command: "py .github/scripts/check-doc-explanation-writes.py",
+      windows: "py .github\\scripts\\check-doc-explanation-writes.py",
+      timeout: 10
 ---
 
 # Doc Explanation
