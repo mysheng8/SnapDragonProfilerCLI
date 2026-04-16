@@ -1,5 +1,5 @@
 ---
-name: doc-explanation
+name: Doc Explanation Agent
 tools: [search, read/readFile, edit/createFile, edit/editFiles]
 description: Writes Diátaxis Explanation docs grounded in source code, strongly bound to Context, Code Index, and Explanation Index, and produces self-describing explanation documents.
 hooks:

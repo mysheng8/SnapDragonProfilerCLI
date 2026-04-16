@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pySdp</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- marked.js for markdown rendering — falls back gracefully if offline -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <!-- mermaid.js for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<header>
+  <span class="logo">pySdp</span>
+  <div class="badges">
+    <span class="badge badge-gray" id="server-badge">● SDPCLI: —</span>
+    <span class="badge badge-gray" id="device-badge">Disconnected</span>
+  </div>
+</header>
+
+<!-- ── Tabs ───────────────────────────────────────────────────── -->
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="snapshot">Snapshot</button>
+  <button class="tab-btn"        data-tab="analysis">Analysis</button>
+  <button class="tab-btn"        data-tab="results" >Results</button>
+  <button class="tab-btn"        data-tab="logs">
+    Logs <span class="log-tab-badge hidden" id="log-tab-badge">0</span>
+  </button>
+</nav>
+
+<!-- ── Main ───────────────────────────────────────────────────── -->
+<main>
+
+  <!-- ══ Snapshot Tab ════════════════════════════════════════════ -->
+  <section id="tab-snapshot" class="tab-content active">
+
+    <!-- Step 1: Connect -->
+    <div class="card" id="card-connect">
+      <div class="card-title">1 — Connect Device</div>
+      <div class="form-row">
+        <label>Device ID</label>
+        <input id="device-id" type="text" placeholder="192.168.1.100:5555  (optional, auto-select if empty)">
+      </div>
+      <div class="btn-row">
+        <button id="btn-connect"    onclick="doConnect()">Connect</button>
+        <button id="btn-disconnect" class="btn-secondary" onclick="doDisconnect()" disabled>Disconnect</button>
+      </div>
+      <div id="connect-prog" class="progress-wrap hidden">
+        <div class="progress-track"><div class="progress-fill" id="connect-fill"></div></div>
+        <span class="progress-label" id="connect-plabel"></span>
+      </div>
+      <div class="status-msg" id="connect-msg"></div>
+    </div>
+
+    <!-- Step 2: Launch -->
+    <div class="card disabled" id="card-launch">
+      <div class="card-title">2 — Launch App</div>
+      <div class="form-row">
+        <label>Package</label>
+        <input id="pkg" type="text" placeholder="com.example.app">
+      </div>
+      <div class="form-row">
+        <label>Activity</label>
+        <input id="activity" type="text" placeholder="com.example.MainActivity">
+      </div>
+      <div class="btn-row">
+        <button id="btn-launch" onclick="doLaunch()" disabled>Launch</button>
+      </div>
+      <div id="launch-prog" class="progress-wrap hidden">
+        <div class="progress-track"><div class="progress-fill" id="launch-fill"></div></div>
+        <span class="progress-label" id="launch-plabel"></span>
+      </div>
+      <div class="status-msg" id="launch-msg"></div>
+    </div>
+
+    <!-- Step 3: Capture -->
+    <div class="card disabled" id="card-capture">
+      <div class="card-title">3 — Capture</div>
+      <div class="form-row">
+        <label>Label</label>
+        <input id="cap-label" type="text" placeholder="optional frame label">
+      </div>
+      <div class="btn-row">
+        <button id="btn-capture" onclick="doCapture()" disabled>Capture</button>
+      </div>
+      <div id="capture-prog" class="progress-wrap hidden">
+        <div class="progress-track"><div class="progress-fill" id="capture-fill"></div></div>
+        <span class="progress-label" id="capture-plabel"></span>
+      </div>
+      <div class="status-msg" id="capture-msg"></div>
+      <div class="captures-list" id="captures-list"></div>
+    </div>
+
+  </section>
+
+  <!-- ══ Analysis Tab ════════════════════════════════════════════ -->
+  <section id="tab-analysis" class="tab-content">
+
+    <!-- SDP file browser -->
+    <div class="card">
+      <div class="card-title">SDP Files</div>
+      <div class="form-row">
+        <label>Directory</label>
+        <input id="sdp-dir" type="text" placeholder="D:/snapdragon/project/sdp">
+        <button class="btn-secondary btn-sm" onclick="scanSdpFiles()">Scan</button>
+      </div>
+      <div id="sdp-scan-msg" class="status-msg"></div>
+      <div id="sdp-file-grid" class="sdp-grid">
+        <span class="muted">Enter a directory and click Scan.</span>
+      </div>
+    </div>
+
+    <!-- Analysis progress (visible while a job is running) -->
+    <div class="card" id="card-analysis-progress" style="display:none">
+      <div class="card-title">
+        Analyzing: <span id="analysis-progress-name" style="font-weight:400;color:var(--muted)"></span>
+      </div>
+      <div class="progress-wrap" id="analysis-prog">
+        <div class="progress-track"><div class="progress-fill" id="analysis-fill"></div></div>
+        <span class="progress-label" id="analysis-plabel"></span>
+      </div>
+      <div class="status-msg" id="analysis-msg"></div>
+      <div class="btn-row" style="margin-top:6px">
+        <button id="btn-cancel-analysis" class="btn-secondary btn-sm" onclick="cancelAnalysis()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Analysis settings (collapsible) -->
+    <div class="card">
+      <div class="card-title settings-toggle" onclick="toggleAnalysisSettings()">
+        <span id="settings-chevron">▶</span>&nbsp;Analysis Settings
+      </div>
+      <div id="analysis-settings-body" style="display:none">
+        <div class="form-row" style="margin-top:10px">
+          <label>Snapshot ID</label>
+          <input id="snapshot-id" type="number" value="2" min="2" style="max-width:120px">
+        </div>
+        <div class="form-row" style="align-items:flex-start">
+          <label style="padding-top:6px">Targets</label>
+          <div class="targets-grid" id="targets-grid"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary btn-sm" onclick="saveAnalysisSettings()">Save Settings</button>
+        </div>
+        <div class="status-msg" id="settings-save-msg"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══ Results Tab ═════════════════════════════════════════════ -->
+  <section id="tab-results" class="tab-content">
+
+    <div class="card">
+      <div class="card-title">Results</div>
+      <div class="form-row">
+        <label>Directory</label>
+        <div class="input-row">
+          <input id="results-dir" type="text" placeholder="D:/analysis-out/.../snapshot_2">
+          <button class="btn-secondary btn-sm"
+                  onclick="loadResults(document.getElementById('results-dir').value)">Load</button>
+        </div>
+      </div>
+      <div id="results-files"></div>
+    </div>
+
+    <div id="file-viewer"></div>
+
+  </section>
+
+
+  <!-- ══ Logs Tab ════════════════════════════════════════════════ -->
+  <section id="tab-logs" class="tab-content">
+
+    <div class="card">
+      <div class="card-title">Logs</div>
+
+      <!-- Toolbar -->
+      <div class="log-toolbar">
+        <div class="log-filters">
+          <button class="log-filter-btn active" data-filter="all"     onclick="setLogFilter('all')">All</button>
+          <button class="log-filter-btn"         data-filter="error"   onclick="setLogFilter('error')">Error</button>
+          <button class="log-filter-btn"         data-filter="warning" onclick="setLogFilter('warning')">Warning</button>
+          <button class="log-filter-btn"         data-filter="info"    onclick="setLogFilter('info')">Info</button>
+        </div>
+        <div class="log-actions">
+          <button class="btn-secondary btn-sm" onclick="fetchLogs()">Refresh</button>
+          <button class="btn-secondary btn-sm" onclick="clearLogs()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Log list -->
+      <div id="log-list"><span class="muted log-empty">No log entries.</span></div>
+    </div>
+
+  </section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -45,6 +45,9 @@ namespace SnapdragonProfilerCLI
         // Target app package name — only this process gets verbose logging in OnProcessAdded/Removed
         private string? _targetPackageName;
 
+        /// <summary>Fired on the SDK callback thread when the target process disappears.</summary>
+        public event Action<uint>? TargetProcessRemoved;
+
         public void SetExpectedCaptureId(uint captureId)
         {
             _expectedCaptureIdForSignal = captureId;
@@ -419,7 +422,11 @@ namespace SnapdragonProfilerCLI
                              && (removedName?.Contains(_targetPackageName) ?? false);
 
             if (wasTarget)
+            {
                 AppLogger.Info("Delegate", $"[ProcessRemoved] TARGET process removed: PID={pid} Name={removedName}");
+                try { TargetProcessRemoved?.Invoke(pid); }
+                catch (Exception ex) { AppLogger.Warn("Delegate", $"TargetProcessRemoved handler threw: {ex.Message}"); }
+            }
             else
                 AppLogger.Debug("Delegate", $"[ProcessRemoved] PID={pid}");
         }

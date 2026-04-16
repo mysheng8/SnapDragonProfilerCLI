@@ -145,7 +145,7 @@ namespace SnapdragonProfilerCLI.Server.Jobs
                         new SessionArchiveService().CreateSessionArchive(sessionPath);
                     }, CancellationToken.None).ConfigureAwait(false);
 
-                    sdpPath = sessionPath + ".sdp";
+                    sdpPath = sessionPath.TrimEnd('\\', '/') + ".sdp";
                 }
 
                 // ── Done ──────────────────────────────────────────────────────

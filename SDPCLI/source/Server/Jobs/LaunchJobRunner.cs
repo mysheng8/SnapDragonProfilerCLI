@@ -102,6 +102,25 @@ namespace SnapdragonProfilerCLI.Server.Jobs
                 job.Progress = 100;
                 session.TryTransition(DeviceStatus.Launching, DeviceStatus.SessionActive);
                 _log.Info("Launch job completed: " + resolvedPkg);
+
+                // Auto-close session when the target process disappears (app killed / crashed)
+                if (session.ClientDelegate is CliClientDelegate csd)
+                {
+                    Action<uint>? handler = null;
+                    handler = pid =>
+                    {
+                        csd.TargetProcessRemoved -= handler;   // self-unregister, fires only once
+                        if (session.TryTransition(DeviceStatus.SessionActive, DeviceStatus.Connected))
+                        {
+                            _log.Info($"Target process PID={pid} removed — session auto-closed");
+                            session.CurrentSession    = null;
+                            session.TargetPackageName = null;
+                            session.TargetProcessPid  = 0;
+                            session.VerifiedProcessPid = 0;
+                        }
+                    };
+                    csd.TargetProcessRemoved += handler;
+                }
             }
             catch (OperationCanceledException)
             {

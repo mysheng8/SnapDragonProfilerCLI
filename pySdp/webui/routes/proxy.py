@@ -1,0 +1,137 @@
+"""
+proxy.py — Transparent proxy to the SDPCLI Server (default: http://localhost:5000).
+
+All /api/sdpcli/* routes forward to the corresponding /api/* endpoint on the
+SDPCLI Server and relay the JSON response back to the browser unchanged.
+"""
+
+import json
+import os
+
+import requests
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+
+import logger as _logger_module
+
+SDPCLI_BASE = os.environ.get("SDPCLI_URL", "http://localhost:5000")
+
+router = APIRouter()
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+async def _body(request: Request) -> dict:
+    raw = await request.body()
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+
+
+def _fwd(method: str, path: str, body=None, *, silent: bool = False) -> JSONResponse:
+    """Forward a request to the SDPCLI Server.
+
+    Args:
+        silent: When True, suppresses warning logs for connection errors
+                (used for high-frequency polling routes like /api/device).
+    """
+    log = _logger_module.get_logger()
+    url = f"{SDPCLI_BASE}{path}"
+    ctx = {"method": method, "url": url}
+
+    try:
+        if method == "GET":
+            r = requests.get(url, timeout=30)
+        elif method == "POST":
+            r = requests.post(url, json=body, timeout=30)
+        elif method == "DELETE":
+            r = requests.delete(url, timeout=30)
+        else:
+            return JSONResponse({"ok": False, "error": "Method not allowed"}, status_code=405)
+
+        # Log server-side errors (5xx) as errors; 4xx as warnings
+        if r.status_code >= 500:
+            log.error(f"SDPCLI returned {r.status_code}", context={**ctx, "status": r.status_code})
+        elif r.status_code >= 400:
+            log.warning(f"SDPCLI returned {r.status_code}", context={**ctx, "status": r.status_code})
+
+        try:
+            return JSONResponse(content=r.json(), status_code=r.status_code)
+        except Exception:
+            return JSONResponse(
+                {"ok": False, "error": r.text or f"HTTP {r.status_code}"},
+                status_code=r.status_code,
+            )
+
+    except requests.ConnectionError as exc:
+        if not silent:
+            log.warning("SDPCLI Server unreachable", context={**ctx, "error": str(exc)})
+        return JSONResponse(
+            {"ok": False, "error": "Cannot connect to SDPCLI Server — is it running?"},
+            status_code=503,
+        )
+    except Exception as exc:
+        log.error("Proxy unexpected error", exc=exc, context=ctx)
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
+@router.post("/connect")
+async def connect(request: Request):
+    return _fwd("POST", "/api/connect", await _body(request))
+
+
+@router.post("/disconnect")
+async def disconnect():
+    return _fwd("POST", "/api/disconnect", {})
+
+
+@router.post("/session/launch")
+async def launch(request: Request):
+    return _fwd("POST", "/api/session/launch", await _body(request))
+
+
+@router.post("/capture")
+async def capture(request: Request):
+    return _fwd("POST", "/api/capture", await _body(request))
+
+
+@router.post("/analysis")
+async def analysis(request: Request):
+    return _fwd("POST", "/api/analysis", await _body(request))
+
+
+@router.get("/status")
+async def sdpcli_status():
+    # Server liveness probe — silent to avoid log spam
+    return _fwd("GET", "/api/status", silent=True)
+
+
+@router.get("/device")
+async def device():
+    # High-frequency poll — suppress connection warnings to avoid log spam
+    return _fwd("GET", "/api/device", silent=True)
+
+
+@router.get("/jobs")
+async def list_jobs():
+    return _fwd("GET", "/api/jobs")
+
+
+@router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    return _fwd("GET", f"/api/jobs/{job_id}")
+
+
+@router.post("/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str):
+    return _fwd("POST", f"/api/jobs/{job_id}/cancel", {})
+
+
+@router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    return _fwd("DELETE", f"/api/jobs/{job_id}")

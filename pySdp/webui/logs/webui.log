@@ -1,0 +1,21 @@
+2026-04-15T14:07:07 [INFO   ] test info
+2026-04-15T14:07:07 [WARNING] test warn | {'k': 'v'}
+2026-04-15T14:07:07 [ERROR  ] test error | {'path': '/test'}
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+    1/0
+    ~^~
+ZeroDivisionError: division by zero
+2026-04-15T14:28:30 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-15T14:31:06 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260415-063056-007', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260415-063056-007 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T14:31:14 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260415-063056-007', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260415-063056-007 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T14:31:22 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260415-063056-007', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260415-063056-007 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T14:34:16 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-15T14:40:47 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/ana-20260415-064039-004', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/ana-20260415-064039-004 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T14:40:55 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/ana-20260415-064039-004', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/ana-20260415-064039-004 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T14:48:13 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-15T15:00:05 [WARNING] SDPCLI Server unreachable | {'method': 'POST', 'url': 'http://localhost:5000/api/disconnect', 'error': "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"}
+2026-04-15T15:00:13 [WARNING] SDPCLI Server unreachable | {'method': 'POST', 'url': 'http://localhost:5000/api/disconnect', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/disconnect (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-15T15:00:25 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-15T21:22:20 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-15T21:41:45 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}

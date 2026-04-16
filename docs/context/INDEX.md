@@ -23,6 +23,101 @@ When searching for context:
 
 ## 📂 Findings
 
+### FINDING-2026-04-15-raw-data-schema.md
+- topic: complete raw data schema for analysis pipeline — SQLite tables, CSV files, extracted assets, JSON outputs
+- summary: |
+    Full inventory of every raw artifact the analysis pipeline reads/writes.
+    9 SQLite table groups (5 native SDP + 7 CSV-imported + DrawCallMetrics).
+    Exact CSV column headers for all 8 CSV files. Shader/texture/mesh extraction
+    file naming conventions. Exact JSON field names for dc.json, shaders.json,
+    textures.json, buffers.json, label.json, metrics.json, status.json, and the
+    legacy raw.json (schema 2.0). Full counter-name→snake_case key mapping table.
+    Stability classification for each artifact type.
+- related_paths:
+  - SDPCLI/source/Analysis/AnalysisPipeline.cs
+  - SDPCLI/source/Data/SdpDatabase.DrawCalls.cs
+  - SDPCLI/source/Data/SdpDatabase.Schema.cs
+  - SDPCLI/source/Models/DrawCallModels.cs
+  - SDPCLI/source/Models/VulkanSnapshotModel.cs
+  - SDPCLI/source/Services/Analysis/RawJsonGenerationService.cs
+  - SDPCLI/source/Services/Analysis/StatusJsonService.cs
+  - SDPCLI/source/Services/Analysis/MetricsQueryService.cs
+  - SDPCLI/source/Services/Capture/CsvToDbService.cs
+  - SDPCLI/source/Tools/ShaderExtractor.cs
+  - SDPCLI/source/Tools/TextureExtractor.cs
+  - SDPCLI/source/Tools/MeshExtractor.cs
+- tags:
+  - database
+  - sqlite
+  - csv
+  - schema
+  - json
+  - shader
+  - texture
+  - mesh
+  - drawcall-analysis
+  - python
+
+---
+
+### FINDING-2026-04-15-server-api-state-audit.md
+- topic: HTTP server API endpoint inventory and DeviceStatus state machine audit
+- summary: |
+    Complete inventory of all 9 routes (GET /api/status, GET /api/device, POST /api/connect,
+    POST /api/disconnect, POST /api/session/launch, POST /api/capture, POST /api/analysis,
+    GET|POST|DELETE /api/jobs[/{id}[/cancel]]). DeviceStatus enum has 6 values; state machine
+    has 9 guarded TryTransition calls + 1 forced assignment (Disconnect). Server does NOT exit
+    after archive. Five gaps identified for WebUI design: no activeJobId on /api/device, no
+    lastError field, no standard /health path, analysis not surfaced on /api/device, static version.
+- related_paths:
+  - SDPCLI/source/Server/HttpServer.cs
+  - SDPCLI/source/Server/DeviceSession.cs
+  - SDPCLI/source/Server/DeviceSessionInfo.cs
+  - SDPCLI/source/Server/Handlers/
+  - SDPCLI/source/Server/Jobs/
+  - SDPCLI/source/Modes/ServerMode.cs
+  - pySdp/webui/routes/proxy.py
+  - pySdp/webui/static/app.js
+- tags:
+  - server-mode
+  - http-api
+  - device-session
+  - state-machine
+  - webui
+  - endpoints
+
+---
+
+### FINDING-2026-04-15-snapshot-analysis-mode-switch.md
+- topic: snapshot → analysis → snapshot mode switch causing "cannot find SDPCLI" / 503 error
+- summary: |
+    Four root-cause candidates for the snapshot→analysis→snapshot failure in server mode.
+    Primary: ConsolePlatform.ExitApplication() calls Environment.Exit(0) — if native SDK
+    triggers IPlatform.ExitApplication() during update-thread execution, the entire SDPCLI
+    process terminates. Secondary: SDPClient background update thread has no unhandled-exception
+    guard (process death on native callback throw). AnalysisJobRunner itself is safe (pure offline,
+    no SDK calls, no DeviceSession mutation). The "cannot find SDPCLI" message is 503 (ConnectionError),
+    not a 409 state conflict. State machine is correct — CaptureJobRunner always resets to SessionActive.
+- related_paths:
+  - SDPCLI/source/ConsolePlatform.cs
+  - SDPCLI/source/SDPClient.cs
+  - SDPCLI/source/Server/DeviceSession.cs
+  - SDPCLI/source/Server/Jobs/AnalysisJobRunner.cs
+  - SDPCLI/source/Server/Jobs/CaptureJobRunner.cs
+  - pySdp/webui/routes/proxy.py
+  - pySdp/webui/static/app.js
+- tags:
+  - server-mode
+  - device-session
+  - analysis
+  - snapshot
+  - capture
+  - mode-switch
+  - environment-exit
+  - state-machine
+
+---
+
 ### FINDING-2026-04-07-shader-texture-export-structure.md
 - topic: shader and texture export structure / drawcall analysis output format
 - summary: Per-capture folder isolation duplicates shared assets across snapshots; CSV output lacks asset file references; no JSON for per-DC analysis table

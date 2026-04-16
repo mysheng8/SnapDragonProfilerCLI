@@ -22,7 +22,14 @@ namespace SnapdragonProfilerCLI.Modes
             Config config,
             string testPath,
             Func<string?, string?> readLine,
-            string? passModeArg = null)
+            string? resourceIdArg   = null,
+            string? outputArg       = null,
+            string? captureIdArg    = null,
+            string? drawCallIdArg   = null,
+            string? pipelineIdArg   = null,
+            string? maxDrawCallsArg = null,
+            string? passModeArg     = null,
+            ILogger? logger         = null)
         {
             _config      = config;
             _testPath    = testPath;
