@@ -154,19 +154,29 @@
   <!-- ══ Results Tab ═════════════════════════════════════════════ -->
   <section id="tab-results" class="tab-content">
 
+    <!-- Run selector -->
     <div class="card">
-      <div class="card-title">Results</div>
+      <div class="card-title">Analysis Runs</div>
       <div class="form-row">
-        <label>Directory</label>
+        <label>Root directory</label>
         <div class="input-row">
-          <input id="results-dir" type="text" placeholder="D:/analysis-out/.../snapshot_2">
-          <button class="btn-secondary btn-sm"
-                  onclick="loadResults(document.getElementById('results-dir').value)">Load</button>
+          <input id="results-root" type="text" placeholder="D:/snapdragon/project/sdp/analysis">
+          <button class="btn-secondary btn-sm" onclick="scanAnalyses()">Scan</button>
         </div>
       </div>
-      <div id="results-files"></div>
+      <div id="results-scan-msg" class="status-msg"></div>
+      <div id="run-selector" class="run-selector"></div>
     </div>
 
+    <!-- Snapshot viewer (shown after selecting a run) -->
+    <div id="snapshot-viewer" style="display:none">
+      <!-- Snapshot tabs -->
+      <div class="snap-tabs" id="snap-tabs"></div>
+      <!-- Snapshot content panels -->
+      <div id="snap-panels"></div>
+    </div>
+
+    <!-- File viewer (inline) -->
     <div id="file-viewer"></div>
 
   </section>

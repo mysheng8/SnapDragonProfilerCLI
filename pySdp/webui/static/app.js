@@ -364,12 +364,12 @@ async function doCapture() {
     res = await apiPost(`${API}/capture`, body);
   } catch (err) {
     setMsg('capture', 'error', err.message);
-    setBtn('btn-capture', state.device === 'SessionActive');
+    syncDevice();
     return;
   }
   if (!res.ok) {
     setMsg('capture', 'error', res.error);
-    setBtn('btn-capture', state.device === 'SessionActive');
+    syncDevice();
     return;
   }
 
@@ -387,12 +387,12 @@ async function doCapture() {
         addCaptureRow(r);
         state.captures.push(r);
       }
-      setBtn('btn-capture', state.device === 'SessionActive');
+      syncDevice();
     },
     err => {
       hideProg('capture');
       setMsg('capture', 'error', err);
-      setBtn('btn-capture', state.device === 'SessionActive');
+      syncDevice();
     }
   );
 }
@@ -433,7 +433,19 @@ function addCaptureRow(capture) {
 const sdpAnalysisCache = {};
 
 const ALL_TARGETS     = ['dc','shaders','textures','buffers','label','metrics','status','topdc','analysis','dashboard'];
-const DEFAULT_TARGETS = new Set(['dc','label','metrics','status']);
+const DEFAULT_TARGETS = new Set(ALL_TARGETS);
+
+// Targets handled by C# (SDK P/Invoke — must run on SDPCLI server)
+const CS_TARGETS = new Set(['dc','shaders','textures','buffers','metrics']);
+
+// Targets handled by Python, in dependency order
+const PY_STEPS = [
+  { key: 'label',     endpoint: 'label',       phase: 'label_drawcalls' },
+  { key: 'status',    endpoint: 'status',       phase: 'generate_stats'  },
+  { key: 'topdc',     endpoint: 'topdc',        phase: 'generate_topdc'  },
+  { key: 'analysis',  endpoint: 'analysis_md',  phase: 'report_analysis' },
+  { key: 'dashboard', endpoint: 'dashboard',    phase: 'dashboard'       },
+];
 
 function initTargetChips() {
   const grid = document.getElementById('targets-grid');
@@ -528,6 +540,25 @@ async function scanSdpFiles() {
     card.appendChild(btns);
     grid.appendChild(card);
   });
+
+  // Also scan the analysis subdirectory and enable Results buttons for matching sdp names
+  const analysisDir = dir.replace(/\\/g, '/').replace(/\/$/, '') + '/analysis';
+  scanAnalyses(analysisDir, null, null, /*silent=*/true).then(() => {
+    // Match runs to sdp cards by name stem (e.g. "2026-04-20T18-11-00" in run name)
+    resultsState.runs.forEach(run => {
+      grid.querySelectorAll('.sdp-card').forEach(card => {
+        const sdpPath = card.dataset.sdpPath;
+        const sdpStem = sdpPath.replace(/\\/g, '/').split('/').pop().replace(/\.sdp$/, '');
+        if (run.name === sdpStem && run.snapshots.length > 0) {
+          // Use the first snapshot dir as captureDir representative
+          const captureDir = run.snapshots[0].path;
+          sdpAnalysisCache[sdpPath] = captureDir;
+          const rb = card.querySelector('.sdp-results-btn');
+          if (rb) { rb.disabled = false; rb.onclick = () => openResults(captureDir); }
+        }
+      });
+    });
+  });
 }
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
@@ -550,14 +581,14 @@ async function doAnalyze(sdpPath) {
   }
 
   const snapshotId = parseInt(document.getElementById('snapshot-id').value, 10);
-  const targets    = selectedTargets();
+  const allSelected = new Set(selectedTargets().split(',').filter(Boolean));
 
   if (!snapshotId || snapshotId < 2) {
     setMsg('analysis', 'error', 'Snapshot ID must be ≥ 2 — check Settings');
     document.getElementById('card-analysis-progress').style.display = '';
     return;
   }
-  if (!targets) {
+  if (allSelected.size === 0) {
     setMsg('analysis', 'error', 'Select at least one target in Settings');
     document.getElementById('card-analysis-progress').style.display = '';
     return;
@@ -570,9 +601,12 @@ async function doAnalyze(sdpPath) {
   showProg('analysis', 0, 'starting');
   document.querySelectorAll('.sdp-analyze-btn').forEach(b => b.disabled = true);
 
+  // C# targets: intersection of selected + CS_TARGETS
+  const csTargets = [...allSelected].filter(t => CS_TARGETS.has(t)).join(',');
+
   let res;
   try {
-    res = await apiPost(`${API}/analysis`, { sdpPath, snapshotId, targets });
+    res = await apiPost(`${API}/analysis`, { sdpPath, snapshotId, targets: csTargets || 'dc' });
   } catch (err) {
     _finishAnalysis(sdpPath, null, err.message);
     return;
@@ -584,14 +618,39 @@ async function doAnalyze(sdpPath) {
 
   state.activeAnalysisJobId = res.data.jobId;
 
+  // C# job occupies 0-70% of progress
   pollJob('analysis', res.data.jobId,
-    job => showProg('analysis', job.progress, job.phase),
+    job => showProg('analysis', Math.round(job.progress * 0.70), job.phase),
     job => {
       const captureDir = normPath(job.result?.captureDir) || null;
-      _finishAnalysis(sdpPath, captureDir, null);
+      if (!captureDir) { _finishAnalysis(sdpPath, null, 'No captureDir in job result'); return; }
+      _runPySteps(sdpPath, captureDir, allSelected);
     },
     err => _finishAnalysis(sdpPath, null, err)
   );
+}
+
+// Python generation steps run sequentially after C# job completes (70-100% progress)
+async function _runPySteps(sdpPath, captureDir, selected) {
+  const steps = PY_STEPS.filter(s => selected.has(s.key));
+  const total  = steps.length;
+
+  for (let i = 0; i < total; i++) {
+    const step = steps[i];
+    const pct  = 70 + Math.round(((i) / total) * 30);
+    showProg('analysis', pct, step.phase);
+    try {
+      const res = await apiPost(`${FILES}/${step.endpoint}?snapshot_dir=${encodeURIComponent(captureDir)}`, {});
+      if (!res.ok) {
+        console.warn(`Python step ${step.key} failed: ${res.error}`);
+        // non-fatal — continue with remaining steps
+      }
+    } catch (err) {
+      console.warn(`Python step ${step.key} error: ${err.message}`);
+    }
+  }
+
+  _finishAnalysis(sdpPath, captureDir, null);
 }
 
 function _finishAnalysis(sdpPath, captureDir, error) {
@@ -609,7 +668,6 @@ function _finishAnalysis(sdpPath, captureDir, error) {
   if (captureDir) {
     state.lastAnalysisDir = captureDir;
     sdpAnalysisCache[sdpPath] = captureDir;
-    // Enable Results button on the matching card
     const card = [...document.querySelectorAll('.sdp-card')]
                    .find(c => c.dataset.sdpPath === sdpPath);
     if (card) {
@@ -621,7 +679,6 @@ function _finishAnalysis(sdpPath, captureDir, error) {
     }
   }
 
-  // Auto-hide progress card after 3s
   setTimeout(() => {
     document.getElementById('card-analysis-progress').style.display = 'none';
     setMsg('analysis', '', '');
@@ -638,12 +695,22 @@ async function cancelAnalysis() {
   }
 }
 
+// captureDir is the snapshot_N subdir under an analysis run (e.g. .../analysis/2026-04-20T18-11-00/snapshot_2)
+// We navigate up to the analysis root and scan all runs, then auto-select the right one.
 function openResults(captureDir) {
   if (!captureDir) return;
   state.lastAnalysisDir = captureDir;
-  document.getElementById('results-dir').value = captureDir;
   switchTab('results');
-  loadResults(captureDir);
+  // Derive the analysis root (two levels up: snapshot_N → run → analysis root)
+  const normDir = normPath(captureDir);
+  const parts   = normDir.replace(/\\/g, '/').split('/');
+  // parts[-1] = snapshot_N, parts[-2] = run timestamp, parts[-3] = analysis root
+  const analysisRoot = parts.slice(0, -2).join('/');
+  const runName      = parts[parts.length - 2];
+  const snapId       = parts[parts.length - 1];
+  const rootInput    = document.getElementById('results-root');
+  if (rootInput) rootInput.value = analysisRoot;
+  scanAnalyses(analysisRoot, runName, snapId);
 }
 
 function goToResults() {
@@ -688,40 +755,225 @@ function loadAnalysisSettings() {
 
 // ── Results ───────────────────────────────────────────────────────────────────
 
-async function loadResults(dir) {
+// Current results state
+const resultsState = {
+  runs:        [],   // parsed from /api/files/analyses
+  activeRun:   null, // run name string
+  activeSnap:  null, // snapshot id string e.g. "snapshot_2"
+};
+
+async function scanAnalyses(root, autoRunName, autoSnapId, silent = false) {
+  const rootInput = document.getElementById('results-root');
+  const dir = root || (rootInput && rootInput.value.trim());
   if (!dir) return;
-  const container = document.getElementById('results-files');
-  container.innerHTML = '<span class="muted">Loading…</span>';
+  if (!silent) {
+    if (rootInput && rootInput.value !== dir) rootInput.value = dir;
+    localStorage.setItem('analysisRoot', dir);
+    setMsg('results-scan', 'info', 'Scanning…');
+  }
 
   let res;
   try {
-    res = await apiGet(`${FILES}/results?dir=${encodeURIComponent(dir)}`);
+    res = await apiGet(`${FILES}/analyses?root=${encodeURIComponent(dir)}`);
   } catch (err) {
-    container.innerHTML = `<span class="s-error">${escHtml(err.message)}</span>`;
+    if (!silent) setMsg('results-scan', 'error', err.message);
     return;
   }
   if (!res.ok) {
-    container.innerHTML = `<span class="s-error">${escHtml(res.error)}</span>`;
+    if (!silent) setMsg('results-scan', 'error', res.error);
     return;
   }
 
-  const files = res.data || [];
-  if (files.length === 0) {
-    container.innerHTML = '<span class="muted">No files found.</span>';
+  const runs = res.data || [];
+  if (!silent) {
+    localStorage.setItem('analysisRoot', dir);
+    if (rootInput && rootInput.value !== dir) rootInput.value = dir;
+    setMsg('results-scan', '', '');
+    resultsState.runs = runs;
+    renderRunSelector(autoRunName || null, autoSnapId || null);
+  } else {
+    // silent: just return runs for caller to use
+    resultsState.runs = runs;
+  }
+}
+
+function renderRunSelector(autoRunName, autoSnapId) {
+  const container = document.getElementById('run-selector');
+  const runs = resultsState.runs;
+  if (runs.length === 0) {
+    container.innerHTML = '<span class="muted">No analysis runs found.</span>';
+    document.getElementById('snapshot-viewer').style.display = 'none';
     return;
   }
 
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'run-list';
+
+  const selectRun = autoRunName || runs[0].name;
+
+  runs.forEach(run => {
+    const row = document.createElement('button');
+    row.className = 'run-item' + (run.name === selectRun ? ' active' : '');
+    row.textContent = run.name;
+    row.onclick = () => {
+      list.querySelectorAll('.run-item').forEach(b => b.classList.remove('active'));
+      row.classList.add('active');
+      resultsState.activeRun = run.name;
+      renderSnapshotTabs(run, null, /*openDashboard=*/true);
+    };
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+
+  // Auto-select run
+  const selectedRun = runs.find(r => r.name === selectRun) || runs[0];
+  resultsState.activeRun = selectedRun.name;
+  renderSnapshotTabs(selectedRun, autoSnapId, /*openDashboard=*/true);
+}
+
+function renderSnapshotTabs(run, autoSnapId, openDashboard = false) {
+  const tabsEl   = document.getElementById('snap-tabs');
+  const panelsEl = document.getElementById('snap-panels');
+  const viewer   = document.getElementById('snapshot-viewer');
+
+  tabsEl.innerHTML   = '';
+  panelsEl.innerHTML = '';
+  viewer.style.display = 'block';
+
+  if (!run.snapshots || run.snapshots.length === 0) {
+    panelsEl.innerHTML = '<span class="muted">No snapshots in this run.</span>';
+    return;
+  }
+
+  const activeSnap = autoSnapId || run.snapshots[0].id;
+  resultsState.activeSnap = activeSnap;
+
+  run.snapshots.forEach(snap => {
+    // Tab button
+    const tab = document.createElement('button');
+    tab.className = 'snap-tab-btn' + (snap.id === activeSnap ? ' active' : '');
+    tab.textContent = snap.id;
+    tab.onclick = () => {
+      tabsEl.querySelectorAll('.snap-tab-btn').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      resultsState.activeSnap = snap.id;
+      panelsEl.querySelectorAll('.snap-panel').forEach(p => p.style.display = 'none');
+      const panel = document.getElementById(`panel-${snap.id}`);
+      if (panel) panel.style.display = '';
+    };
+    tabsEl.appendChild(tab);
+
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'snap-panel';
+    panel.id = `panel-${snap.id}`;
+    panel.style.display = snap.id === activeSnap ? '' : 'none';
+    panel.appendChild(buildSnapPanel(snap));
+    panelsEl.appendChild(panel);
+  });
+
+  // Auto-open dashboard in the active snapshot (only when explicitly requested)
+  if (openDashboard) {
+    const activeSn = run.snapshots.find(s => s.id === activeSnap) || run.snapshots[0];
+    const dashboard = activeSn.analysis.find(f => f.name.includes('dashboard'));
+    if (dashboard) viewFile(dashboard.path, dashboard.name, dashboard.ext);
+  }
+}
+
+function buildSnapPanel(snap) {
+  const wrap = document.createElement('div');
+
+  // ── Analysis section (default open) ─────────────────────────────
+  wrap.appendChild(buildSection('Analysis', snap.analysis, snap.per_dc, true));
+  // ── Statistics section ──────────────────────────────────────────
+  wrap.appendChild(buildSection('Statistics', snap.statistics, null, false));
+  // ── Raw section ─────────────────────────────────────────────────
+  wrap.appendChild(buildSection('Raw', snap.raw, null, false));
+
+  return wrap;
+}
+
+function buildSection(title, files, perDcFiles, defaultOpen) {
+  const section = document.createElement('div');
+  section.className = 'result-section';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'result-section-hdr';
+  hdr.innerHTML = `<span class="result-section-chevron">${defaultOpen ? '▼' : '▶'}</span> ${escHtml(title)}`;
+  hdr.style.cursor = 'pointer';
+
+  const body = document.createElement('div');
+  body.className = 'result-section-body';
+  body.style.display = defaultOpen ? '' : 'none';
+
+  hdr.onclick = () => {
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    hdr.querySelector('.result-section-chevron').textContent = open ? '▶' : '▼';
+  };
+
+  // File chips
   const grid = document.createElement('div');
   grid.className = 'file-grid';
-  files.forEach(f => {
+  (files || []).forEach(f => {
     const btn = document.createElement('button');
     btn.className = `file-chip ext-${f.ext}`;
     btn.textContent = f.name;
     btn.onclick = () => viewFile(f.path, f.name, f.ext);
     grid.appendChild(btn);
   });
-  container.innerHTML = '';
-  container.appendChild(grid);
+  body.appendChild(grid);
+
+  // per_dc_content folder (only in Analysis section)
+  if (perDcFiles && perDcFiles.length > 0) {
+    const folder = document.createElement('div');
+    folder.className = 'per-dc-folder';
+
+    const folderHdr = document.createElement('div');
+    folderHdr.className = 'per-dc-hdr';
+    folderHdr.innerHTML = `<span class="per-dc-chevron">▶</span> per_dc_content/ <span class="muted" style="font-size:11px">${perDcFiles.length} files</span>`;
+    folderHdr.style.cursor = 'pointer';
+
+    const folderBody = document.createElement('div');
+    folderBody.className = 'per-dc-body';
+    folderBody.style.display = 'none';
+
+    folderHdr.onclick = () => {
+      const open = folderBody.style.display !== 'none';
+      folderBody.style.display = open ? 'none' : '';
+      folderHdr.querySelector('.per-dc-chevron').textContent = open ? '▼' : '▶';
+    };
+
+    const dcGrid = document.createElement('div');
+    dcGrid.className = 'file-grid';
+    perDcFiles.forEach(f => {
+      const btn = document.createElement('button');
+      btn.className = `file-chip ext-${f.ext}`;
+      btn.textContent = f.name;
+      btn.onclick = () => viewFile(f.path, f.name, f.ext);
+      dcGrid.appendChild(btn);
+    });
+    folderBody.appendChild(dcGrid);
+
+    folder.appendChild(folderHdr);
+    folder.appendChild(folderBody);
+    body.appendChild(folder);
+  } else if (perDcFiles && perDcFiles.length === 0) {
+    const folder = document.createElement('div');
+    folder.className = 'per-dc-folder';
+    folder.innerHTML = `<span class="muted" style="font-size:12px">per_dc_content/ (empty)</span>`;
+    body.appendChild(folder);
+  }
+
+  if ((files || []).length === 0 && (!perDcFiles || perDcFiles.length === 0)) {
+    grid.innerHTML = '<span class="muted" style="font-size:12px">No files.</span>';
+  }
+
+  section.appendChild(hdr);
+  section.appendChild(body);
+  return section;
 }
 
 async function viewFile(path, name, ext) {
@@ -742,7 +994,6 @@ async function viewFile(path, name, ext) {
 
   const content = res.data.content || '';
 
-  // Build viewer card
   const card = document.createElement('div');
   card.className = 'viewer-card';
 
@@ -758,11 +1009,9 @@ async function viewFile(path, name, ext) {
 
   if (ext === 'md') {
     body.classList.add('md');
-    if (typeof marked !== 'undefined') {
-      body.innerHTML = marked.parse(content);
-    } else {
-      body.innerHTML = `<pre class="code-pre">${escHtml(content)}</pre>`;
-    }
+    body.innerHTML = typeof marked !== 'undefined'
+      ? marked.parse(content)
+      : `<pre class="code-pre">${escHtml(content)}</pre>`;
   } else if (ext === 'json') {
     let pretty = content;
     try { pretty = JSON.stringify(JSON.parse(content), null, 2); } catch { /* keep raw */ }
@@ -776,7 +1025,6 @@ async function viewFile(path, name, ext) {
   viewer.innerHTML = '';
   viewer.appendChild(card);
 
-  // Render mermaid after card is in DOM
   if (ext === 'md' && typeof mermaid !== 'undefined') {
     body.querySelectorAll('pre code.language-mermaid').forEach(code => {
       const div = document.createElement('div');
@@ -787,7 +1035,6 @@ async function viewFile(path, name, ext) {
     mermaid.run({ nodes: body.querySelectorAll('.mermaid') });
   }
 
-  // Scroll viewer into view
   viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -904,6 +1151,10 @@ function switchTab(id) {
   document.getElementById(`tab-${id}`).classList.add('active');
   document.querySelector(`.tab-btn[data-tab="${id}"]`).classList.add('active');
 
+  if (id === 'snapshot') {
+    syncDevice();
+  }
+
   if (id === 'analysis') {
     const saved = localStorage.getItem('sdpDir');
     if (saved) {
@@ -911,6 +1162,16 @@ function switchTab(id) {
       if (!input.value) input.value = saved;
     }
     if (document.getElementById('sdp-dir').value) scanSdpFiles();
+  }
+
+  if (id === 'results') {
+    const rootInput = document.getElementById('results-root');
+    if (!rootInput.value) {
+      const saved = localStorage.getItem('analysisRoot')
+        || (() => { const d = localStorage.getItem('sdpDir'); return d ? d.replace(/\\/g, '/').replace(/\/$/, '') + '/analysis' : null; })();
+      if (saved) rootInput.value = saved;
+    }
+    if (rootInput.value && resultsState.runs.length === 0) scanAnalyses();
   }
 
   if (id === 'logs') {
@@ -964,4 +1225,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start polling logs (badge updates when tab is not active)
   startLogPoll();
+
+  // Auto-load results: prefer explicit analysisRoot, fall back to sdpDir/analysis
+  const savedRoot = localStorage.getItem('analysisRoot')
+    || (() => { const d = localStorage.getItem('sdpDir'); return d ? d.replace(/\\/g, '/').replace(/\/$/, '') + '/analysis' : null; })();
+  if (savedRoot) {
+    const rootInput = document.getElementById('results-root');
+    if (rootInput) rootInput.value = savedRoot;
+    scanAnalyses(savedRoot);
+  }
 });

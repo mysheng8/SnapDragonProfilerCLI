@@ -19,3 +19,17 @@ ZeroDivisionError: division by zero
 2026-04-15T15:00:25 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
 2026-04-15T21:22:20 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
 2026-04-15T21:41:45 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T16:01:11 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T16:05:08 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260420-080456-005', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260420-080456-005 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-20T16:05:16 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260420-080456-005', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260420-080456-005 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-20T16:05:24 [WARNING] SDPCLI Server unreachable | {'method': 'GET', 'url': 'http://localhost:5000/api/jobs/cap-20260420-080456-005', 'error': 'HTTPConnectionPool(host=\'localhost\', port=5000): Max retries exceeded with url: /api/jobs/cap-20260420-080456-005 (Caused by NewConnectionError("HTTPConnection(host=\'localhost\', port=5000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))'}
+2026-04-20T16:41:28 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T17:15:30 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T17:36:39 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T17:57:40 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T18:10:52 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T18:41:17 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T18:42:18 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T18:45:44 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T18:55:30 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
+2026-04-20T20:17:03 [INFO   ] WebUI starting | {'host': '127.0.0.1', 'port': 8000, 'sdpcli': 'http://localhost:5000'}
