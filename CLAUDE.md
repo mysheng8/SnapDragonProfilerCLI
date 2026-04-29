@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Run
 
 ```powershell
-# Build
+# Build C# CLI
 dotnet build SDPCLI
 
 # Run (interactive menu)
@@ -26,6 +26,21 @@ dotnet build SDPCLI
 Output binary: `SDPCLI\bin\Debug\net472\SDPCLI.exe`
 
 The MSBuild targets automatically copy DLLs from `dll/`, plugins from `dll/plugins/`, android service files, and `config.ini` to the output directory. There is no separate test suite — validation is done by building and running the tool against real `.sdp` capture files in `SDPCLI/test/`.
+
+### pySdp WebUI (Python)
+
+```powershell
+# Install dependencies (one-time, from pySdp/)
+cd pySdp
+python -m venv .venv
+.venv\Scripts\activate
+pip install fastapi uvicorn requests
+
+# Run WebUI (points to SDPCLI server at localhost:5000 by default)
+python webui/server.py [--port 8000] [--sdpcli http://localhost:5000]
+```
+
+The WebUI runs at `http://localhost:8000` and requires the SDPCLI server (`.\sdpcli.bat server --port 5000`) to be running first. The `SDPCLI_URL` env var overrides the default target.
 
 ---
 
@@ -83,6 +98,34 @@ Key native dependencies: `SDPCoreWrapper.dll`, `SDPClientFramework.dll`, `QGLPlu
 ### Configuration
 
 `SDPCLI/config.ini` is copied to the exe directory at build time. It controls: target APK package/activity, rendering API, LLM endpoint, extraction parallelism, metrics whitelist, and output paths.
+
+---
+
+## pySdp WebUI Architecture
+
+`pySdp/webui/` is a **FastAPI** app that sits in front of the SDPCLI server process.
+
+```
+pySdp/webui/
+  server.py          # Entry point — FastAPI app + uvicorn
+  routes/
+    proxy.py         # /api/sdpcli/* → transparent proxy to SDPCLI :5000
+    files.py         # /api/files/*  → Python analysis services
+    logs.py          # /api/logs/*   → WebUI log streaming
+  analysis/
+    label_service.py    # Rule-based DrawCall classification
+    status_service.py   # Percentile blocks + label quality stats
+    topdc_service.py    # 3-layer attribution engine (reads attribution_rules.json)
+    dashboard_service.py # Mermaid charts + top-5 outlier tables
+    analysis_md_service.py # Per-category LLM hook + rule-based fallback
+  static/            # index.html + app.js + style.css (browser SPA)
+```
+
+**Hybrid pipeline**: C# handles SDK-bound work (capture, raw DC/shader/texture/buffer/metrics extraction). After C# writes JSON outputs, the Python analysis services run sequentially: `label → status → topdc → analysis_md → dashboard`. Python steps are non-fatal — C# outputs always land even if Python fails.
+
+**Proxy pattern**: all SDPCLI REST calls from the browser go through `/api/sdpcli/*` (handled by `routes/proxy.py`) which forwards them to the SDPCLI HTTP server. The browser never calls SDPCLI directly.
+
+The attribution rules engine reads `SDPCLI/analysis/attribution_rules.json` — this file is the tunable config for bottleneck scoring, not code.
 
 ---
 

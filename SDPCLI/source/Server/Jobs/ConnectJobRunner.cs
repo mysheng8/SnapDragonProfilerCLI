@@ -34,7 +34,7 @@ namespace SnapdragonProfilerCLI.Server.Jobs
                 var sessionSettings = new SessionSettings
                 {
                     SessionDirectoryRootPath      = sdpOutputDir,
-                    MaxTotalSessionsSizeMB        = 1024,
+                    MaxTotalSessionsSizeMB        = 0,
                     CreateTimestampedSubDirectory = true
                 };
 
@@ -96,6 +96,7 @@ namespace SnapdragonProfilerCLI.Server.Jobs
                 job.Status   = JobStatus.Completed;
                 job.Progress = 100;
                 session.TryTransition(DeviceStatus.Connecting, DeviceStatus.Connected);
+                session.StartHealthMonitor();
                 _log.Info("Connect job completed");
             }
             catch (OperationCanceledException)

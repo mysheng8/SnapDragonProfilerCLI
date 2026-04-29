@@ -78,7 +78,7 @@ Resolve:
 
 Check:
 
-- `/INDEX.md` → router entry
+- `docs/index/INDEX.md` → router entry
 - `docs/index/modules/` → module file
 - similarity with existing modules
 
@@ -168,7 +168,7 @@ Perform minimal required updates:
   `docs/index/modules/<ModuleKey>.md`
 
 - update:
-  `/INDEX.md`
+  `docs/index/INDEX.md`
 
 Do NOT modify unrelated modules.
 

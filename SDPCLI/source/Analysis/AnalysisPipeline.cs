@@ -61,24 +61,30 @@ namespace SnapdragonProfilerCLI.Analysis
             return r;
         }
 
-        /// <summary>Parse a -target/-t string to AnalysisTarget (case-insensitive).</summary>
+        /// <summary>Parse a comma-separated target string to AnalysisTarget (case-insensitive).</summary>
         public static AnalysisTarget Parse(string? value)
         {
             if (string.IsNullOrWhiteSpace(value)) return AnalysisTarget.All;
-            return value!.Trim().ToLowerInvariant() switch
+            var result = AnalysisTarget.None;
+            foreach (var token in value!.Split(','))
             {
-                "dc"        => AnalysisTarget.Dc,
-                "shaders"   => AnalysisTarget.Shaders,
-                "textures"  => AnalysisTarget.Textures,
-                "buffers"   => AnalysisTarget.Buffers,
-                "label"     => AnalysisTarget.Label,
-                "metrics"   => AnalysisTarget.Metrics,
-                "status"    => AnalysisTarget.Status,
-                "topdc"     => AnalysisTarget.TopDc,
-                "analysis"  => AnalysisTarget.Analysis,
-                "dashboard" => AnalysisTarget.Dashboard,
-                _           => AnalysisTarget.All
-            };
+                result |= token.Trim().ToLowerInvariant() switch
+                {
+                    "dc"        => AnalysisTarget.Dc,
+                    "shaders"   => AnalysisTarget.Shaders,
+                    "textures"  => AnalysisTarget.Textures,
+                    "buffers"   => AnalysisTarget.Buffers,
+                    "label"     => AnalysisTarget.Label,
+                    "metrics"   => AnalysisTarget.Metrics,
+                    "status"    => AnalysisTarget.Status,
+                    "topdc"     => AnalysisTarget.TopDc,
+                    "analysis"  => AnalysisTarget.Analysis,
+                    "dashboard" => AnalysisTarget.Dashboard,
+                    "all"       => AnalysisTarget.All,
+                    _           => AnalysisTarget.None
+                };
+            }
+            return result == AnalysisTarget.None ? AnalysisTarget.All : result;
         }
     }
 

@@ -46,21 +46,18 @@ def _percentile_at(values: list[float], p: float) -> dict[str, float]:
 
 # ── Metric helpers ─────────────────────────────────────────────────────────────
 
-_PCT_KEYS = {"shaders_busy_pct", "shaders_stalled_pct", "tex_fetch_stall_pct",
-             "tex_l1_miss_pct", "tex_l2_miss_pct", "tex_pipes_busy_pct",
-             "time_alus_working_pct", "time_shading_fragments_pct",
-             "time_shading_vertices_pct", "time_compute_pct", "linear_filtered_pct",
-             "nearest_filtered_pct", "anisotropic_filtered_pct",
-             "shader_alu_capacity_pct", "wave_context_occupancy_pct",
-             "instruction_cache_miss_pct", "vertex_fetch_stall_pct",
-             "stalled_on_system_mem_pct", "non_base_level_tex_pct",
-             "prims_clipped_pct", "prims_trivially_rejected_pct"}
+def _is_pct_key(key: str) -> bool:
+    """Mirror C#: pct/miss/stall keys get round-2 treatment; count/byte keys become ints."""
+    k = key.lower()
+    return k.endswith("_pct") or k.endswith("_miss") or k.endswith("_stall") or \
+           "miss" in k or "stall" in k or k.startswith("pct_")
 
 
-def _fmt(key: str, value: float) -> float:
-    if key in _PCT_KEYS:
+def _fmt(key: str, value: float) -> float | int:
+    if _is_pct_key(key):
         return round(value, 2)
-    return value
+    # byte/clock/count fields: integer (mirrors C# (long)value)
+    return int(value) if value == int(value) else value
 
 
 def _build_percentile_level(dcs_with_metrics: list[dict], p: float) -> dict:
@@ -97,12 +94,42 @@ def _build_global_percentiles(dcs_with_metrics: list[dict]) -> dict:
     return result
 
 
+# ── DB persistence helper ──────────────────────────────────────────────────────
+
+def _persist_stats_to_db(db, snapshot_id: int, category_stats: list[dict]) -> None:
+    """Upsert per-category stats into snapshot_stats table."""
+    conn = db.conn()
+    computed_at = datetime.now(timezone.utc).isoformat()
+    rows = [
+        (
+            snapshot_id,
+            entry["category"],
+            entry["dc_count"],
+            entry["clocks_sum"],
+            entry["clocks_pct"],
+            entry.get("_avg_conf"),
+            computed_at,
+        )
+        for entry in category_stats
+    ]
+    if rows:
+        conn.executemany(
+            "INSERT OR REPLACE INTO snapshot_stats "
+            "(snapshot_id, category, dc_count, clocks_sum, clocks_pct, avg_conf, computed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-def generate_status_json(snapshot_dir: str | Path) -> Path:
+def generate_status_json(snapshot_dir: str | Path, db=None) -> Path:
     """
     Read label.json + metrics.json from snapshot_dir.
     Write snapshot_{id}_status.json.  Returns written path.
+
+    If db is provided (a WorkspaceDB-like object with a .conn() method),
+    per-category stats are also upserted into the ``snapshot_stats`` table.
     """
     snap = Path(snapshot_dir)
 
@@ -192,6 +219,8 @@ def generate_status_json(snapshot_dir: str | Path) -> Path:
         cat_clocks = int(sum(d["metrics"].get("clocks", 0) for d in cat_with_m))
         clocks_pct = round(100.0 * cat_clocks / total_clocks, 2) if total_clocks else 0.0
         pct        = round(100.0 * len(cat_dcs) / total_count, 2) if total_count else 0.0
+        confs      = [d["label"].get("confidence", 0.0) for d in cat_dcs]
+        avg_cat_conf = round(sum(confs) / len(confs), 4) if confs else 0.0
 
         entry: dict = {
             "category":   cat,
@@ -199,11 +228,20 @@ def generate_status_json(snapshot_dir: str | Path) -> Path:
             "percentage": pct,
             "clocks_sum": cat_clocks,
             "clocks_pct": clocks_pct,
+            "_avg_conf":  avg_cat_conf,  # internal — used for DB write, stripped before JSON
         }
         if cat_with_m:
             for level, lkey in zip(LEVELS, LEVEL_KEYS):
                 entry[lkey] = _build_percentile_level(cat_with_m, level)
         category_stats.append(entry)
+
+    # ── Persist to DB if available ────────────────────────────────────────────
+    if db is not None:
+        _persist_stats_to_db(db, snapshot_id, category_stats)
+
+    # Strip internal _avg_conf key before serialisation
+    for entry in category_stats:
+        entry.pop("_avg_conf", None)
 
     # ── Global percentiles ────────────────────────────────────────────────────
     global_percentiles = _build_global_percentiles(dcs_with_m)

@@ -11,7 +11,7 @@ namespace SnapdragonProfilerCLI.Server.Handlers
     /// Body (required JSON):
     ///   {
     ///     "sdpPath":    "/abs/path/to/capture.sdp",   (required)
-    ///     "snapshotId": 2,                             (required, >= 2)
+    ///     "snapshotId": 2,                             (required, >= 2; use 1 to run all snapshots)
     ///     "outputDir":  "/abs/output/dir",             (optional)
     ///     "targets":    "label,metrics,status"         (optional, default = all)
     ///   }
@@ -48,9 +48,9 @@ namespace SnapdragonProfilerCLI.Server.Handlers
                 WriteError(ctx, "sdpPath is required", 400);
                 return;
             }
-            if (req.SnapshotId < 2)
+            if (req.SnapshotId < 1)
             {
-                WriteError(ctx, "snapshotId must be >= 2", 400);
+                WriteError(ctx, "snapshotId must be >= 1 (use 1 to run all snapshots)", 400);
                 return;
             }
 

@@ -359,11 +359,16 @@ namespace SnapdragonProfilerCLI
                 AppLogger.Info("SDPClient", "No device serial configured, searching for devices...");
                 
                 deviceManager!.FindDevices();
-                Thread.Sleep(2000);
-                
+
+                // Poll up to 10s for async device discovery callback
                 DeviceList devices = deviceManager.GetDevices();
+                for (int _w = 0; _w < 8 && devices.Count == 0; _w++)
+                {
+                    Thread.Sleep(1000);
+                    devices = deviceManager.GetDevices();
+                }
                 AppLogger.Info("SDPClient", $"Found {devices.Count} device(s)");
-                
+
                 if (devices.Count == 0)
                 {
                     AppLogger.Error("SDPClient", "No devices found. Please connect a device via ADB.");

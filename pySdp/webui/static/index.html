@@ -4,11 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>pySdp</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=20260429p">
   <!-- marked.js for markdown rendering — falls back gracefully if offline -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
   <!-- mermaid.js for diagram rendering -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <!-- Three.js for OBJ mesh preview -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
@@ -25,6 +29,8 @@
 <nav class="tabs">
   <button class="tab-btn active" data-tab="snapshot">Snapshot</button>
   <button class="tab-btn"        data-tab="analysis">Analysis</button>
+  <button class="tab-btn"        data-tab="questions">Questions</button>
+  <button class="tab-btn"        data-tab="explorer">Explorer</button>
   <button class="tab-btn"        data-tab="results" >Results</button>
   <button class="tab-btn"        data-tab="logs">
     Logs <span class="log-tab-badge hidden" id="log-tab-badge">0</span>
@@ -33,6 +39,26 @@
 
 <!-- ── Main ───────────────────────────────────────────────────── -->
 <main>
+
+  <!-- ══ Shared Snapshot Picker (Questions + Explorer) ══════════ -->
+  <div id="shared-snap-card" class="card" style="display:none">
+    <div class="card-title-row">
+      <span class="card-title" style="margin-bottom:0">Snapshot</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="shared-snap-dir" type="text" placeholder="D:/snapdragon/project/sdp/analysis" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;width:340px">
+        <button class="btn-secondary btn-sm" onclick="sharedSnapScan()">Scan</button>
+      </div>
+    </div>
+    <div id="shared-snap-run-list" style="margin-top:8px"></div>
+    <div id="shared-snap-pills" style="margin-top:6px"></div>
+    <div id="shared-snap-screenshot" style="margin-top:8px"></div>
+    <div id="shared-snap-ingest-row" style="display:flex;gap:6px;align-items:center;margin-top:8px">
+      <input id="shared-ingest-dir" type="text" placeholder="Paste snapshot_dir to ingest manually" style="flex:1;min-width:0;font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px">
+      <button class="btn-primary btn-sm" onclick="sharedManualIngest()">Ingest</button>
+      <button class="btn-secondary btn-sm" onclick="sharedReIngest()">Re-ingest</button>
+    </div>
+    <div class="status-msg" id="shared-snap-msg"></div>
+  </div>
 
   <!-- ══ Snapshot Tab ════════════════════════════════════════════ -->
   <section id="tab-snapshot" class="tab-content active">
@@ -136,7 +162,7 @@
       <div id="analysis-settings-body" style="display:none">
         <div class="form-row" style="margin-top:10px">
           <label>Snapshot ID</label>
-          <input id="snapshot-id" type="number" value="2" min="2" style="max-width:120px">
+          <input id="snapshot-id" type="number" value="2" style="max-width:120px">
         </div>
         <div class="form-row" style="align-items:flex-start">
           <label style="padding-top:6px">Targets</label>
@@ -153,34 +179,113 @@
 
   <!-- ══ Results Tab ═════════════════════════════════════════════ -->
   <section id="tab-results" class="tab-content">
-
-    <!-- Run selector -->
-    <div class="card">
-      <div class="card-title">Analysis Runs</div>
-      <div class="form-row">
-        <label>Root directory</label>
-        <div class="input-row">
-          <input id="results-root" type="text" placeholder="D:/snapdragon/project/sdp/analysis">
-          <button class="btn-secondary btn-sm" onclick="scanAnalyses()">Scan</button>
-        </div>
-      </div>
-      <div id="results-scan-msg" class="status-msg"></div>
-      <div id="run-selector" class="run-selector"></div>
-    </div>
-
-    <!-- Snapshot viewer (shown after selecting a run) -->
+    <!-- Snapshot viewer (driven by shared picker) -->
     <div id="snapshot-viewer" style="display:none">
-      <!-- Snapshot tabs -->
-      <div class="snap-tabs" id="snap-tabs"></div>
-      <!-- Snapshot content panels -->
       <div id="snap-panels"></div>
     </div>
-
     <!-- File viewer (inline) -->
     <div id="file-viewer"></div>
+  </section>
+
+
+  <!-- ══ Questions Tab ══════════════════════════════════════════ -->
+  <section id="tab-questions" class="tab-content">
+
+    <div class="status-msg" id="questions-msg"></div>
+
+    <!-- Chart card -->
+    <div class="card" id="questions-result-card" style="display:none">
+
+      <!-- Top bar: type switch only -->
+      <div class="q-top-bar">
+        <div class="q-chart-type-switch" id="q-chart-type-switch">
+          <span class="q-switch-opt" data-chart="pie" onclick="setQChartType('pie')">Pie</span>
+          <span class="q-switch-opt active" data-chart="bar" onclick="setQChartType('bar')">Bar</span>
+        </div>
+      </div>
+
+      <!-- Charts: two side by side -->
+      <div class="q-charts-row" style="margin-top:8px">
+        <div style="position:relative;flex:1;min-width:0">
+          <div class="q-chart-label">clocks</div>
+          <canvas id="q-chart-clock" style="width:100%;height:320px;display:block"></canvas>
+          <div id="q-chart-clock-tip" class="dc-chart-tooltip" style="display:none"></div>
+        </div>
+        <div style="position:relative;flex:1;min-width:0">
+          <div class="q-chart-label" id="q-chart2-label">—</div>
+          <canvas id="q-chart-sel" style="width:100%;height:320px;display:block"></canvas>
+          <div id="q-chart-sel-tip" class="dc-chart-tooltip" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Metric buttons below charts -->
+      <div class="q-metric-btns-wrap" id="q-metric-btns" style="margin-top:10px"></div>
+
+      <!-- Table below metric buttons -->
+      <div id="questions-table-wrap" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Clock correlation card -->
+    <div class="card" id="q-corr-card" style="display:none">
+      <div class="card-title-row">
+        <div style="display:flex;align-items:center;gap:6px">
+          <select id="q-label-select" onchange="onQLabelSelect(this.value)" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;min-width:120px;background:var(--card);color:var(--text)">
+            <option value="">All labels</option>
+          </select>
+          <button class="btn-secondary btn-sm" onclick="goExplorerForLabel()">Detail →</button>
+        </div>
+        <span id="q-corr-title" class="card-title" style="margin-bottom:0">Clock Correlation (Pearson r) — All DCs</span>
+        <button id="q-corr-reset" class="btn-secondary btn-sm" style="display:none" onclick="setQCorrCategory(null)">Show All</button>
+      </div>
+      <div class="q-corr-hint" style="margin-top:6px">Pearson r between each metric and clocks, sorted by |r|. Click a chart bar or table row to drill into one label.</div>
+      <div id="q-corr-body"></div>
+    </div>
 
   </section>
 
+  <!-- ══ Explorer Tab ════════════════════════════════════════════ -->
+  <section id="tab-explorer" class="tab-content">
+
+    <!-- Two-column layout: list left, detail right -->
+    <div class="explorer-columns" id="explorer-columns" style="display:none">
+
+      <!-- LEFT: DC list -->
+      <div class="explorer-col-left">
+        <div class="card" id="explorer-dc-card">
+          <div class="card-title-row">
+            <span class="card-title" style="margin-bottom:0">Draw Calls
+              <span class="muted" id="explorer-dc-count" style="font-size:12px;margin-left:8px"></span>
+            </span>
+            <div class="dc-col-tabs">
+              <button class="dc-col-tab active" data-col-tab="params"  onclick="setDcColTab('params')">Params</button>
+              <button class="dc-col-tab"        data-col-tab="metrics" onclick="setDcColTab('metrics')">Metrics</button>
+              <button class="dc-col-tab"        data-col-tab="label"   onclick="setDcColTab('label')">Label</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Category</label>
+            <div class="cat-filter-wrap" id="cat-filter-wrap">
+              <button class="cat-filter-btn" id="cat-filter-btn" onclick="toggleCatDropdown(event)">All ▾</button>
+              <div class="cat-filter-dropdown" id="cat-filter-dropdown" style="display:none"></div>
+            </div>
+          </div>
+          <!-- Clock bar chart -->
+          <div id="dc-clock-chart-wrap" style="display:none;position:relative;margin:8px 0 4px">
+            <canvas id="dc-clock-chart" style="width:100%;height:180px;display:block"></canvas>
+            <div id="dc-clock-tooltip" class="dc-chart-tooltip" style="display:none"></div>
+          </div>
+          <div id="explorer-dc-table"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: DC detail -->
+      <div class="explorer-col-right">
+        <div id="explorer-detail-panel"></div>
+      </div>
+
+    </div>
+
+  </section>
 
   <!-- ══ Logs Tab ════════════════════════════════════════════════ -->
   <section id="tab-logs" class="tab-content">
@@ -210,6 +315,6 @@
 
 </main>
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=20260429p"></script>
 </body>
 </html>

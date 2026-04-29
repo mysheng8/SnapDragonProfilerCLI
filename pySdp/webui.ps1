@@ -17,7 +17,7 @@ if (-not (Test-Path $python)) {
 }
 
 # ── Install dependencies ──────────────────────────────────────────────────────
-& $python -c "import fastapi, uvicorn, aiofiles, requests" 2>$null
+& $python -c "import fastapi, uvicorn, aiofiles, requests, duckdb, pytz" 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host " Installing requirements..."
     & $python -m pip install -r "$root\requirements.txt"
@@ -56,9 +56,11 @@ Write-Host ""
 Start-Sleep -Seconds 1
 Start-Process "http://${BindHost}:$Port"
 
-$proc = Start-Process $python `
-    -ArgumentList @("webui\server.py", "--host", $BindHost, "--port", $Port, "--sdpcli", "http://localhost:$SdpcliPort") `
-    -PassThru -NoNewWindow -WorkingDirectory $root
+# Launch WebUI Python process in its own CMD window so logs are visible live
+$pyArgs = "webui\server.py --host $BindHost --port $Port --sdpcli http://localhost:$SdpcliPort"
+$proc = Start-Process "cmd" `
+    -ArgumentList "/k cd /d `"$root`" && `"$python`" $pyArgs" `
+    -WindowStyle Normal -PassThru
 
 # ── ESC to exit ───────────────────────────────────────────────────────────────
 while (-not $proc.HasExited) {
@@ -68,7 +70,9 @@ while (-not $proc.HasExited) {
     Start-Sleep -Milliseconds 100
 }
 
-if (-not $proc.HasExited) { $proc.Kill() }
+if (-not $proc.HasExited) {
+    taskkill /F /T /PID $proc.Id | Out-Null
+}
 
 # Kill SDPCLI cmd window + all its children (SDPCLI.exe etc.)
 if ($sdpcliProc -and -not $sdpcliProc.HasExited) {

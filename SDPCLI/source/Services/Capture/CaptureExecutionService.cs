@@ -297,10 +297,7 @@ namespace SnapdragonProfilerCLI.Services.Capture
                             if (activeProcesses.Count > 0)
                             {
                                 foreach (uint activePid in activeProcesses)
-                                {
-                                    if (activePid != processPid)
-                                        metric.Deactivate(activePid, 4);
-                                }
+                                    metric.Deactivate(activePid, 4);  // deactivate all, including lingering self
                             }
 
                             bool activated = metric.Activate(processPid, 4);
@@ -393,31 +390,14 @@ namespace SnapdragonProfilerCLI.Services.Capture
 
                 Console.WriteLine("✓ Capture started");
 
-                // Auto-stop after 1 second (snapshot pattern)
-                List<Metric> metricsToDeactivate = new List<Metric>(activatedMetrics);
-                uint capturedPid = processPid;
-                global::Capture? captureRef = CurrentCapture;
-                Thread stopThread = new Thread(() =>
+                // Fire-and-forget stop after 1s — this triggers OnCaptureComplete on the SDK side
+                var captureRef = CurrentCapture;
+                new Thread(() =>
                 {
                     Thread.Sleep(1000);
-                    try
-                    {
-                        if (captureRef != null && captureRef.IsValid())
-                            captureRef.Stop();
-
-                        foreach (Metric m in metricsToDeactivate)
-                        {
-                            try
-                            {
-                                if (m != null && m.IsValid())
-                                    m.Deactivate(capturedPid, 4);
-                            }
-                            catch { }
-                        }
-                    }
+                    try { if (captureRef != null && captureRef.IsValid()) captureRef.Stop(); }
                     catch { }
-                });
-                stopThread.Start();
+                }) { IsBackground = true }.Start();
 
                 return true;
             }

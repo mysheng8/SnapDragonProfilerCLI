@@ -137,9 +137,10 @@ Before doing any analysis:
    - docs/context/plans/
    - docs/context/implementations/
    - docs/context/decisions/
-3. Identify existing relevant context
-4. Reuse existing findings/plans when possible
-5. Reuse implementation records when they exist and are relevant
+3. Read docs/index/INDEX.md before code exploration
+4. Identify existing relevant context
+5. Reuse existing findings/plans when possible
+6. Reuse implementation records when they exist and are relevant
 
 Do NOT ignore repository context.
 Do NOT rely only on chat memory.
@@ -194,7 +195,7 @@ You MUST NEVER:
 - run write SQL
 - run destructive commands
 - skip README/context search
-- skip /INDEX.md before source exploration when code lookup is needed
+- skip docs/index/INDEX.md before source exploration when code lookup is needed
 - treat assumptions as facts
 
 ---
@@ -329,7 +330,7 @@ Then apply Context Priority to break ties or resolve competing candidates.
 
 1. Read README.md
 2. Search docs/context/
-3. Read /INDEX.md before code exploration
+3. Read docs/index/INDEX.md before code exploration
 4. Continue reasoning:
 
 IF missing knowledge:
@@ -342,7 +343,8 @@ IF both:
 -> investigate first -> then plan
 
 5. Maintain context docs (finding + plan)
-6. STOP before implementation
+6. update docs/context/INDEX.md to reflect new findings/plans
+7. STOP before implementation
 
 ---
 
@@ -353,7 +355,7 @@ IF both:
 [Repository Context Read]
 - README:
 - docs/context/INDEX.md:
-- /INDEX.md:
+- docs/index/INDEX.md:
 - findings:
 - plans:
 - implementations:

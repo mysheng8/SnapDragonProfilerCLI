@@ -70,10 +70,10 @@ namespace SnapdragonProfilerCLI.Server.Jobs
                 job.Phase = "waiting_capture"; job.Progress = 20;
                 _log.Info("Waiting for capture complete event...");
 
-                bool captureCompleted = await WaitHandleAsync(session.CaptureCompleteEvent, 30_000, ct)
+                bool captureCompleted = await WaitHandleAsync(session.CaptureCompleteEvent, 150_000, ct)
                                              .ConfigureAwait(false);
                 if (!captureCompleted)
-                    throw new TimeoutException("Capture did not complete within 30 seconds");
+                    throw new TimeoutException("Capture did not complete within 150 seconds");
 
                 (uint providerId, uint captureId) =
                     (session.ClientDelegate as CliClientDelegate)!.GetLastCompletedCapture();

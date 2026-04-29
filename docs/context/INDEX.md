@@ -23,6 +23,97 @@ When searching for context:
 
 ## 📂 Findings
 
+### FINDING-2026-04-22-webui-new-tabs-plan.md
+- topic: WebUI current state audit — tabs, routes, data model, analysis trigger, for new Explorer + Questions tabs
+- summary: |
+    Full audit of 4 current tabs (Snapshot/Analysis/Results/Logs), all /api/data/* and
+    /api/files/* routes (19 data routes, 9 file routes), DuckDB schema (9 tables),
+    and the DrawCall data model returned by get_dc_detail (base + label + metrics +
+    shader_stages + textures + mesh_file). Identifies 3 gaps: no Explorer tab for single
+    DC query, no Questions tab for label-aggregated metrics, and ingest_snapshot() is
+    never called in the analysis trigger — DuckDB is not populated automatically.
+- related_paths:
+  - pySdp/webui/static/index.html
+  - pySdp/webui/static/app.js
+  - pySdp/webui/routes/files.py
+  - pySdp/webui/routes/data.py
+  - pySdp/data/query.py
+  - pySdp/data/db.py
+  - pySdp/data/ingest.py
+- tags:
+  - webui
+  - frontend
+  - explorer
+  - questions
+  - analysis-trigger
+  - drawcall
+  - duckdb
+
+---
+
+### FINDING-2026-04-21-analysis-model-question-engine.md
+- topic: Analysis Model + Question Engine design — AnalysisModel interface, category_breakdown model, Question CRUD, Dashboard
+- summary: |
+    Full investigation of status_service output shape (4 output sections: overall, category_stats,
+    label_stats, global_percentiles). Gap analysis of what is in DB (snapshot_stats: dc_count,
+    clocks_sum, clocks_pct, avg_conf) vs what must be computed on-demand (percentile blocks, global
+    percentiles, label quality detail). Proposed AnalysisModel ABC with ClassVar metadata + run()
+    method. model_registry in data/ as pure dispatch table. category_breakdown model spec: primary
+    path reads snapshot_stats, fallback computes from draw_calls+labels+metrics JOIN. 3 builtin
+    models: category_breakdown (bar_chart), top_bottleneck_dcs (table), label_quality (bar_chart).
+    Question = saved binding of (model_name + model_params + viz_type + viz_config + title).
+    Dashboard = ordered list of question IDs; run = run all questions in sequence, non-fatal per panel.
+    Import chain: server.py → analysis/models/__init__.py (triggers @register); data/model_registry.py
+    is acyclic. No result caching for MVP.
+- related_paths:
+  - pySdp/analysis/status_service.py
+  - pySdp/analysis/label_service.py
+  - pySdp/data/query.py
+  - pySdp/data/db.py
+  - pySdp/data/model_registry.py
+  - pySdp/analysis/models/
+  - pySdp/webui/routes/data.py
+- tags:
+  - python
+  - analysis-model
+  - question-engine
+  - dashboard
+  - duckdb
+  - model-registry
+  - category-breakdown
+  - viz-type
+  - phase6
+  - phase7
+
+---
+
+### FINDING-2026-04-21-python-data-layer-design.md
+- topic: Python persistent data layer design — C# raw JSON outputs → queryable SQLite entity model
+- summary: |
+    Complete investigation of current Python analysis services (all stateless file-to-file,
+    no persistence). Confirms api_id as canonical cross-file join key. Natural PKs for DC,
+    Shader, Texture, Mesh, Label, Metrics. Proposes SQLite workspace DB at
+    {analysisRoot}/sdp_workspace.db (one DB per workspace, not per snapshot). Full entity
+    DDL for 9 tables: snapshots, draw_calls, shader_stages, dc_shader_stages, textures,
+    dc_textures, meshes, labels, metrics. Recommends on-demand ingest trigger (not
+    file-watcher). Technology: SQLite stdlib sqlite3 + WAL mode (DuckDB/Parquet rejected).
+- related_paths:
+  - pySdp/webui/analysis/label_service.py
+  - pySdp/webui/analysis/status_service.py
+  - pySdp/webui/routes/files.py
+  - SDPCLI/source/Models/DrawCallModels.cs
+  - SDPCLI/analysis/attribution_rules.json
+- tags:
+  - python
+  - data-layer
+  - sqlite
+  - drawcall-analysis
+  - schema
+  - persistence
+  - query-layer
+
+---
+
 ### FINDING-2026-04-15-raw-data-schema.md
 - topic: complete raw data schema for analysis pipeline — SQLite tables, CSV files, extracted assets, JSON outputs
 - summary: |
@@ -88,6 +179,104 @@ When searching for context:
 
 ---
 
+### FINDING-2026-04-16-phase3-process-isolation-design.md
+- topic: Phase 3 process isolation — technical constraints and IPC design validation
+- summary: |
+    Validates the child-process isolation architecture against real code constraints.
+    Application.cs dispatch model makes adding snapshot-worker/analysis-worker subcommands
+    trivial. TextureConverter.dll (P/Invoke) is needed by analysis children but covered by
+    SetDllDirectory in Main.cs. ShaderExtractor uses spirv-cross.exe via Process.Start only (no P/Invoke).
+    .NET 4.7.2 has full System.IO.Pipes. Snapshot worker: bidirectional named pipe JSON-lines;
+    SnapshotWorkerProxy on main side awaits TaskCompletionSource keyed to pipe events.
+    Analysis worker: stdout JSON-lines; BeginOutputReadLine+OutputDataReceived is the
+    correct async pattern. Single-child lock: SnapshotWorkerManager returns 409
+    confirm_required; force=true kills existing child and spawns new one.
+- related_paths:
+  - SDPCLI/source/Main.cs
+  - SDPCLI/source/Application.cs
+  - SDPCLI/source/Tools/TextureExtractor.cs
+  - SDPCLI/source/Tools/ShaderExtractor.cs
+  - SDPCLI/source/Server/Jobs/JobManager.cs
+  - pySdp/webui/static/app.js
+- tags:
+  - phase3
+  - process-isolation
+  - ipc
+  - named-pipe
+  - snapshot-worker
+  - analysis-worker
+  - child-process
+
+---
+
+### FINDING-2026-04-20-analysis-capture-disconnect.md
+- topic: analysis → capture transition: disconnect, state desync, and health monitor false-positive
+- summary: |
+    Four root-cause candidates for the post-analysis capture disconnect symptom.
+    RC1 (HIGH): health monitor calls Disconnect() on transient GetDeviceState()=Unknown during
+    second capture, but Disconnect() uses a forced _status assignment (no TryTransition guard)
+    so it overrides Capturing state. RC2 (HIGH): TargetProcessRemoved event from LaunchJobRunner
+    fires during analysis if the Android app is killed, transitions SessionActive → Connected
+    before the second capture starts — user gets 409 "Cannot capture from state 'Connected'".
+    RC3 (MEDIUM): shared ManualResetEvent race between captures — trailing OnDataProcessed from
+    first capture fires after second capture's Reset(), causing false early WaitOne return.
+    RC4 (LOW): switchTab('snapshot') does not call syncDevice(); stale badge for up to 3s;
+    doCapture error path re-enables button using stale state.device. Fix map: guard HealthMonitorProc
+    against Capturing state; use TryTransition in Disconnect(); add per-capture ManualResetEvent
+    instances; call syncDevice() on snapshot tab switch.
+- related_paths:
+  - SDPCLI/source/Server/DeviceSession.cs
+  - SDPCLI/source/Server/Jobs/CaptureJobRunner.cs
+  - SDPCLI/source/Server/Jobs/LaunchJobRunner.cs
+  - SDPCLI/source/Server/Jobs/ConnectJobRunner.cs
+  - SDPCLI/source/Server/Handlers/CaptureHandler.cs
+  - SDPCLI/source/CliClientDelegate.cs
+  - SDPCLI/source/ConsolePlatform.cs
+  - pySdp/webui/static/app.js
+- tags:
+  - server-mode
+  - state-machine
+  - capture
+  - analysis
+  - health-monitor
+  - disconnect
+  - frontend
+  - tab-switch
+  - target-process
+  - manual-reset-event
+
+---
+
+### FINDING-2026-04-16-snapshot-analysis-coupling-topology.md
+- topic: server mode snapshot/analysis coupling topology — layer-by-layer structural analysis
+- summary: |
+    Full layer-by-layer coupling map (5 layers). Key correction to prior finding: UpdateThreadProc
+    has try/catch INSIDE the while loop — .NET exceptions from client.Update() do NOT kill the process.
+    The only real process killer is ConsolePlatform.ExitApplication() → Environment.Exit(0). Analysis
+    is already structurally decoupled (AnalysisJobRunner has zero SDK calls, zero DeviceSession mutation).
+    Coupling Layer 1 (Critical): shared OS process + ExitApplication bomb. Layer 2 (High): SDK update
+    thread runs continuously between captures and during analysis. Layer 3 (Clean): state machine — no
+    coupling. Layer 4 (Low): static SdkInitialized singleton. Layer 5 (UI): stale tab-switch badge.
+- related_paths:
+  - SDPCLI/source/ConsolePlatform.cs
+  - SDPCLI/source/SDPClient.cs
+  - SDPCLI/source/Server/DeviceSession.cs
+  - SDPCLI/source/Server/Jobs/AnalysisJobRunner.cs
+  - SDPCLI/source/Server/Jobs/CaptureJobRunner.cs
+  - SDPCLI/source/Server/Jobs/ConnectJobRunner.cs
+  - SDPCLI/source/Modes/ServerMode.cs
+  - pySdp/webui/static/app.js
+- tags:
+  - server-mode
+  - coupling
+  - decoupling
+  - snapshot
+  - analysis
+  - sdk-lifecycle
+  - process-stability
+
+---
+
 ### FINDING-2026-04-15-snapshot-analysis-mode-switch.md
 - topic: snapshot → analysis → snapshot mode switch causing "cannot find SDPCLI" / 503 error
 - summary: |
@@ -98,6 +287,8 @@ When searching for context:
     guard (process death on native callback throw). AnalysisJobRunner itself is safe (pure offline,
     no SDK calls, no DeviceSession mutation). The "cannot find SDPCLI" message is 503 (ConnectionError),
     not a 409 state conflict. State machine is correct — CaptureJobRunner always resets to SessionActive.
+    NOTE: The "no unhandled-exception guard" finding is CORRECTED by FINDING-2026-04-16 — the
+    UpdateThreadProc loop DOES have try/catch inside the loop.
 - related_paths:
   - SDPCLI/source/ConsolePlatform.cs
   - SDPCLI/source/SDPClient.cs
@@ -302,6 +493,187 @@ When searching for context:
 
 ## 🧭 Plans
 
+### PLAN-2026-04-22-webui-new-tabs.md
+- topic: WebUI new tabs — Explorer (single DC query), Questions (label-aggregated metrics), analysis pipeline trigger wiring
+- status: complete
+- based_on:
+  - FINDING-2026-04-22-webui-new-tabs-plan.md
+  - IMPL-2026-04-22-analysis-model-phase-d.md
+  - IMPL-2026-04-21-python-data-layer-phase2.md
+- summary: |
+    3-phase plan. Phase A: "Explorer" tab — snapshot selector + DC list + single DC detail
+    panel (shader/texture/mesh/metrics). Phase B: "Questions" tab — new /api/data/label_metrics
+    endpoint + frontend table showing per-label aggregated metrics (sum + avg per category).
+    Phase C: wire ingest step into PY_STEPS array in app.js so DuckDB is populated automatically
+    after C# analysis completes. Only 4 files modified: index.html, app.js, style.css, routes/data.py.
+- related_paths:
+  - pySdp/webui/static/index.html        (MODIFIED)
+  - pySdp/webui/static/app.js            (MODIFIED)
+  - pySdp/webui/static/style.css         (MODIFIED)
+  - pySdp/webui/routes/data.py           (MODIFIED — new label_metrics endpoint)
+- tags:
+  - webui
+  - frontend
+  - explorer
+  - questions
+  - label-aggregation
+  - analysis-trigger
+  - duckdb
+
+---
+
+### PLAN-2026-04-21-analysis-model-question-engine.md
+- topic: Analysis Model + Question Engine — AnalysisModel interface, model_registry, category_breakdown, Question CRUD, Dashboard
+- status: complete
+- based_on:
+  - FINDING-2026-04-21-analysis-model-question-engine.md
+  - PLAN-2026-04-21-python-data-layer.md
+  - IMPL-2026-04-21-python-data-layer-phase3.md
+- summary: |
+    4-phase plan covering Phase 6+7 of the Python data layer. Phase A: AnalysisModel ABC
+    (analysis/models/base.py) + model_registry (data/model_registry.py) + 3 builtin models
+    (category_breakdown, top_bottleneck_dcs, label_quality) + GET /models and
+    POST /models/{name}/run endpoints. Phase B: Question CRUD (5 endpoints), builtin question
+    seeding at startup. Phase C: POST /questions/{id}/run endpoint — dispatches to model, merges
+    viz_type + viz_config from question row. Phase D: Dashboard CRUD (5 endpoints) + POST
+    /dashboards/{id}/run — runs all question panels in order, non-fatal per panel.
+    Files: 6 new files in analysis/models/ and data/; 2 modified (server.py, routes/data.py).
+- related_paths:
+  - pySdp/data/model_registry.py            (NEW)
+  - pySdp/analysis/models/__init__.py       (NEW)
+  - pySdp/analysis/models/base.py           (NEW)
+  - pySdp/analysis/models/category_breakdown.py  (NEW)
+  - pySdp/analysis/models/top_bottleneck_dcs.py  (NEW)
+  - pySdp/analysis/models/label_quality.py  (NEW)
+  - pySdp/webui/routes/data.py              (MODIFIED)
+  - pySdp/webui/server.py                   (MODIFIED)
+- tags:
+  - python
+  - analysis-model
+  - question-engine
+  - dashboard
+  - duckdb
+  - model-registry
+  - category-breakdown
+  - phase6
+  - phase7
+
+---
+
+### PLAN-2026-04-21-python-data-layer.md
+- topic: Python project restructure + persistent data layer — DuckDB global DB, layered architecture
+- status: phases-0-3-complete (phases 4-5 pending; phases 6-7 covered by analysis-model-question-engine plan)
+- based_on:
+  - FINDING-2026-04-21-python-data-layer-design.md
+  - FINDING-2026-04-15-raw-data-schema.md
+  - IMPL-2026-04-20-python-analysis-services-webui.md
+- summary: |
+    8-phase plan (Phase 0 = restructure first). Layered architecture: pysdp/ (C# client,
+    unchanged) | data/ (DuckDB) | analysis/ (moved from webui/analysis/) | webui/ (thin
+    HTTP only). Strict one-way deps: webui→analysis→data. DuckDB single global DB at
+    pySdp/data/sdp.db. Phase 0: move webui/analysis/ → analysis/, fix imports, delete old
+    dir. Phase 1: WorkspaceDB + ingest_snapshot + /api/data/ingest. Full schema: snapshots,
+    draw_calls, shader_stages, dc_shader_stages, textures, dc_textures, meshes, labels
+    (incl. bottleneck_text + embedding FLOAT[] pre-reserved), metrics, snapshot_stats,
+    questions, dashboards. Phase 2: query.py read API. Phase 3: label/stats persistence.
+    Phase 4: LLM bottleneck + DuckDB FTS BM25. Phase 5: vector FLOAT[] cosine similarity.
+    Phase 6: analysis model registry (analysis/models/). Phase 7: question engine + dashboard.
+    Parquet = export-only one-liner.
+- related_paths:
+  - pySdp/analysis/                    (NEW — moved from webui/analysis/)
+  - pySdp/data/db.py                   (NEW)
+  - pySdp/data/ingest.py               (NEW)
+  - pySdp/data/query.py                (NEW)
+  - pySdp/webui/routes/data.py         (NEW)
+  - pySdp/webui/server.py              (MODIFIED)
+- tags:
+  - python
+  - data-layer
+  - duckdb
+  - architecture
+  - restructure
+  - drawcall-analysis
+  - persistence
+  - fts
+  - vector
+  - label
+  - metrics
+  - dashboard
+  - analysis-model
+  - question-engine
+
+---
+
+### PLAN-2026-04-16-phase3-process-isolation.md
+- topic: Phase 3 process isolation — snapshot worker child + parallel analysis workers
+- status: proposed
+- based_on:
+  - FINDING-2026-04-16-phase3-process-isolation-design.md
+  - FINDING-2026-04-16-snapshot-analysis-coupling-topology.md
+  - IMPL-2026-04-16-snapshot-analysis-decoupling-p1-p2.md
+- summary: |
+    Full design for Phase 3. Server main process becomes SDK-free. Snapshot ops run in a
+    single named-pipe child process (same SDPCLI.exe as snapshot-worker subcommand); one child
+    at a time enforced by SnapshotWorkerManager (HTTP 409 + force=true override). Analysis ops
+    run as parallel child processes (analysis-worker subcommand) writing progress to stdout;
+    main reads via BeginOutputReadLine+OutputDataReceived. New files: SnapshotWorkerMode.cs,
+    SnapshotWorkerProxy.cs, SnapshotWorkerManager.cs, AnalysisWorkerMode.cs, AnalysisWorkerProxy.cs
+    (~1020 lines). Modified: Application.cs, Main.cs, ConnectHandler.cs, app.js. Sub-phases:
+    3A (analysis worker, independent), 3B (snapshot worker), 3C (force-connect + UI), 3D (cleanup).
+- related_paths:
+  - SDPCLI/source/Modes/SnapshotWorkerMode.cs         (NEW)
+  - SDPCLI/source/Server/SnapshotWorkerProxy.cs        (NEW)
+  - SDPCLI/source/Server/SnapshotWorkerManager.cs      (NEW)
+  - SDPCLI/source/Modes/AnalysisWorkerMode.cs          (NEW)
+  - SDPCLI/source/Server/AnalysisWorkerProxy.cs        (NEW)
+  - SDPCLI/source/Application.cs
+  - SDPCLI/source/Main.cs
+  - SDPCLI/source/Server/Handlers/ConnectHandler.cs
+  - pySdp/webui/static/app.js
+- tags:
+  - phase3
+  - process-isolation
+  - snapshot-worker
+  - analysis-worker
+  - named-pipe
+  - child-process
+  - parallel-analysis
+
+---
+
+### PLAN-2026-04-16-snapshot-analysis-decoupling.md
+- topic: step-by-step decoupling of snapshot and analysis in server mode
+- status: proposed
+- based_on:
+  - FINDING-2026-04-16-snapshot-analysis-coupling-topology.md
+  - FINDING-2026-04-15-snapshot-analysis-mode-switch.md
+- summary: |
+    Three-phase decoupling plan. Phase 1 (high priority, low risk): suppress
+    ConsolePlatform.ExitApplication() in server mode — inject an Action into ConsolePlatform
+    constructor so ServerMode can override exit behavior to log + signal graceful shutdown
+    instead of calling Environment.Exit(0). Requires changes to ConsolePlatform.cs,
+    DeviceSession.cs, ConnectJobRunner.cs, ServerMode.cs. Phase 2 (medium): device health
+    monitor in DeviceSession — proactively detect device disconnect before SDK fires a fatal
+    event. Phase 3 (optional long-term): child process isolation for snapshot SDK.
+    Quick win with no dependency: call syncDevice() on snapshot tab-switch in app.js.
+    NOTE: Phase 1 + Phase 2 are IMPLEMENTED (IMPL-2026-04-16). Phase 3 has its own plan.
+- related_paths:
+  - SDPCLI/source/ConsolePlatform.cs
+  - SDPCLI/source/Server/DeviceSession.cs
+  - SDPCLI/source/Server/Jobs/ConnectJobRunner.cs
+  - SDPCLI/source/Modes/ServerMode.cs
+  - pySdp/webui/static/app.js
+- tags:
+  - decoupling
+  - server-mode
+  - snapshot
+  - analysis
+  - sdk-lifecycle
+  - process-stability
+  - exit-application
+
+---
+
 ### PLAN-2026-04-09-directory-layout-redesign.md
 - topic: directory layout redesign — projectDir / workspaceDir / sessionDir structure
 - status: proposed
@@ -448,12 +820,276 @@ When searching for context:
 - topic: HTTP Server Mode — REST API for launch / capture / analysis with async job management
 - status: implemented (see IMPL-2026-04-14-http-server-mode.md)
 
+---
+
+## 📦 Implementations
+
+### IMPL-2026-04-29-webui-analysis-ux-fixes.md
+- topic: WebUI analysis UX fixes — proxy timeouts, multi-snapshot pipeline, job persistence, explorer DC detail enhancements
+- status: completed
+- summary: |
+    11 fixes across the analysis flow and Explorer DC detail panel:
+    (1) proxy.py per-route timeout overrides (capture=300s, connect=120s, etc).
+    (2) Multi-snapshot pipeline: JS detects {captureIds,sessionDir} result shape, runs _runPyStepsAll().
+    (3) AnalysisJobRunner: per-snapshot phase label "[1/3] snapshot_2 / collect_dc" + scaled progress.
+    (4) Job persistence: activeCsJob + activePipelineJob saved to localStorage; _resumeCsJobIfAny /
+    _resumePipelineJobIfAny restore state after page refresh.
+    (5) Shared snapshot picker auto-refreshes and auto-selects after analysis completes.
+    (6) ingest.py: filter stale label rows by valid_api_ids to fix foreign key violation on re-ingest.
+    (7) Screenshot extraction: _find_screenshot and _copy_screenshot now extract from .sdp ZIP archive.
+    (8) DC detail metric heatmap: metric_stats (median/min/max) via percentile_cont in query.py;
+    green→red heatmap coloring in JS; med:xxx display in style.css.
+    (9) Render Targets section in DC detail: root cause was shared DB cursor conflict in get_dc_detail —
+    fixed by using db.cursor() for every query; RT data read from dc.json.
+    (10) Mesh viewer: wireframe toggle button + Verts/Tris stats overlay.
+    (11) Shader download: GET /api/files/raw?download=1 sets Content-Disposition; ⬇ button in shader items.
+- related_paths:
+  - pySdp/webui/routes/proxy.py        (MODIFIED)
+  - pySdp/webui/routes/data.py         (MODIFIED)
+  - pySdp/webui/routes/files.py        (MODIFIED)
+  - pySdp/webui/jobs.py                (MODIFIED)
+  - pySdp/data/ingest.py               (MODIFIED)
+  - pySdp/data/query.py                (MODIFIED)
+  - pySdp/webui/static/app.js          (MODIFIED)
+  - pySdp/webui/static/style.css       (MODIFIED)
+  - pySdp/webui/static/index.html      (MODIFIED)
+  - SDPCLI/source/Server/Jobs/AnalysisJobRunner.cs  (MODIFIED)
+- tags: [webui, proxy, timeout, multi-snapshot, progress, job-persistence, ingest, screenshot, heatmap, render-targets, mesh-viewer, shader-download]
+
+---
+
+### IMPL-2026-04-27-result-snapshot-screenshot.md
+- topic: Results tab snapshot screenshot display — /api/files/image endpoint + sdp dir fallback
+- status: completed
+- summary: |
+    Each snapshot panel in the Results tab now shows the frame screenshot at the top.
+    find_screenshot() first looks in the analysis snapshot dir, then falls back to the
+    sibling sdp dir (project/analysis/<run>/snapshot_N → project/sdp/<run>/snapshot_N)
+    because screenshots are only written during capture, not copied to analysis output.
+    New GET /api/files/image?path= endpoint serves binary image files with correct Content-Type.
+    classify_file() skips screenshot/snapshot png/bmp from file lists to avoid duplication.
+- related_paths:
+  - pySdp/webui/routes/files.py   (MODIFIED)
+  - pySdp/webui/static/app.js     (MODIFIED)
+  - pySdp/webui/static/style.css  (MODIFIED)
+- tags: [webui, frontend, results-tab, screenshot, snapshot]
+
+---
+
+### IMPL-2026-04-27-server-side-pipeline-jobs.md
+- topic: Server-side Python analysis pipeline job manager — browser refresh safe
+- status: completed
+- summary: |
+    Python analysis steps (ingest→label→status→topdc→analysis→dashboard) moved from
+    browser-orchestrated serial fetch to a server-side background thread. New jobs.py
+    with PipelineJob + PipelineJobManager. Three new endpoints: POST /api/data/pipeline,
+    GET /api/data/pipeline/{job_id}, POST /api/data/pipeline/{job_id}/cancel.
+    Browser submits once and polls; refreshing the page resumes polling via localStorage.
+    Old PY_STEPS array removed from app.js.
+- related_paths:
+  - pySdp/webui/jobs.py           (NEW)
+  - pySdp/webui/routes/data.py    (MODIFIED)
+  - pySdp/webui/static/app.js     (MODIFIED)
+- tags: [webui, pipeline, jobs, threading, analysis-trigger, refresh-safe]
+
+---
+
+### IMPL-2026-04-27-webui-log-window-and-language-hook.md
+- topic: WebUI live log CMD window + Korean language guard Stop hook
+- status: completed
+- summary: |
+    WebUI Python process now launches in its own CMD window (same style as SDPCLI) so
+    logs are visible live. logger.py adds StreamHandler(stdout) alongside the file handler.
+    Stop hook .claude/hooks/check-language.py detects Korean Unicode (가-힣 + Jamo ranges)
+    in the last assistant transcript message and blocks with a rewrite instruction.
+    Registered in .claude/settings.local.json with 10s timeout.
+- related_paths:
+  - pySdp/webui/logger.py                    (MODIFIED)
+  - pySdp/webui.ps1                          (MODIFIED)
+  - .claude/hooks/check-language.py          (NEW)
+  - .claude/settings.local.json              (MODIFIED)
+- tags: [webui, logging, claude-hook, language-guard, stop-hook]
+
+---
+
+### IMPL-2026-04-22-webui-new-tabs.md
+- topic: WebUI new tabs — Explorer (DC browser + detail panel), Questions (label-aggregated metrics), ingest wired into analysis trigger
+- status: completed
+- summary: |
+    Added Explorer and Questions tabs to pySdp WebUI. Explorer: snapshot selector + DC list
+    table + single DC detail panel (label, metrics, shaders, textures, mesh). Questions: snapshot
+    selector + per-label metrics aggregation table (14 columns, sum + avg). Phase C: added ingest
+    as first PY_STEPS entry so DuckDB is populated automatically after C# analysis. New backend
+    endpoint: GET /api/data/label_metrics. Shared _loadSnapshotsIntoSelect() helper used by both
+    tabs. 0 C# compiler errors.
+- related_paths:
+  - pySdp/webui/static/index.html        (MODIFIED)
+  - pySdp/webui/static/app.js            (MODIFIED)
+  - pySdp/webui/static/style.css         (MODIFIED)
+  - pySdp/webui/routes/data.py           (MODIFIED)
+- tags: [webui, frontend, explorer, questions, label-aggregation, analysis-trigger, duckdb]
+
+---
+
+### IMPL-2026-04-22-analysis-model-phase-d.md
+- topic: Analysis Model Phase D — Dashboard CRUD + run endpoint
+- status: completed
+- summary: |
+    Created pySdp/data/dashboards.py (create/list/get/update/delete/seed_builtin_dashboards).
+    Seeds builtin-overview dashboard wiring 3 builtin questions at startup. Added 6 REST
+    endpoints to routes/data.py (GET/POST /dashboards, GET/PUT/DELETE/POST-run /dashboards/{id}).
+    Dashboard run executes each panel independently — one failure does not abort the rest.
+    server.py seeds builtin dashboards after question seeding. 19 total routes confirmed.
+- related_paths:
+  - pySdp/data/dashboards.py           (NEW)
+  - pySdp/webui/routes/data.py         (MODIFIED)
+  - pySdp/webui/server.py              (MODIFIED)
+- tags: [python, dashboard, question-engine, duckdb, crud, phase7]
+
+---
+
+### IMPL-2026-04-22-analysis-model-phase-c.md
+- topic: Analysis Model Phase C — Question run endpoint
+- status: completed
+- summary: |
+    Added POST /api/data/questions/{question_id}/run?snapshot_id=<n> to routes/data.py.
+    Loads question, dispatches to run_model with question's model_params, overlays viz_type +
+    viz_config, attaches question {id, title}. 404 for unknown question or model, 500 otherwise.
+- related_paths:
+  - pySdp/webui/routes/data.py   (MODIFIED)
+- tags: [python, question-engine, analysis-model, duckdb, phase7]
+
+---
+
+### IMPL-2026-04-22-analysis-model-phase-b.md
+- topic: Analysis Model Phase B — Question CRUD + builtin question seeding
+- status: completed
+- summary: |
+    Created pySdp/data/questions.py (create/list/get/update/delete/seed_builtin_questions).
+    CAST(created_at AS VARCHAR) avoids DuckDB pytz dependency. Seeds 3 built-in questions
+    (builtin-category-breakdown, builtin-top-bottleneck-dcs, builtin-label-quality) idempotently.
+    Added 5 REST endpoints + QuestionCreate/Update Pydantic models to routes/data.py.
+    POST /questions validates model_name against registry (400 if unknown).
+- related_paths:
+  - pySdp/data/questions.py           (NEW)
+  - pySdp/webui/routes/data.py        (MODIFIED)
+  - pySdp/webui/server.py             (MODIFIED)
+- tags: [python, question-engine, duckdb, crud, phase7]
+
+---
+
+### IMPL-2026-04-22-analysis-model-phase-a.md
+- topic: Analysis Model Phase A — AnalysisModel ABC, model_registry, 3 builtin models, model list/run endpoints
+- status: completed
+- summary: |
+    Created analysis/models/ package: AnalysisModel base class + 3 builtin models
+    (category_breakdown bar_chart, top_bottleneck_dcs table, label_quality bar_chart).
+    data/model_registry.py is a pure dispatch table (no analysis/ imports — no circularity).
+    Registration triggered by `import analysis.models` in server.py. Added GET /models and
+    POST /models/{name}/run?snapshot_id=<n> endpoints.
+- related_paths:
+  - pySdp/analysis/models/__init__.py       (NEW)
+  - pySdp/analysis/models/base.py           (NEW)
+  - pySdp/analysis/models/category_breakdown.py  (NEW)
+  - pySdp/analysis/models/top_bottleneck_dcs.py  (NEW)
+  - pySdp/analysis/models/label_quality.py  (NEW)
+  - pySdp/data/model_registry.py            (NEW)
+  - pySdp/webui/routes/data.py              (MODIFIED)
+  - pySdp/webui/server.py                   (MODIFIED)
+- tags: [python, analysis-model, model-registry, duckdb, phase6]
+
+---
+
+### IMPL-2026-04-21-python-data-layer-phase3.md
+- topic: Python data layer Phase 3 — label/stats persistence to DuckDB + refresh_labels endpoint
+- status: completed
+- summary: |
+    label_service.generate_label_json(db=None) upserts labels into DuckDB after writing label.json.
+    status_service.generate_status_json(db=None) upserts per-category rows into snapshot_stats.
+    files.py refactored to make_router(db=None) factory; /label and /status pass db to services.
+    Added POST /api/data/refresh_labels?snapshot_id=<n> — looks up snapshot_dir from DB, re-runs
+    label+status services, persists results.
+- related_paths:
+  - pySdp/analysis/label_service.py    (MODIFIED)
+  - pySdp/analysis/status_service.py   (MODIFIED)
+  - pySdp/webui/routes/files.py        (MODIFIED)
+  - pySdp/webui/routes/data.py         (MODIFIED)
+  - pySdp/webui/server.py              (MODIFIED)
+- tags: [python, data-layer, duckdb, label, persistence, phase3]
+
+---
+
+### IMPL-2026-04-21-python-data-layer-phase2.md
+- topic: Python data layer Phase 2 — typed query API + draw_calls / dc detail endpoints
+- status: completed
+- summary: |
+    Created pySdp/data/query.py: get_draw_calls, get_labels, get_metrics, get_dc_detail, query_dcs.
+    Tags filtering Python-side. Added GET /api/data/draw_calls and GET /api/data/dc/{api_id} endpoints.
+- related_paths:
+  - pySdp/data/query.py           (NEW)
+  - pySdp/webui/routes/data.py    (MODIFIED)
+- tags: [python, data-layer, duckdb, query-layer, phase2]
+
+---
+
+### IMPL-2026-04-21-python-data-layer-phase1.md
+- topic: Python data layer Phase 1 — DuckDB WorkspaceDB + ingest_snapshot + /api/data/* endpoints
+- status: completed
+- summary: |
+    Created pySdp/data/ package: WorkspaceDB (DuckDB at pySdp/data/sdp.db, configurable via
+    SDP_DB_PATH), 12-table schema, ingest_snapshot() (INSERT OR REPLACE, single transaction).
+    POST /api/data/ingest and GET /api/data/snapshots endpoints. duckdb added to requirements.txt.
+- related_paths:
+  - pySdp/data/__init__.py         (NEW)
+  - pySdp/data/db.py               (NEW)
+  - pySdp/data/ingest.py           (NEW)
+  - pySdp/webui/routes/data.py     (NEW)
+  - pySdp/webui/server.py          (MODIFIED)
+  - pySdp/requirements.txt         (MODIFIED)
+- tags: [python, data-layer, duckdb, schema, ingest, phase1]
+
+---
+
+### IMPL-2026-04-21-python-data-layer-phase0.md
+- topic: Python project restructure Phase 0 — move webui/analysis/ → analysis/, fix sys.path in server.py
+- status: completed
+- summary: |
+    Moved 5 analysis service files from pySdp/webui/analysis/ to new top-level pySdp/analysis/.
+    Added sys.path.insert(0, pySdp_root) to server.py. Deleted pySdp/webui/analysis/.
+- related_paths:
+  - pySdp/analysis/                    (NEW)
+  - pySdp/webui/server.py              (MODIFIED)
+- tags: [python, restructure, analysis, data-layer, phase0]
+
+---
+
+### IMPL-2026-04-20-python-analysis-services-webui.md
+- topic: Python WebUI analysis services (label/status/topdc/dashboard/analysis_md) + Results tab + hybrid C#/Python pipeline
+- status: completed
+- summary: |
+    5 Python services under pySdp/webui/analysis/ (now moved to pySdp/analysis/ by phase0).
+    label_service: rule-based DC classification. status_service: percentile blocks p50-p99.
+    topdc_service: 3-layer attribution engine (attribution_rules.json). dashboard_service: Mermaid charts.
+    analysis_md_service: per-category LLM hook + rule-based fallback. 5 POST endpoints under /api/files/.
+    Results tab with run selector + 3-layer collapsible file sections. Hybrid C#/Python pipeline.
+- related_paths:
+  - pySdp/analysis/label_service.py
+  - pySdp/analysis/status_service.py
+  - pySdp/analysis/topdc_service.py
+  - pySdp/analysis/dashboard_service.py
+  - pySdp/analysis/analysis_md_service.py
+  - pySdp/webui/routes/files.py
+  - pySdp/webui/static/app.js
+  - SDPCLI/analysis/attribution_rules.json
+- tags: [python, webui, analysis, label, status, topdc, dashboard, attribution, results-tab]
+
+---
+
 ### IMPL-2026-04-14-http-server-mode.md
 - topic: HTTP Server Mode — implementation record
 - status: completed (build 0 errors)
 - summary: 21 new files under SDPCLI/source/Server/ + Modes/ServerMode.cs; AnalysisPipeline.cs completedTargets; Main.cs/Application.cs server subcommand
-  - session
-  - device-session
+- tags: [server-mode, http-api, device-session]
 
 ---
 

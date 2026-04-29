@@ -431,7 +431,7 @@ namespace SnapdragonProfilerCLI.Modes
                 var sessionSettings = new SessionSettings
                 {
                     SessionDirectoryRootPath      = _sdpOutputDir,
-                    MaxTotalSessionsSizeMB        = 1024,
+                    MaxTotalSessionsSizeMB        = 0,
                     CreateTimestampedSubDirectory = true
                 };
 

@@ -27,21 +27,41 @@ if __name__ == "__main__":
 
 # Make webui/ importable when run as `python webui/server.py`
 sys.path.insert(0, str(Path(__file__).parent))
+# Make pySdp/ root importable so `import analysis` resolves to pySdp/analysis/
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, Request                  # noqa: E402
 from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles           # noqa: E402
 
-from routes.proxy import router as proxy_router       # noqa: E402
-from routes.files import router as files_router       # noqa: E402
-from routes.logs  import router as logs_router        # noqa: E402
+from routes.proxy import router as proxy_router                    # noqa: E402
+from routes.files import make_router as _make_files_router         # noqa: E402
+from routes.logs  import router as logs_router                     # noqa: E402
+from routes.data  import make_router as _make_data_router          # noqa: E402
 import logger as _logger_module                       # noqa: E402
+from data.db import WorkspaceDB                       # noqa: E402
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="pySdp WebUI", docs_url=None, redoc_url=None)
+
+# ── DuckDB workspace DB (global singleton) ─────────────────────────────────────
+_db = WorkspaceDB()
+
+# ── Model registration — import triggers all @register decorators ─────────────
+import analysis.models  # noqa: E402  # registers category_breakdown, top_bottleneck_dcs, label_quality
+
+# ── Seed built-in questions (idempotent) ──────────────────────────────────────
+from data.questions import seed_builtin_questions as _seed_builtin_questions  # noqa: E402
+_seeded = _seed_builtin_questions(_db)
+_logger_module.get_logger().info(f"Seeded {_seeded} built-in questions")
+
+# ── Seed built-in dashboards (idempotent) ─────────────────────────────────────
+from data.dashboards import seed_builtin_dashboards as _seed_builtin_dashboards  # noqa: E402
+_seeded_dash = _seed_builtin_dashboards(_db)
+_logger_module.get_logger().info(f"Seeded {_seeded_dash} built-in dashboards")
 
 # ── Exception middleware — catches any unhandled error in route handlers ──────
 
@@ -62,9 +82,10 @@ async def _exception_middleware(request: Request, call_next):
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-app.include_router(proxy_router, prefix="/api/sdpcli")
-app.include_router(files_router, prefix="/api/files")
-app.include_router(logs_router,  prefix="/api/logs")
+app.include_router(proxy_router,                    prefix="/api/sdpcli")
+app.include_router(_make_files_router(db=_db),      prefix="/api/files",  tags=["files"])
+app.include_router(logs_router,                     prefix="/api/logs")
+app.include_router(_make_data_router(_db),          prefix="/api/data",   tags=["data"])
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 

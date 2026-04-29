@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(wmic logicaldisk *)",
+      "Bash(taskkill /PID 91312 /F)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "Skill(update-config)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -s \"http://localhost:8000/api/files/analyses?root=D%3A%5Csnapdragon%5Cproject%5Canalysis\")",
+      "Bash(curl -s \"http://localhost:8000/api/files/analyses?root=D%3A%5Csnapdragon%5Cproject%5Csdp\")",
+      "Bash(curl -s \"http://localhost:8000/api/files/analyses?root=D%3A%5Csnapdragon%5Cproject%5Csdp%5Canalysis\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/api/data/ingest?snapshot_dir=D%3A%2Fsnapdragon%2Fproject%2Fsdp%2Fanalysis%2F2026-04-27T21-56-27%2Fsnapshot_2\")"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python D:/snapdragon/.claude/hooks/check-language.py",
+            "timeout": 10,
+            "statusMessage": "Checking response language..."
+          }
+        ]
+      }
+    ]
+  }
+}

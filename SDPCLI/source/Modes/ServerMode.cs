@@ -56,6 +56,13 @@ namespace SnapdragonProfilerCLI.Server
                 cts.Cancel();
             };
 
+            // Suppress SDK ExitApplication in server mode — just disconnect, keep server running
+            session.SdkExitAction = () =>
+            {
+                _log.Warning("SDK requested ExitApplication — suppressed in server mode, disconnecting only");
+                try { session.Disconnect(); } catch { /* ignore */ }
+            };
+
             try
             {
                 server = new HttpServer(_port, session, jobManager, _config);

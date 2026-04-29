@@ -31,12 +31,14 @@ async def _body(request: Request) -> dict:
         return {}
 
 
-def _fwd(method: str, path: str, body=None, *, silent: bool = False) -> JSONResponse:
+def _fwd(method: str, path: str, body=None, *, silent: bool = False, timeout: int = 30) -> JSONResponse:
     """Forward a request to the SDPCLI Server.
 
     Args:
-        silent: When True, suppresses warning logs for connection errors
-                (used for high-frequency polling routes like /api/device).
+        silent:  When True, suppresses warning logs for connection errors
+                 (used for high-frequency polling routes like /api/device).
+        timeout: Request timeout in seconds (default 30; use higher values for
+                 long-running operations like connect/capture/analysis).
     """
     log = _logger_module.get_logger()
     url = f"{SDPCLI_BASE}{path}"
@@ -44,11 +46,11 @@ def _fwd(method: str, path: str, body=None, *, silent: bool = False) -> JSONResp
 
     try:
         if method == "GET":
-            r = requests.get(url, timeout=30)
+            r = requests.get(url, timeout=timeout)
         elif method == "POST":
-            r = requests.post(url, json=body, timeout=30)
+            r = requests.post(url, json=body, timeout=timeout)
         elif method == "DELETE":
-            r = requests.delete(url, timeout=30)
+            r = requests.delete(url, timeout=timeout)
         else:
             return JSONResponse({"ok": False, "error": "Method not allowed"}, status_code=405)
 
@@ -82,27 +84,27 @@ def _fwd(method: str, path: str, body=None, *, silent: bool = False) -> JSONResp
 
 @router.post("/connect")
 async def connect(request: Request):
-    return _fwd("POST", "/api/connect", await _body(request))
+    return _fwd("POST", "/api/connect", await _body(request), timeout=120)
 
 
 @router.post("/disconnect")
 async def disconnect():
-    return _fwd("POST", "/api/disconnect", {})
+    return _fwd("POST", "/api/disconnect", {}, timeout=60)
 
 
 @router.post("/session/launch")
 async def launch(request: Request):
-    return _fwd("POST", "/api/session/launch", await _body(request))
+    return _fwd("POST", "/api/session/launch", await _body(request), timeout=120)
 
 
 @router.post("/capture")
 async def capture(request: Request):
-    return _fwd("POST", "/api/capture", await _body(request))
+    return _fwd("POST", "/api/capture", await _body(request), timeout=300)
 
 
 @router.post("/analysis")
 async def analysis(request: Request):
-    return _fwd("POST", "/api/analysis", await _body(request))
+    return _fwd("POST", "/api/analysis", await _body(request), timeout=60)
 
 
 @router.get("/status")

@@ -96,12 +96,14 @@ def _dynamic_top5_table(top5: list[dict], avg: dict, total_clocks: int) -> str:
         (f"Vertices (avg {_fmt_n(avg['verts'])})",     "vertices_shaded",      1.5, avg["verts"],  False),
     ]
 
-    # Keep columns where at least one top-5 DC exceeds threshold
+    # Keep columns where at least one top-5 DC exceeds threshold, sorted by max_ratio desc (mirrors C#)
     active = []
     for hdr, key, thresh, avg_val, pct_mode in candidates:
         max_ratio = max((_ratio(d["metrics"] or {}, key, avg_val) for d in top5 if d["metrics"]), default=0)
         if max_ratio >= thresh:
-            active.append((hdr, key, thresh, avg_val, pct_mode))
+            active.append((hdr, key, thresh, avg_val, pct_mode, max_ratio))
+    active.sort(key=lambda x: x[5], reverse=True)
+    active = [(h, k, t, a, p) for h, k, t, a, p, _ in active]
 
     # Header
     hdrs = ["Rank", "DC", "Category", "Detail", f"Clocks (avg {_fmt_n(avg['clocks'])})"]
@@ -202,10 +204,26 @@ def generate_dashboard_md(snapshot_dir: str | Path) -> Path:
     lines.append(f"Total DrawCalls: {len(merged)}  ")
     lines.append("")
 
-    # Screenshot
-    png = snap / "snapshot.png"
-    if png.exists():
-        lines += ["## Screenshot\n", "![Frame Snapshot](snapshot.png)\n"]
+    # Screenshot — check analysis dir first, then fall back to sibling sdp dir
+    _SS_NAMES = ["snapshot.png", "snapshot_screenshot.png", "snapshot_screenshot.jpg",
+                 "1_screenshot.bmp"]
+    _ss_path = None
+    for _name in _SS_NAMES:
+        if (snap / _name).exists():
+            _ss_path = _name; break
+    if _ss_path is None:
+        # derive sdp sibling: .../sdp/analysis/<run>/snapshot_N → .../sdp/<run>/snapshot_N
+        _parts = snap.parts
+        try:
+            _ai = next(i for i in range(len(_parts)-1, -1, -1) if _parts[i].lower() == "analysis")
+            _sdp_snap = Path(*(_parts[:_ai] + _parts[_ai+1:]))
+            for _name in _SS_NAMES:
+                if (_sdp_snap / _name).exists():
+                    _ss_path = str(_sdp_snap / _name); break
+        except StopIteration:
+            pass
+    if _ss_path:
+        lines += ["## Screenshot\n", f"![Frame Snapshot]({_ss_path})\n"]
 
     # Category distribution table
     cs = _cat_stats(merged)
@@ -238,7 +256,7 @@ def generate_dashboard_md(snapshot_dir: str | Path) -> Path:
     top5 = sorted(with_m, key=lambda d: d["metrics"].get("clocks", 0), reverse=True)[:5]
 
     # ── Mermaid bar chart ─────────────────────────────────────────────────────
-    all_sorted = sorted(with_m, key=lambda d: d["dc_id"])
+    all_sorted = sorted(with_m, key=lambda d: int(d["dc_id"]) if str(d["dc_id"]).isdigit() else 0)
     chart_max  = max(int(d["metrics"].get("clocks", 0)) for d in all_sorted)
     x_labels   = ", ".join(f'"{d["dc_id"]}"' for d in all_sorted)
     y_vals     = ", ".join(str(int(d["metrics"].get("clocks", 0))) for d in all_sorted)
@@ -310,6 +328,21 @@ def generate_dashboard_md(snapshot_dir: str | Path) -> Path:
                 f"{_mb(m.get('read_total_bytes', 0))} | "
                 f"{_mb(m.get('write_total_bytes', 0))} |"
             )
+        lines.append("")
+
+    # ── 3D Mesh Preview ───────────────────────────────────────────────────────
+    mesh_dir = snap.parent / "meshes"
+    if not mesh_dir.exists():
+        mesh_dir = snap / "meshes"
+    objs = sorted(mesh_dir.glob("*.obj")) if mesh_dir.exists() else []
+    if objs:
+        lines += ["---\n", "## 3D Mesh Preview\n",
+                  "> 交互式查看器（需要浏览器打开）\n",
+                  "**[🔗 Open interactive 3D Viewer](meshes/viewer.html)**\n",
+                  "| Rank | DrawCall | OBJ |", "|-----:|----------|-----|"]
+        for i, f in enumerate(objs, 1):
+            dc_id = f.stem.replace("drawcall_", "")
+            lines.append(f"| {i} | DC {dc_id} | [{f.name}](meshes/{f.name}) |")
         lines.append("")
 
     # ── Category statistics table ─────────────────────────────────────────────

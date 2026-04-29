@@ -22,6 +22,7 @@ Usage:
 
 import logging
 import logging.handlers
+import sys
 import threading
 import traceback
 from collections import deque
@@ -81,17 +82,23 @@ class AppLogger:
         flog.setLevel(logging.DEBUG)
         flog.propagate = False
         if not flog.handlers:
+            fmt = logging.Formatter(
+                "%(asctime)s [%(levelname)-7s] %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
             h = logging.handlers.RotatingFileHandler(
                 log_dir / "webui.log",
                 maxBytes=5 * 1024 * 1024,
                 backupCount=3,
                 encoding="utf-8",
             )
-            h.setFormatter(logging.Formatter(
-                "%(asctime)s [%(levelname)-7s] %(message)s",
-                datefmt="%Y-%m-%dT%H:%M:%S",
-            ))
+            h.setFormatter(fmt)
             flog.addHandler(h)
+
+            # Also stream to stdout so the CMD window shows live logs
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setFormatter(fmt)
+            flog.addHandler(sh)
         self._flog = flog
 
     # ── Public API ────────────────────────────────────────────────────────────

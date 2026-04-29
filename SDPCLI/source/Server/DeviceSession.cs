@@ -18,6 +18,9 @@ namespace SnapdragonProfilerCLI.Server
         // ── State machine ─────────────────────────────────────────────────────
         private volatile DeviceStatus _status = DeviceStatus.Disconnected;
         private readonly object _transitionLock = new object();
+        private Thread? _healthMonitor;
+        private ManualResetEventSlim? _healthMonitorStop;
+        private volatile bool _isDisconnecting = false;
 
         public DeviceStatus Status => _status;
 
@@ -42,6 +45,9 @@ namespace SnapdragonProfilerCLI.Server
         // ── Public state ──────────────────────────────────────────────────────
         public string?           ConnectedDeviceId { get; internal set; }
         public DeviceSessionInfo? CurrentSession   { get; internal set; }
+
+        // SDK exit override — set by ServerMode to suppress Environment.Exit(0)
+        internal Action?         SdkExitAction     { get; set; }
 
         // ── SDK references (internal — job runners only) ──────────────────────
         internal SDPClient?         SdpClient        { get; set; }
@@ -74,7 +80,7 @@ namespace SnapdragonProfilerCLI.Server
                 try { Sdp.Helpers.Globalization.SetLocale(); }
                 catch (Exception ex) { _log.Warning("Globalization.SetLocale failed: " + ex.Message); }
 
-                var platform = new ConsolePlatform();
+                var platform = new ConsolePlatform(SdkExitAction);
                 if (!Sdp.SdpApp.Init(platform))
                 {
                     _log.Error("SdpApp.Init() returned false");
@@ -98,40 +104,116 @@ namespace SnapdragonProfilerCLI.Server
         // ── Disconnect (synchronous) ──────────────────────────────────────────
         public void Disconnect()
         {
+            // Re-entrancy guard: SDK Shutdown() may fire ExitApplication → SdkExitAction → Disconnect()
+            if (_isDisconnecting) return;
+            _isDisconnecting = true;
+            try { _disconnectCore(); }
+            finally { _isDisconnecting = false; }
+        }
+
+        private void _disconnectCore()
+        {
             _log.Info("Disconnecting...");
+
+            StopHealthMonitor();
 
             // Cancel active job if any
             try { ActiveJob?.Cts.Cancel(); }
             catch { /* ignore */ }
             ActiveJob = null;
 
+            // Snapshot and null out SDK references before calling Shutdown so any
+            // re-entrant ExitApplication callback sees nothing to tear down.
+            var client = SdpClient;
+            SdpClient      = null;
+            ClientDelegate = null;
+            Device         = null;
+            CurrentCapture = null;
+
             // Tear down SDK session
-            try
-            {
-                SdpClient?.SessionManager?.CloseSession();
-            }
+            try { client?.SessionManager?.CloseSession(); }
             catch (Exception ex) { _log.Warning("CloseSession failed: " + ex.Message); }
 
             try
             {
-                if (SdpClient != null) { SdpClient.Shutdown(); SdpClient.Dispose(); SdpClient = null; }
+                if (client != null) { client.Shutdown(); client.Dispose(); }
             }
             catch (Exception ex) { _log.Warning("SDPClient shutdown failed: " + ex.Message); }
 
-            // Reset shared state
-            ClientDelegate   = null;
-            Device           = null;
-            CurrentCapture   = null;
-            ConnectedDeviceId = null;
-            CurrentSession   = null;
-            TargetPackageName = null;
-            TargetProcessPid  = 0;
+            // Reset remaining shared state
+            ConnectedDeviceId  = null;
+            CurrentSession     = null;
+            TargetPackageName  = null;
+            TargetProcessPid   = 0;
             VerifiedProcessPid = 0;
-            RenderingAPI      = 0;
+            RenderingAPI       = 0;
 
             // SDK init stays (process-level singleton, can reconnect)
             _status = DeviceStatus.Disconnected;
             _log.Info("Disconnected");
+        }
+
+        // ── Device health monitor ─────────────────────────────────────────────
+        internal void StartHealthMonitor()
+        {
+            lock (_transitionLock)
+            {
+                if (_healthMonitor != null && _healthMonitor.IsAlive) return;
+                _healthMonitorStop = new ManualResetEventSlim(false);
+                _healthMonitor = new Thread(HealthMonitorProc)
+                {
+                    IsBackground = true,
+                    Name         = "DeviceHealthMonitor",
+                };
+                _healthMonitor.Start();
+            }
+            _log.Info("Device health monitor started");
+        }
+
+        private void StopHealthMonitor()
+        {
+            ManualResetEventSlim? stop;
+            lock (_transitionLock)
+            {
+                stop = _healthMonitorStop;
+                _healthMonitorStop = null;
+                _healthMonitor = null;
+            }
+            stop?.Set();
+        }
+
+        private void HealthMonitorProc()
+        {
+            var stop = _healthMonitorStop;
+            while (stop != null && !stop.IsSet && _status != DeviceStatus.Disconnected)
+            {
+                if (stop.Wait(5000)) break;
+                if (stop.IsSet || _status == DeviceStatus.Disconnected) break;
+                try
+                {
+                    if (Device == null) break;
+                    var state = Device.GetDeviceState();
+                    if (state == DeviceConnectionState.Unknown ||
+                        state == DeviceConnectionState.InstallFailed)
+                    {
+                        // Skip disconnect while a capture is in flight — transient Unknown is normal during SDK replay
+                        if (_status == DeviceStatus.Capturing)
+                        {
+                            _log.Warning($"Health monitor: device state={state} but status=Capturing — deferring disconnect");
+                            continue;
+                        }
+                        _log.Warning($"Health monitor: device state={state} — initiating proactive disconnect");
+                        Disconnect();
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Warning($"Health monitor: GetDeviceState() threw: {ex.Message}");
+                    break;
+                }
+            }
+            _log.Info("Device health monitor stopped");
         }
     }
 }

@@ -9,6 +9,13 @@ namespace SnapdragonProfilerCLI
     /// </summary>
     public class ConsolePlatform : IPlatform
     {
+        private readonly Action _onExitApplication;
+
+        public ConsolePlatform(Action? onExitApplication = null)
+        {
+            _onExitApplication = onExitApplication ?? (() => Environment.Exit(0));
+        }
+
         public void Invoke(EventHandler handler)
         {
             // For CLI, just execute immediately (no UI thread)
@@ -22,7 +29,7 @@ namespace SnapdragonProfilerCLI
 
         public void ExitApplication()
         {
-            Environment.Exit(0);
+            _onExitApplication();
         }
 
         public int ScreenWidth

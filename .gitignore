@@ -42,6 +42,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+pySdp/.venv/
+pySdp/data/*.db
+pySdp/data/*.db.wal
+pySdp/webui/logs/
 
 # ============================================================
 # OS / editor noise
