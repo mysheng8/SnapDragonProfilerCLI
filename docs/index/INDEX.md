@@ -22,6 +22,10 @@ Always consult this index before analyzing code.
 | SDPCLI.Snapshot | Capture pipeline: device connect → GPU snapshot → 7 CSVs → sdp.db (append per CaptureID) → .sdp ZIP | SnapshotCaptureMode.Run, CsvToDbService.ImportAllCsvs, QGLPluginService.ImportCapture | Failed to connect to device, Using SDK snapshot dir, ImportCapture succeeded, DB stable | [docs/index/modules/SDPCLI.Snapshot.md](docs/index/modules/SDPCLI.Snapshot.md) |
 | SDPCLI.Analysis | Analysis pipeline: open .sdp → query sdp.db by CaptureID → extract shaders/textures → label DCs (rule-based + LLM) → Markdown report | AnalysisPipeline.RunAnalysis, DatabaseQueryService.GetDrawCallIds, DrawCallLabelService.Label | Step 1: Collecting DrawCalls, Joined metrics to | [docs/index/modules/SDPCLI.Analysis.md](docs/index/modules/SDPCLI.Analysis.md) |
 | SDPCLI.Server | HTTP REST server mode: localhost-only HttpListener, async JobManager, DeviceSession state machine, per-operation job runners | ServerMode.Run, HttpServer.Start, JobManager.Submit | Listening on http://localhost, Job failed | [docs/index/modules/SDPCLI.Server.md](docs/index/modules/SDPCLI.Server.md) |
+| PySdp.WebUI | FastAPI WebUI server: proxies SDPCLI HTTP calls, exposes Python analysis pipeline as REST, serves browser SPA, orchestrates background pipeline jobs | app, make_router (files), make_router (data), PipelineJobManager, pipeline_manager | WebUI starting, pipeline job started, pipeline job completed, pipeline step failed | [docs/index/modules/PySdp.WebUI.md](docs/index/modules/PySdp.WebUI.md) |
+| PySdp.Analysis | Python analysis services: rule-based + LLM DrawCall labeling, bottleneck attribution, GPU category stats, Markdown report generation | generate_label_json, generate_status_json, generate_topdc_json, generate_dashboard_md, generate_analysis_md | label generation failed, status generation failed, topdc generation failed | [docs/index/modules/PySdp.Analysis.md](docs/index/modules/PySdp.Analysis.md) |
+| PySdp.Data | DuckDB data layer: schema management + migration, snapshot ingestion (dc/shaders/textures/metrics/labels), typed query API, analysis model registry, question/dashboard CRUD | WorkspaceDB, ingest_snapshot, get_draw_calls, get_dc_detail, register, run_model | ingest failed, list_snapshots failed, draw_calls failed | [docs/index/modules/PySdp.Data.md](docs/index/modules/PySdp.Data.md) |
+| PySdp.Client | Synchronous Python client package for SDPCLI Server HTTP API: blocking connect/launch/capture/analyze with job polling and typed exceptions | SdpClient, SdpClient.connect, SdpClient.capture, SdpClient.analyze, JobPoller | SdpConnectionError, Cannot connect to SDPCLI Server | [docs/index/modules/PySdp.Client.md](docs/index/modules/PySdp.Client.md) |
 
 
 ## Topic Router
@@ -122,3 +126,26 @@ MDP display traces → Profiler.Systrace.Plugin
 Task group hierarchy → Profiler.Systrace.Pluginper  
 GL adapter → Profiler.DCAP.Wrapper
 VulkanProcessor plugin → Profiler.QGLPlugin.Core
+Python WebUI server → PySdp.WebUI
+FastAPI routes → PySdp.WebUI
+SDPCLI proxy → PySdp.WebUI
+Background pipeline job → PySdp.WebUI
+Browser SPA → PySdp.WebUI
+DrawCall labeling Python → PySdp.Analysis
+Rule-based classification → PySdp.Analysis
+LLM classification → PySdp.Analysis
+Bottleneck attribution → PySdp.Analysis
+GPU category stats → PySdp.Analysis
+label.json → PySdp.Analysis
+topdc.json → PySdp.Analysis
+DuckDB schema → PySdp.Data
+Snapshot ingest → PySdp.Data
+DC query API → PySdp.Data
+Analysis model registry → PySdp.Data
+Questions CRUD → PySdp.Data
+Dashboard CRUD → PySdp.Data
+Metric aggregation → PySdp.Data
+Python SDPCLI client → PySdp.Client
+Scripting profiling → PySdp.Client
+CI capture automation → PySdp.Client
+Job polling Python → PySdp.Client

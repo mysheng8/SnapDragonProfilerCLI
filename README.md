@@ -1,249 +1,150 @@
 # snapdragon
 
-Snapdragon Profiler 的命令行辅助工具集，用于无头模式抓帧、离线分析和数据导出。
+Snapdragon Profiler 无头工具集 — GPU 帧抓取、离线分析、Web 可视化。
 
 ---
 
-## 📂 Repository Structure
+## 组件概览
+
+| 组件 | 语言 | 说明 |
+|------|------|------|
+| [SDPCLI](SDPCLI/README.md) | C# (.NET 4.7.2) | 核心 CLI：设备连接、帧抓取、分析 Pipeline、HTTP Server |
+| [pySdp](pySdp/README.md) | Python (FastAPI) | WebUI + 数据层 + 分析服务 + Python 客户端库 |
+
+```
+┌─────────────────────────────────────────────┐
+│  Browser  http://localhost:8000             │
+│  WebUI (pySdp/webui)                        │
+└──────────────┬──────────────────────────────┘
+               │
+┌──────────────▼──────────────────────────────┐
+│  pySdp WebUI Server  :8000                  │
+│  ├─ /api/sdpcli/*  →  proxy                 │
+│  ├─ /api/data/*    →  DuckDB                │
+│  └─ /api/files/*   →  local filesystem      │
+└──────────────┬──────────────────────────────┘
+               │
+┌──────────────▼──────────────────────────────┐
+│  SDPCLI Server  :5000                       │
+│  (.\sdpcli.bat server)                      │
+│  Connect → Launch → Capture → Analyze       │
+└──────────────┬──────────────────────────────┘
+               │  Snapdragon Profiler SDK (DLL)
+┌──────────────▼──────────────────────────────┐
+│  Android Device  (ADB / USB)                │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 快速开始
+
+```powershell
+# 1. 编译 SDPCLI（首次或代码变更后）
+dotnet build SDPCLI
+
+# 2. 一键启动（自动创建 venv、安装依赖、启动 SDPCLI Server + WebUI、打开浏览器）
+.\webui.ps1
+```
+
+`webui.ps1` 会自动：
+- 创建 `pySdp/.venv` 并安装依赖（首次运行）
+- 在独立窗口启动 `sdpcli.bat server --port 5000`
+- 等待 SDPCLI 就绪后启动 WebUI（`http://127.0.0.1:8000`）
+- 按 ESC 同时关闭两个进程
+
+可选参数：
+```powershell
+.\webui.ps1 -Port 8080 -SdpcliPort 5001
+```
+
+**仅使用 SDPCLI（无 WebUI）：**
+```powershell
+.\sdpcli.bat                              # 交互模式
+.\sdpcli.bat server --port 5000          # Server 模式
+.\sdpcli.bat analysis capture.sdp        # 离线分析
+```
+
+---
+
+## 典型工作流
+
+```
+Connect Device  →  Launch App  →  Capture Frame
+      ↓
+  .sdp 文件（ZIP 格式）
+      ↓
+  Analysis（C# 提取 DC / Shader / Texture / Metrics）
+      ↓
+  Python Pipeline（Label → Status → TopDC → Markdown 报告）
+      ↓
+  WebUI Explorer（DC 列表 · 指标热力图 · 3D Mesh · Shader 下载）
+```
+
+---
+
+## 仓库结构
 
 ```
 snapdragon/
-├── SDPCLI/                  # 主工具（C# CLI）
-│   ├── source/
-│   │   ├── Modes/           # InteractiveMode, AnalysisMode, SnapshotCaptureMode, ServerMode
-│   │   ├── Services/        # Capture & Analysis 业务逻辑服务层
-│   │   ├── Server/          # HTTP API server（ServerMode 使用）
-│   │   ├── Tools/           # TextureExtractor, ShaderExtractor
-│   │   ├── Logging/         # AppLogger（双通道：文件 + 控制台）
-│   │   ├── Data/            # SdpDatabase, CSV/DB 导入
-│   │   ├── Models/          # VulkanSnapshotModel
-│   │   ├── Main.cs          # CLI 入口，参数解析
-│   │   ├── Application.cs   # subcommand 路由
-│   │   ├── SDPClient.cs     # SDPCore SDK 封装
-│   │   └── Config.cs        # config.ini 读取
-│   ├── config.ini           # 运行时配置
-│   └── SDPCLI.sln
-├── dll/                     # Native DLL + C# wrapper 引用
-│   └── plugins/             # QGLPlugin, SDPClientFramework 等预编译 DLL
+├── SDPCLI/                  # C# CLI 主工具
+│   ├── source/              # 源码（Modes / Services / Server / Tools / Data）
+│   ├── config.ini           # 运行时配置（APK、LLM 端点、Metrics 白名单）
+│   └── README.md            # ← SDPCLI 详细文档
+├── pySdp/                   # Python 层
+│   ├── webui/               # FastAPI 应用（后端 + 静态资源）
+│   ├── analysis/            # 分析服务（label / status / topdc / dashboard）
+│   ├── data/                # DuckDB 数据层（ingest / query / models）
+│   ├── pysdp/               # 独立 Python 客户端包
+│   └── README.md            # ← pySdp 详细文档
+├── dll/                     # Native SDK DLL + C# wrapper 引用
+│   └── plugins/             # QGLPlugin 等预编译插件
 ├── docs/
 │   ├── context/             # AI 上下文（findings / plans / implementations）
-│   └── index/               # 代码模块索引
-├── project/                 # 运行时工作目录（sdp输出、analysis结果）
-└── SDPCLI.bat               # 启动入口
+│   │   └── INDEX.md         # 活跃条目索引
+│   ├── index/modules/       # 代码模块路由索引
+│   └── explanations/        # 持久化项目文档（架构、Pipeline 详解）
+├── project/                 # 运行时工作目录（sdp 输出、analysis 结果）
+├── .gitignore
+├── sdpcli.bat               # SDPCLI 启动入口
+└── webui.ps1                # pySdp WebUI 启动脚本
 ```
 
 ---
 
-## 🚀 Quick Start
+## 详细文档
 
-```powershell
-dotnet build SDPCLI
-.\SDPCLI.bat
-```
-
----
-
-## 🖥️ Server Mode
-
-```powershell
-sdpcli server --port 5000
-```
-
-启动本地 HTTP REST API 服务（localhost only），支持脚本 / CI 远程控制抓帧和分析。详见 [SDPCLI/README.md](SDPCLI/README.md#server-模式http-api)。
+| 文档 | 内容 |
+|------|------|
+| [SDPCLI/README.md](SDPCLI/README.md) | 编译、三模式使用、CLI 参数、HTTP API 端点、关键约束 |
+| [pySdp/README.md](pySdp/README.md) | WebUI 功能、数据层 Schema、分析服务、/api 端点速查、pysdp 客户端 |
+| [docs/explanations/EXPLAIN-snapshot.md](docs/explanations/EXPLAIN-snapshot.md) | Snapshot 完整调用链与 SDK 时序 |
+| [docs/explanations/EXPLAIN-analysis.md](docs/explanations/EXPLAIN-analysis.md) | Analysis Pipeline、数据模型、报告结构 |
+| [docs/explanations/EXPLAIN-server.md](docs/explanations/EXPLAIN-server.md) | HTTP 路由、Job 系统、状态机 |
 
 ---
 
-# 🧠 AI Workflow & Project Rules (CRITICAL)
+## AI 工作流（开发规范）
 
-This repository uses a **context-driven AI system**.
-
-All AI actions MUST follow these rules.
-
----
-
-## 🔁 Core Workflow
+本仓库使用结构化上下文系统驱动 AI 辅助开发，所有 AI 操作必须遵循：
 
 ```
 Investigate → Plan → Execute → Validate → Document → Index Sync
 ```
 
-No step should be skipped.
-
----
-
-## 📦 Context System (Source of Evolution)
-
-```
-docs/context/
-├── INDEX.md
-├── findings/
-├── plans/
-├── implementations/
-├── decisions/
-```
-
-### Priority (CRITICAL)
+上下文优先级：
 
 ```
 decisions > implementations > plans > findings > code
 ```
 
-Code is NOT always truth.
+| 路径 | 用途 |
+|------|------|
+| `docs/context/findings/` | 调查结论 |
+| `docs/context/plans/` | 待执行方案 |
+| `docs/context/implementations/` | 已执行记录 |
+| `docs/context/decisions/` | 稳定决策（不可撤销） |
+| `docs/explanations/` | 持久化项目文档（唯一写入位置） |
+| `docs/index/modules/` | 模块路由索引 |
 
----
-
-## 🧭 Code Index System (Routing Layer)
-
-```
-/INDEX.md
-docs/index/modules/*.md
-```
-
-Purpose:
-
-- module routing
-- scope control
-- avoid blind search
-
----
-
-## 📝 Documentation System (Project Knowledge)
-
-```
-docs/explanations/
-```
-
-This is the **ONLY place for durable project explanations**.
-
-### 🚨 CRITICAL RULE
-
-- explanations MUST NOT be written into `docs/context/`
-- `docs/context/` = internal state
-- `docs/explanations/` = project knowledge
-
----
-
-## 🤖 Agent Responsibilities
-
-### Investigator
-
-- analyze
-- write findings / plans
-- NEVER modify code
-
----
-
-### Executor
-
-- implement approved plan
-- MUST validate (build/test)
-- MUST write:
-
-```
-docs/context/implementations/
-```
-
----
-
-### Index Sync
-
-- maintain module index
-- detect drift
-- update `/INDEX.md`
-
-Rules:
-
-- NO rename
-- NO merge
-- NO split
-
----
-
-### Doc Explanation (CRITICAL ROLE)
-
-This agent is responsible for **project documentation generation**.
-
-#### Allowed:
-
-```
-docs/explanations/
-```
-
-#### Forbidden:
-
-- code changes
-- writing into random folders
-
-#### MUST:
-
-1. read context (implementations first)
-2. read index
-3. then read code
-
-#### MUST NOT:
-
-- trust code blindly
-- ignore WIP / outdated logic
-
-#### MUST output:
-
-- ModuleKey
-- SourceScope
-- code evidence
-- context vs code analysis
-
----
-
-## 🚨 Mandatory Reading Order
-
-Before ANY work:
-
-1. README.md
-2. docs/context/INDEX.md
-3. /INDEX.md
-4. module docs
-5. context docs
-6. code
-
----
-
-## 🚨 Global Rules
-
-### DO
-
-- use context first
-- validate with code
-- keep scope minimal
-- update instead of duplicating
-
-### DO NOT
-
-- modify code without plan
-- trust code blindly
-- ignore index
-- mix explanation into context
-
----
-
-## 🔍 Validation
-
-Before claiming correctness:
-
-- check code
-- check implementations
-- check real output if possible
-
-If unsure:
-
-- say it clearly
-
----
-
-## 🎯 Goal
-
-Build a system where:
-
-- knowledge is persistent
-- behavior is controlled
-- code understanding improves over time
-- documentation stays reliable
+> 代码不是唯一真相来源；存在 WIP、部分迁移或与计划不同步的情况，以 `decisions > implementations` 为准。
