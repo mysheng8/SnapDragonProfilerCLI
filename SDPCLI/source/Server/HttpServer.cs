@@ -12,15 +12,18 @@ namespace SnapdragonProfilerCLI.Server
     /// Binds to localhost only (security requirement — no external access).
     ///
     /// Route dispatch: exact path prefix matching.
-    ///   GET  /api/status          → StatusHandler
-    ///   GET  /api/device          → DeviceHandler
-    ///   POST /api/connect         → ConnectHandler
-    ///   POST /api/disconnect      → DisconnectHandler
-    ///   POST /api/session/launch  → LaunchHandler
-    ///   POST /api/capture         → CaptureHandler
-    ///   POST /api/analysis        → AnalysisHandler
-    ///   GET|DELETE /api/jobs      → JobsHandler (list)
-    ///   GET|DELETE /api/jobs/{id} → JobsHandler (single)
+    ///   GET  /api/status               → StatusHandler
+    ///   GET  /api/device               → DeviceHandler (current session state)
+    ///   GET  /api/devices              → DeviceListHandler (adb devices)
+    ///   GET  /api/app/packages         → AppListHandler (pm list packages)
+    ///   GET  /api/app/activities       → AppListHandler (dumpsys activities for ?package=)
+    ///   POST /api/connect              → ConnectHandler
+    ///   POST /api/disconnect           → DisconnectHandler
+    ///   POST /api/session/launch       → LaunchHandler
+    ///   POST /api/capture              → CaptureHandler
+    ///   POST /api/analysis             → AnalysisHandler
+    ///   GET|DELETE /api/jobs           → JobsHandler (list)
+    ///   GET|DELETE /api/jobs/{id}      → JobsHandler (single)
     /// </summary>
     public class HttpServer : IDisposable
     {
@@ -118,6 +121,8 @@ namespace SnapdragonProfilerCLI.Server
     {
         private readonly IHandler _status;
         private readonly IHandler _device;
+        private readonly IHandler _deviceList;
+        private readonly IHandler _appList;
         private readonly IHandler _connect;
         private readonly IHandler _disconnect;
         private readonly IHandler _launch;
@@ -129,6 +134,8 @@ namespace SnapdragonProfilerCLI.Server
         {
             _status     = new StatusHandler();
             _device     = new DeviceHandler(session);
+            _deviceList = new DeviceListHandler();
+            _appList    = new AppListHandler();
             _connect    = new ConnectHandler(session, jobManager, config);
             _disconnect = new DisconnectHandler(session);
             _launch     = new LaunchHandler(session, jobManager, config);
@@ -143,14 +150,16 @@ namespace SnapdragonProfilerCLI.Server
             string method = ctx.Request.HttpMethod.ToUpperInvariant();
 
             // Exact and prefix matches — order matters (more-specific first)
-            if (path == "/api/status")                                 { _status.Handle(ctx);     return; }
-            if (path == "/api/device")                                 { _device.Handle(ctx);     return; }
-            if (path == "/api/connect")                                { _connect.Handle(ctx);    return; }
-            if (path == "/api/disconnect")                             { _disconnect.Handle(ctx); return; }
-            if (path == "/api/session/launch")                         { _launch.Handle(ctx);     return; }
-            if (path == "/api/capture")                                { _capture.Handle(ctx);    return; }
-            if (path == "/api/analysis")                               { _analysis.Handle(ctx);   return; }
-            if (path == "/api/jobs" || path.StartsWith("/api/jobs/"))  { _jobs.Handle(ctx);       return; }
+            if (path == "/api/status")                                        { _status.Handle(ctx);     return; }
+            if (path == "/api/device")                                        { _device.Handle(ctx);     return; }
+            if (path == "/api/devices")                                       { _deviceList.Handle(ctx); return; }
+            if (path == "/api/app/packages" || path == "/api/app/activities") { _appList.Handle(ctx);    return; }
+            if (path == "/api/connect")                                       { _connect.Handle(ctx);    return; }
+            if (path == "/api/disconnect")                                    { _disconnect.Handle(ctx); return; }
+            if (path == "/api/session/launch")                                { _launch.Handle(ctx);     return; }
+            if (path == "/api/capture")                                       { _capture.Handle(ctx);    return; }
+            if (path == "/api/analysis")                                      { _analysis.Handle(ctx);   return; }
+            if (path == "/api/jobs" || path.StartsWith("/api/jobs/"))         { _jobs.Handle(ctx);       return; }
 
             // OPTIONS preflight — allow all origins (localhost only, CORS informational)
             if (method == "OPTIONS")

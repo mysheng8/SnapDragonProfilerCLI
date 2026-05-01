@@ -111,16 +111,50 @@ def ingest_snapshot(db: WorkspaceDB, snapshot_dir: str | Path) -> dict:
 
     shaders_raw   = _read_json(snap / "shaders.json")
     textures_raw  = _read_json(snap / "textures.json")
-    buffers_raw   = _read_json(snap / "buffers.json")
+    buffers_raw   = _read_json(snap.parent / "meshes" / "meshes.json")
     metrics_raw   = _read_json(snap / "metrics.json")
     label_raw     = _read_json(snap / "label.json")
 
+    # ── 1b. Load run-level texture stats (Python-generated) ────────────────────
+    # <run>/textures/textures.json has width/height/size for every extracted PNG.
+    # Used to fill texture rows that C# textures.json leaves as None.
+    _tex_stats: dict[int, dict] = {}
+    _tex_stats_path = snap.parent / "textures" / "textures.json"
+    if _tex_stats_path.exists():
+        try:
+            _ts = json.loads(_tex_stats_path.read_text(encoding="utf-8-sig"))
+            for t in (_ts.get("textures") or []):
+                tid = t.get("texture_id")
+                if tid is not None:
+                    _tex_stats[tid] = t
+        except Exception:
+            pass
+
     # ── 2. Derive metadata ──────────────────────────────────────────────────────
-    snapshot_id: int = dc_data.get("snapshot_id", 0)
+    snap_index: int  = dc_data.get("snapshot_id", 0)   # C# index within the session
     sdp_name: str    = dc_data.get("sdp_name", "")
     run_name: str    = snap.parent.name          # {analysisRoot}/{run_name}/snapshot_{N}/
     snapshot_dir_str = str(snap.resolve())
     ingested_at      = datetime.now(timezone.utc).isoformat()
+
+    # ── 2b. Resolve snapshot_id conflicts ──────────────────────────────────────
+    # C# assigns snapshot_id within a session — different SDPs produce the same IDs.
+    # Rule 1: same snapshot_dir already ingested → reuse its DB snapshot_id (idempotent).
+    # Rule 2: snap_index taken by a different snapshot_dir → allocate max+1 as DB PK.
+    existing_by_dir = conn.execute(
+        "SELECT snapshot_id FROM snapshots WHERE snapshot_dir = ?", [snapshot_dir_str]
+    ).fetchone()
+    if existing_by_dir:
+        snapshot_id = existing_by_dir[0]
+    else:
+        existing_by_id = conn.execute(
+            "SELECT snapshot_dir FROM snapshots WHERE snapshot_id = ?", [snap_index]
+        ).fetchone()
+        if existing_by_id:
+            max_id = conn.execute("SELECT MAX(snapshot_id) FROM snapshots").fetchone()[0] or 0
+            snapshot_id = max_id + 1
+        else:
+            snapshot_id = snap_index
 
     draw_calls: list[dict[str, Any]] = dc_data.get("draw_calls", [])
 
@@ -135,6 +169,7 @@ def ingest_snapshot(db: WorkspaceDB, snapshot_dir: str | Path) -> dict:
             conn,
             snap=snap,
             snapshot_id=snapshot_id,
+            snap_index=snap_index,
             sdp_name=sdp_name,
             run_name=run_name,
             snapshot_dir_str=snapshot_dir_str,
@@ -145,6 +180,7 @@ def ingest_snapshot(db: WorkspaceDB, snapshot_dir: str | Path) -> dict:
             buffers_raw=buffers_raw,
             metrics_raw=metrics_raw,
             label_raw=label_raw,
+            tex_stats=_tex_stats,
         )
         conn.commit()
     except Exception:
@@ -159,6 +195,7 @@ def _ingest_all(
     *,
     snap: Path,
     snapshot_id: int,
+    snap_index: int = 0,
     sdp_name: str,
     run_name: str,
     snapshot_dir_str: str,
@@ -169,7 +206,9 @@ def _ingest_all(
     buffers_raw: dict | None,
     metrics_raw: dict | None,
     label_raw: dict | None,
+    tex_stats: dict | None = None,
 ) -> dict:
+    _tex_stats: dict = tex_stats or {}
     counts = {
         "draw_calls": 0,
         "shader_stages": 0,
@@ -177,14 +216,16 @@ def _ingest_all(
         "textures": 0,
         "dc_textures": 0,
         "meshes": 0,
+        "render_targets": 0,
         "metrics": 0,
         "labels": 0,
     }
 
     # ── snapshots ───────────────────────────────────────────────────────────────
     conn.execute(
-        "INSERT OR REPLACE INTO snapshots VALUES (?, ?, ?, ?, ?)",
-        [snapshot_id, sdp_name, run_name, snapshot_dir_str, ingested_at],
+        "INSERT OR REPLACE INTO snapshots (snapshot_id, sdp_name, run_name, snapshot_dir, ingested_at, snap_index) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        [snapshot_id, sdp_name, run_name, snapshot_dir_str, ingested_at, snap_index],
     )
 
     # ── draw_calls ──────────────────────────────────────────────────────────────
@@ -305,20 +346,21 @@ def _ingest_all(
                         # Resolve texture file from run-level textures/ dir
                         tex_file = _resolve_asset_path(snap, t.get("file", "") or t.get("file_path", ""))
                         if not tex_file:
-                            # C# stores textures at run_dir/textures/texture_{id}.png
                             candidate = run_dir / "textures" / f"texture_{tex_id}.png"
                             if candidate.exists():
                                 tex_file = str(candidate)
+                        # Prefer Python-generated stats (width/height populated from PNG)
+                        ts = _tex_stats.get(tex_id, {})
                         texture_rows.append((
                             snapshot_id,
                             tex_id,
-                            t.get("width"),
-                            t.get("height"),
+                            ts.get("width")  or t.get("width"),
+                            ts.get("height") or t.get("height"),
                             t.get("depth"),
                             t.get("format"),
                             t.get("layers"),
                             t.get("levels"),
-                            tex_file,
+                            tex_file or (str(run_dir / "textures" / ts["file"]) if ts.get("file") else ""),
                         ))
                     if api_id is not None:
                         dc_texture_rows.append((snapshot_id, api_id, tex_id))
@@ -329,9 +371,16 @@ def _ingest_all(
                         continue
                     if tex_id not in texture_seen:
                         texture_seen.add(tex_id)
+                        ts = _tex_stats.get(tex_id, {})
                         candidate = run_dir / "textures" / f"texture_{tex_id}.png"
-                        tex_file = str(candidate) if candidate.exists() else ""
-                        texture_rows.append((snapshot_id, tex_id, None, None, None, None, None, None, tex_file))
+                        tex_file = str(candidate) if candidate.exists() else (
+                            str(run_dir / "textures" / ts["file"]) if ts.get("file") else ""
+                        )
+                        texture_rows.append((
+                            snapshot_id, tex_id,
+                            ts.get("width"), ts.get("height"),
+                            None, None, None, None, tex_file,
+                        ))
                     if api_id is not None:
                         dc_texture_rows.append((snapshot_id, api_id, tex_id))
 
@@ -353,20 +402,61 @@ def _ingest_all(
     # ── meshes ──────────────────────────────────────────────────────────────────
     mesh_rows: list[tuple] = []
     if buffers_raw:
-        buffer_dcs: list[dict] = buffers_raw.get("draw_calls") or buffers_raw.get("buffers") or []
+        buffer_dcs: list[dict] = buffers_raw.get("meshes") or buffers_raw.get("draw_calls") or buffers_raw.get("buffers") or []
         if isinstance(buffer_dcs, list):
             for bdc in buffer_dcs:
                 api_id    = bdc.get("api_id")
                 mesh_file = _resolve_asset_path(snap, bdc.get("mesh_file", ""))
                 if api_id is not None and mesh_file:
-                    mesh_rows.append((snapshot_id, api_id, mesh_file))
+                    mesh_rows.append((
+                        snapshot_id,
+                        api_id,
+                        mesh_file,
+                        _int_or_none(bdc.get("vertex_count")),
+                        _int_or_none(bdc.get("face_count")),
+                        _int_or_none(bdc.get("normal_count")),
+                        _int_or_none(bdc.get("uv_count")),
+                        bdc.get("bbox_min"),  # list[float] or None → DuckDB DOUBLE[]
+                        bdc.get("bbox_max"),
+                    ))
 
     if mesh_rows:
         conn.executemany(
-            "INSERT OR REPLACE INTO meshes VALUES (?, ?, ?)",
+            "INSERT OR REPLACE INTO meshes "
+            "(snapshot_id, api_id, mesh_file, vertex_count, face_count, "
+            " normal_count, uv_count, bbox_min, bbox_max) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             mesh_rows,
         )
     counts["meshes"] = len(mesh_rows)
+
+    # ── render_targets (from dc.json per-DC render_targets array) ────────────────
+    rt_rows: list[tuple] = []
+    valid_api_ids = {dc.get("api_id") for dc in draw_calls if dc.get("api_id") is not None}
+    for dc in draw_calls:
+        api_id = dc.get("api_id")
+        if api_id is None:
+            continue
+        for rt in (dc.get("render_targets") or []):
+            rt_rows.append((
+                snapshot_id,
+                api_id,
+                rt.get("attachment_index", 0),
+                rt.get("attachment_type"),
+                rt.get("resource_id"),
+                rt.get("renderpass_id"),
+                rt.get("framebuffer_id"),
+                rt.get("width"),
+                rt.get("height"),
+                rt.get("format"),
+            ))
+
+    if rt_rows:
+        conn.executemany(
+            "INSERT OR REPLACE INTO dc_render_targets VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rt_rows,
+        )
+    counts["render_targets"] = len(rt_rows)
 
     # ── metrics ─────────────────────────────────────────────────────────────────
     # Discover which keys are present in this metrics.json (varies by MetricsWhitelist)

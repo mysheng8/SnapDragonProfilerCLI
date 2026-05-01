@@ -81,6 +81,22 @@ _SCHEMA_STMTS = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS dc_render_targets (
+        snapshot_id      INTEGER NOT NULL,
+        api_id           INTEGER NOT NULL,
+        attachment_index INTEGER NOT NULL,
+        attachment_type  TEXT,
+        resource_id      INTEGER,
+        renderpass_id    INTEGER,
+        framebuffer_id   INTEGER,
+        width            INTEGER,
+        height           INTEGER,
+        format           TEXT,
+        PRIMARY KEY (snapshot_id, api_id, attachment_index),
+        FOREIGN KEY (snapshot_id, api_id) REFERENCES draw_calls(snapshot_id, api_id)
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS labels (
         snapshot_id     INTEGER     NOT NULL,
         api_id          INTEGER     NOT NULL,
@@ -195,6 +211,20 @@ _SCHEMA_STMTS = [
         updated_at   TIMESTAMPTZ NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS snapshot_descriptions (
+        snapshot_id       INTEGER PRIMARY KEY REFERENCES snapshots(snapshot_id),
+        screenshot_path   TEXT        NOT NULL DEFAULT '',
+        screenshot_width  INTEGER,
+        screenshot_height INTEGER,
+        screenshot_size   BIGINT,
+        description       TEXT,
+        vlm_model         TEXT,
+        status            TEXT        NOT NULL DEFAULT 'pending',
+        error_msg         TEXT,
+        generated_at      TIMESTAMPTZ NOT NULL
+    )
+    """,
 ]
 
 
@@ -229,6 +259,15 @@ class WorkspaceDB:
     def _migrate(self) -> None:
         """Add columns introduced after initial schema without dropping existing data."""
         new_cols = [
+            # snapshots — original C# snapshot index within the SDP session
+            ("snapshots", "snap_index", "INTEGER"),
+            # meshes — geometry stats from OBJ
+            ("meshes", "vertex_count", "INTEGER"),
+            ("meshes", "face_count",   "INTEGER"),
+            ("meshes", "normal_count", "INTEGER"),
+            ("meshes", "uv_count",     "INTEGER"),
+            ("meshes", "bbox_min",     "DOUBLE[]"),
+            ("meshes", "bbox_max",     "DOUBLE[]"),
             # draw_calls — extended params
             ("draw_calls", "instance_count",              "INTEGER DEFAULT 0"),
             ("draw_calls", "first_vertex",                "INTEGER DEFAULT 0"),

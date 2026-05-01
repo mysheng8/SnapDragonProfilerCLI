@@ -1,5 +1,5 @@
 """
-files.py — Local file-system API for browsing .sdp files and analysis results.
+files.py — Local file-system API for browsing and serving files.
 """
 
 from pathlib import Path
@@ -8,19 +8,9 @@ from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse, JSONResponse
 
 import logger as _logger_module
-from analysis.label_service import generate_label_json
-from analysis.status_service import generate_status_json
-from analysis.topdc_service import generate_topdc_json
-from analysis.dashboard_service import generate_dashboard_md
-from analysis.analysis_md_service import generate_analysis_md
 
 
 def make_router(db=None) -> APIRouter:
-    """Factory: returns an APIRouter with an optional db injected via closure.
-
-    If db is provided, POST /label and POST /status will persist results to DB
-    in addition to writing JSON files.  All other routes are unaffected.
-    """
     router = APIRouter()
 
     @router.get("/sdp")
@@ -172,7 +162,10 @@ def make_router(db=None) -> APIRouter:
 
         return {"ok": True, "data": runs}
 
-    @router.get("/read")
+    @router.get("/read", operation_id="get_file_read",
+                summary="[MCP] Read a text file",
+                description="Read a local text file (HLSL shader, JSON, Markdown) and return its content. "
+                            "path must be an absolute filesystem path (from shader_stages[].file_path, etc).")
     def read_file(
         path: str = Query(..., description="Absolute path to the file"),
         lines: int = Query(default=0, ge=0, description="Max lines to return (0 = all)"),
@@ -195,7 +188,10 @@ def make_router(db=None) -> APIRouter:
             )
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/raw")
+    @router.get("/raw", operation_id="get_file_raw",
+                summary="[MCP] Serve raw file bytes",
+                description="Serve any local file as raw bytes. Use for mesh OBJ files (mesh_file path from dc_detail). "
+                            "Add download=1 to trigger browser download.")
     def serve_raw(
         path: str = Query(..., description="Absolute path to any file (served as-is)"),
         download: int = Query(default=0, description="Set to 1 to trigger browser download"),
@@ -209,7 +205,10 @@ def make_router(db=None) -> APIRouter:
             headers["Content-Disposition"] = f'attachment; filename="{p.name}"'
         return FileResponse(str(p), headers=headers)
 
-    @router.get("/image")
+    @router.get("/image", operation_id="get_file_image",
+                summary="[MCP] Serve an image file",
+                description="Serve a PNG/JPG/BMP image from the local filesystem. "
+                            "Use for screenshots (from /snapshots screenshot field) and textures (textures[].file_path from dc_detail).")
     def serve_image(path: str = Query(..., description="Absolute path to an image file")):
         """Serve an image file (png/jpg/bmp) from the local filesystem."""
         p = Path(path)
@@ -218,65 +217,5 @@ def make_router(db=None) -> APIRouter:
         ext = p.suffix.lstrip(".").lower()
         media = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "bmp": "image/bmp"}.get(ext, "application/octet-stream")
         return FileResponse(str(p), media_type=media)
-
-    @router.post("/label")
-    def run_label(snapshot_dir: str = Query(..., description="Snapshot directory containing dc.json")):
-        """Generate label.json from dc.json using rule-based classification."""
-        try:
-            out = generate_label_json(snapshot_dir, db=db)
-            return {"ok": True, "data": {"path": str(out)}}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error("label generation failed", exc=exc, context={"dir": snapshot_dir})
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
-
-    @router.post("/status")
-    def run_status(snapshot_dir: str = Query(..., description="Snapshot directory containing label.json + metrics.json")):
-        """Generate snapshot_N_status.json from label.json + metrics.json."""
-        try:
-            out = generate_status_json(snapshot_dir, db=db)
-            return {"ok": True, "data": {"path": str(out)}}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error("status generation failed", exc=exc, context={"dir": snapshot_dir})
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
-
-    @router.post("/topdc")
-    def run_topdc(snapshot_dir: str = Query(..., description="Snapshot directory containing label.json + metrics.json + status.json")):
-        """Generate snapshot_N_topdc.json using 3-layer attribution engine."""
-        try:
-            out = generate_topdc_json(snapshot_dir)
-            return {"ok": True, "data": {"path": str(out)}}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error("topdc generation failed", exc=exc, context={"dir": snapshot_dir})
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
-
-    @router.post("/dashboard")
-    def run_dashboard(snapshot_dir: str = Query(..., description="Snapshot directory containing label.json + metrics.json")):
-        """Generate snapshot_N_dashboard.md."""
-        try:
-            out = generate_dashboard_md(snapshot_dir)
-            return {"ok": True, "data": {"path": str(out)}}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error("dashboard generation failed", exc=exc, context={"dir": snapshot_dir})
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
-
-    @router.post("/analysis_md")
-    def run_analysis_md(snapshot_dir: str = Query(..., description="Snapshot directory containing label.json + metrics.json")):
-        """Generate snapshot_N_analysis.md (rule-based)."""
-        try:
-            out = generate_analysis_md(snapshot_dir)
-            return {"ok": True, "data": {"path": str(out)}}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error("analysis_md generation failed", exc=exc, context={"dir": snapshot_dir})
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
     return router

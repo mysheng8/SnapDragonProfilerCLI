@@ -18,16 +18,19 @@ import logger as _logger_module
 
 # ── Job model ─────────────────────────────────────────────────────────────────
 
-VALID_STEPS = ["screenshot", "ingest", "label", "status", "topdc", "analysis"]
+VALID_STEPS = ["screenshot", "mesh_stats", "texture_stats", "ingest", "label", "status", "topdc", "analysis", "describe"]
 
 # Maps step key → (weight in overall progress, display phase name)
 _STEP_META: dict[str, tuple[int, str]] = {
-    "screenshot": (5,  "copy_screenshot"),
-    "ingest":     (20, "ingest_db"),
-    "label":      (20, "label_drawcalls"),
-    "status":     (15, "generate_stats"),
-    "topdc":      (15, "generate_topdc"),
-    "analysis":   (25, "report_analysis"),
+    "screenshot":    (5,  "copy_screenshot"),
+    "mesh_stats":    (10, "parse_mesh_stats"),
+    "texture_stats": (10, "parse_texture_stats"),
+    "ingest":        (20, "ingest_db"),
+    "label":         (20, "label_drawcalls"),
+    "status":        (15, "generate_stats"),
+    "topdc":         (15, "generate_topdc"),
+    "analysis":      (25, "report_analysis"),
+    "describe":      (10, "vlm_describe"),
 }
 
 
@@ -249,6 +252,17 @@ def _run_step(step: str, snapshot_dir: str, db) -> Any:
     if step == "screenshot":
         return _copy_screenshot(snapshot_dir)
 
+    if step == "mesh_stats":
+        from analysis.mesh_stats_service import generate_buffers_json
+        out = generate_buffers_json(snapshot_dir)
+        return {"path": str(out)}
+
+    if step == "texture_stats":
+        from analysis.texture_stats_service import generate_texture_stats
+        run_dir = str(Path(snapshot_dir).parent)
+        out = generate_texture_stats(run_dir)
+        return {"path": str(out)}
+
     if step == "ingest":
         from data.ingest import ingest_snapshot
         return ingest_snapshot(db, snapshot_dir)
@@ -271,6 +285,11 @@ def _run_step(step: str, snapshot_dir: str, db) -> Any:
     if step == "analysis":
         from analysis.analysis_md_service import generate_analysis_md
         out = generate_analysis_md(snapshot_dir)
+        return {"path": str(out)}
+
+    if step == "describe":
+        from analysis.vlm_screenshot_service import generate_scene_description
+        out = generate_scene_description(snapshot_dir, db=db)
         return {"path": str(out)}
 
     raise ValueError(f"Unknown step: {step}")

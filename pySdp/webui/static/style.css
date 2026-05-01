@@ -827,7 +827,6 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   position: sticky;
   top: 56px;          /* below the fixed header */
   max-height: calc(100vh - 72px);
-  overflow-y: auto;
 }
 .explorer-col-right {
   min-width: 0;
@@ -846,6 +845,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   margin-top: 6px;
 }
 .explorer-dc-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: var(--bg);
   padding: 6px 10px;
   text-align: left;

@@ -215,3 +215,91 @@ def get_llm() -> LlmWrapper:
             if _instance is None:
                 _instance = LlmWrapper()
     return _instance
+
+
+# ── VLM wrapper (vision) ───────────────────────────────────────────────────────
+
+import base64
+from pathlib import Path as _Path
+
+
+class VlmWrapper:
+    """OpenAI-compatible vision client. Sends image as base64 data URL.
+
+    Reads VlmApiEndpoint / VlmApiKey / VlmModel / VlmTimeoutSeconds /
+    VlmMaxOutputTokens from SDPCLI/config.ini.
+    """
+
+    def __init__(self) -> None:
+        cfg = _load_config()
+        self._endpoint   = cfg.get("VlmApiEndpoint", "").strip()
+        self._api_key    = cfg.get("VlmApiKey",      "").strip()
+        self._model      = cfg.get("VlmModel",       "").strip()
+        self._timeout    = int(cfg.get("VlmTimeoutSeconds",   "60"))
+        self._max_tokens = int(cfg.get("VlmMaxOutputTokens",  "2000"))
+        self.is_enabled  = bool(self._endpoint and self._api_key and self._model)
+        self.last_error: str | None = None
+
+    def describe_image(self, image_path: str | _Path, prompt: str) -> str | None:
+        """Send image + text prompt; return response text or None on error."""
+        self.last_error = None
+        if not self.is_enabled:
+            self.last_error = "VLM not configured"
+            return None
+
+        p = _Path(image_path)
+        if not p.exists():
+            self.last_error = f"Image not found: {image_path}"
+            return None
+
+        ext = p.suffix.lstrip(".").lower()
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "bmp": "image/bmp", "webp": "image/webp"}.get(ext, "image/png")
+        b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+        data_url = f"data:{mime};base64,{b64}"
+
+        body = json.dumps({
+            "model":      self._model,
+            "max_tokens": self._max_tokens,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {"type": "text",      "text": prompt},
+                ],
+            }],
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            self._endpoint,
+            data=body,
+            headers={
+                "Content-Type":  "application/json",
+                "Authorization": f"Bearer {self._api_key}",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+            self.last_error = f"HTTP {exc.code}: {detail}"
+            return None
+        except Exception as exc:
+            self.last_error = str(exc)
+            return None
+
+
+_vlm_instance: VlmWrapper | None = None
+_vlm_lock = threading.Lock()
+
+
+def get_vlm() -> VlmWrapper:
+    global _vlm_instance
+    if _vlm_instance is None:
+        with _vlm_lock:
+            if _vlm_instance is None:
+                _vlm_instance = VlmWrapper()
+    return _vlm_instance

@@ -10,8 +10,10 @@ Mirrors C# DrawCallLabelService.Label():
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import re
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -171,7 +173,7 @@ _ALLOWED_CATEGORIES = [
 _pipeline_llm_cache: dict[int, dict] = {}
 
 
-def _extract_shader_sections(src: str, resource_limit: int = 2500, main_limit: int = 5000) -> str:
+def _extract_shader_sections(src: str, resource_limit: int = 2500) -> str:
     """Mirror C# DrawCallLabelService.ExtractRelevantShaderSections().
 
     Section 1 — resource declarations: Texture/Buffer/Sampler globals and small
@@ -233,7 +235,7 @@ def _extract_shader_sections(src: str, resource_limit: int = 2500, main_limit: i
         for i in range(main_start, len(lines)):
             main_body.append(lines[i])
             chars += len(lines[i]) + 1
-            if chars >= main_limit:
+            if chars >= 10000:
                 main_body.append("// ... (main body truncated)")
                 break
 
@@ -314,14 +316,31 @@ def _build_llm_prompt(dc: dict, shader_code: str) -> str:
             out.append(f"  [{rt.get('attachment_index','')}]"
                        f"{rt.get('attachment_type','')}{sz}{fmt}")
 
-    # Binding summary — mirrors C# BindingSummary block
-    vb_count = len(dc.get("vertex_buffers") or [])
-    has_ib   = bool(dc.get("index_buffer"))
-    out += [
-        "Bindings:",
-        f"  VertexBuffers:{vb_count if vb_count else '0 (none)'}",
-        f"  IndexBuffer:{'yes' if has_ib else 'none'}",
-    ]
+    # Mesh geometry summary (from meshes.json stats)
+    mesh = dc.get("mesh_stats") or {}
+    if mesh:
+        bbox_min = mesh.get("bbox_min")
+        bbox_max = mesh.get("bbox_max")
+        bbox_str = ""
+        if bbox_min and bbox_max:
+            bbox_str = (f"  bbox:[{bbox_min[0]:.3f},{bbox_min[1]:.3f},{bbox_min[2]:.3f}]"
+                        f"→[{bbox_max[0]:.3f},{bbox_max[1]:.3f},{bbox_max[2]:.3f}]")
+        out += [
+            "Mesh:",
+            f"  vertices:{mesh.get('vertex_count',0)}  faces:{mesh.get('face_count',0)}"
+            f"  normals:{mesh.get('normal_count',0)}  uvs:{mesh.get('uv_count',0)}"
+            + bbox_str,
+        ]
+
+    # Texture descriptions (from textures.json VLM analysis)
+    tex_descs = dc.get("texture_descriptions") or []
+    if tex_descs:
+        out.append("Textures:")
+        for td in tex_descs:
+            sz  = f" {td['width']}x{td['height']}" if td.get("width") and td.get("height") else ""
+            desc = td.get("description") or ""
+            desc_short = desc[:120].replace("\n", " ") if desc else "(no description)"
+            out.append(f"  [{td.get('texture_id','')}]{sz} {desc_short}")
 
     out += [
         "",
@@ -440,7 +459,9 @@ def _parse_llm_response(text: str) -> dict | None:
     )
 
 
-def _label_dc_with_llm(dc: dict, run_dir: Path) -> dict | None:
+def _label_dc_with_llm(dc: dict, run_dir: Path,
+                        mesh_stats: dict | None = None,
+                        tex_descs: list | None = None) -> dict | None:
     """Try LLM labeling for a DC. Returns label dict or None if LLM unavailable/fails."""
     from analysis.llm_wrapper import get_llm
     llm = get_llm()
@@ -461,7 +482,14 @@ def _label_dc_with_llm(dc: dict, run_dir: Path) -> dict | None:
     if shader_code.startswith("("):
         return None
 
-    prompt   = _build_llm_prompt(dc, shader_code)
+    # Enrich dc with mesh/texture context for prompt building
+    enriched = dict(dc)
+    if mesh_stats:
+        enriched["mesh_stats"] = mesh_stats
+    if tex_descs:
+        enriched["texture_descriptions"] = tex_descs
+
+    prompt   = _build_llm_prompt(enriched, shader_code)
     response = llm.chat(prompt)
     if not response:
         return None
@@ -492,14 +520,55 @@ def generate_label_json(snapshot_dir: str | Path, db=None) -> Path:
     # Clear per-snapshot pipeline cache so different snapshots don't share entries
     _pipeline_llm_cache.clear()
 
-    labeled: list[dict] = []
-    for dc in draw_calls:
-        label = _label_dc_with_llm(dc, run_dir) or _label_dc(dc)
-        labeled.append({
+    # ── Load mesh stats index: api_id → stats dict ─────────────────────────────
+    _mesh_index: dict[int, dict] = {}
+    meshes_json = run_dir / "meshes" / "meshes.json"
+    if meshes_json.exists():
+        try:
+            mdata = json.loads(meshes_json.read_text(encoding="utf-8-sig"))
+            for m in (mdata.get("meshes") or []):
+                aid = m.get("api_id")
+                if aid is not None:
+                    _mesh_index[aid] = m
+        except Exception:
+            pass
+
+    # ── Load texture description index: texture_id → entry dict ───────────────
+    _tex_index: dict[int, dict] = {}
+    tex_json = run_dir / "textures" / "textures.json"
+    if tex_json.exists():
+        try:
+            tdata = json.loads(tex_json.read_text(encoding="utf-8-sig"))
+            for t in (tdata.get("textures") or []):
+                tid = t.get("texture_id")
+                if tid is not None:
+                    _tex_index[tid] = t
+        except Exception:
+            pass
+
+    from analysis.llm_wrapper import _load_config
+    cfg = _load_config()
+    max_workers = int(cfg.get("LlmMaxConcurrentRequests", "8"))
+
+    labeled: list[dict | None] = [None] * len(draw_calls)
+
+    def _process(idx: int, dc: dict) -> None:
+        api_id = dc.get("api_id")
+        mesh_stats = _mesh_index.get(api_id) if api_id else None
+        tex_ids    = dc.get("texture_ids") or []
+        tex_descs  = [_tex_index[tid] for tid in tex_ids if tid in _tex_index] or None
+        label = _label_dc_with_llm(dc, run_dir, mesh_stats, tex_descs) or _label_dc(dc)
+        labeled[idx] = {
             "dc_id":  dc.get("dc_id"),
-            "api_id": dc.get("api_id"),
+            "api_id": api_id,
             "label":  label,
-        })
+        }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_process, i, dc) for i, dc in enumerate(draw_calls)]
+        concurrent.futures.wait(futures)
+
+    labeled = [e for e in labeled if e is not None]
 
     snapshot_id: int = dc_data.get("snapshot_id", 0)
     sdp_name: str    = dc_data.get("sdp_name", "")
@@ -526,15 +595,27 @@ def _persist_labels_to_db(db, snapshot_id: int, sdp_name: str, snap: Path,
                            labeled: list[dict]) -> None:
     conn = db.conn()
     run_name = snap.parent.name
+    snapshot_dir_str = str(snap.resolve())
+    snap_index = snapshot_id  # preserve C# original index before any reassignment
 
-    existing = conn.execute(
-        "SELECT snapshot_id FROM snapshots WHERE snapshot_id=?", [snapshot_id]
+    # Resolve ID conflicts: same dir → reuse ID; same ID different dir → allocate new
+    existing_by_dir = conn.execute(
+        "SELECT snapshot_id FROM snapshots WHERE snapshot_dir = ?", [snapshot_dir_str]
     ).fetchone()
-    if not existing:
+    if existing_by_dir:
+        snapshot_id = existing_by_dir[0]
+    else:
+        existing_by_id = conn.execute(
+            "SELECT snapshot_dir FROM snapshots WHERE snapshot_id = ?", [snapshot_id]
+        ).fetchone()
+        if existing_by_id:
+            max_id = conn.execute("SELECT MAX(snapshot_id) FROM snapshots").fetchone()[0] or 0
+            snapshot_id = max_id + 1
         conn.execute(
-            "INSERT OR REPLACE INTO snapshots VALUES (?,?,?,?,?)",
-            [snapshot_id, sdp_name, run_name, str(snap),
-             datetime.now(timezone.utc).isoformat()],
+            "INSERT INTO snapshots (snapshot_id, sdp_name, run_name, snapshot_dir, ingested_at, snap_index) "
+            "VALUES (?,?,?,?,?,?)",
+            [snapshot_id, sdp_name, run_name, snapshot_dir_str,
+             datetime.now(timezone.utc).isoformat(), snap_index],
         )
 
     dc_path = snap / "dc.json"

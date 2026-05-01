@@ -22,6 +22,7 @@
   <div class="badges">
     <span class="badge badge-gray" id="server-badge">● SDPCLI: —</span>
     <span class="badge badge-gray" id="device-badge">Disconnected</span>
+    <a class="badge badge-gray" href="/api/docs" target="_blank" style="text-decoration:none">API Docs ↗</a>
   </div>
 </header>
 
@@ -67,8 +68,13 @@
     <div class="card" id="card-connect">
       <div class="card-title">1 — Connect Device</div>
       <div class="form-row">
-        <label>Device ID</label>
-        <input id="device-id" type="text" placeholder="192.168.1.100:5555  (optional, auto-select if empty)">
+        <label>Device</label>
+        <div style="display:flex;gap:6px;flex:1;min-width:0">
+          <select id="device-id" style="flex:1;min-width:0;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text)">
+            <option value="">— auto-select —</option>
+          </select>
+          <button class="btn-secondary btn-sm" onclick="refreshDeviceList()">↻</button>
+        </div>
       </div>
       <div class="btn-row">
         <button id="btn-connect"    onclick="doConnect()">Connect</button>
@@ -86,11 +92,18 @@
       <div class="card-title">2 — Launch App</div>
       <div class="form-row">
         <label>Package</label>
-        <input id="pkg" type="text" placeholder="com.example.app">
+        <div style="display:flex;gap:6px;flex:1;min-width:0">
+          <select id="pkg" style="flex:1;min-width:0;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text)" onchange="onPkgChange()">
+            <option value="">— select package —</option>
+          </select>
+          <button class="btn-secondary btn-sm" onclick="refreshPackageList()">↻</button>
+        </div>
       </div>
       <div class="form-row">
         <label>Activity</label>
-        <input id="activity" type="text" placeholder="com.example.MainActivity">
+        <select id="activity" style="flex:1;min-width:0;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text)">
+          <option value="">— default launch —</option>
+        </select>
       </div>
       <div class="btn-row">
         <button id="btn-launch" onclick="doLaunch()" disabled>Launch</button>

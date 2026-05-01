@@ -4,3 +4,4 @@ uvicorn
 aiofiles
 duckdb
 pytz
+fastapi-mcp

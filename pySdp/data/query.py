@@ -307,25 +307,17 @@ def get_dc_detail(db: WorkspaceDB, snapshot_id: int, api_id: int) -> dict | None
     ).fetchall()
     dc["mesh_file"] = mesh_rows[0][0] if mesh_rows else None
 
-    # ── Render targets (from dc.json — not stored in DB) ─────────────────────────
-    dc["render_targets"] = []
-    try:
-        import json as _json
-        from pathlib import Path as _Path
-        snap_dir_row = db.cursor().execute(
-            "SELECT snapshot_dir FROM snapshots WHERE snapshot_id = ?",
-            [snapshot_id],
-        ).fetchone()
-        if snap_dir_row and snap_dir_row[0]:
-            dc_json_path = _Path(snap_dir_row[0]) / "dc.json"
-            if dc_json_path.exists():
-                raw = _json.loads(dc_json_path.read_text(encoding="utf-8-sig"))
-                for dc_raw in raw.get("draw_calls", []):
-                    if dc_raw.get("api_id") == api_id:
-                        dc["render_targets"] = dc_raw.get("render_targets") or []
-                        break
-    except Exception as _rt_exc:
-        dc["_rt_error"] = str(_rt_exc)
+    # ── Render targets (from dc_render_targets table) ────────────────────────────
+    rt_cur = db.cursor()
+    rt_cur.execute(
+        "SELECT attachment_index, attachment_type, resource_id, renderpass_id, "
+        "framebuffer_id, width, height, format "
+        "FROM dc_render_targets WHERE snapshot_id = ? AND api_id = ? "
+        "ORDER BY attachment_index",
+        [snapshot_id, api_id],
+    )
+    rt_cols = [d[0] for d in rt_cur.description]
+    dc["render_targets"] = [dict(zip(rt_cols, row)) for row in rt_cur.fetchall()]
 
     return dc
 

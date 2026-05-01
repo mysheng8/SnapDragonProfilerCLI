@@ -93,6 +93,24 @@ When searching for explanation docs:
   - rest-api
 - summary: HTTP 路由表（11 端点）、Job 数据结构与生命周期、设备状态机（6 状态）、4 个 JobRunner 各阶段、ManualResetEvent 异步桥接、安全设计
 
+### EXPLAIN-api.md
+- topic: pySdp WebUI — 完整 API 端点文档
+- module_key: PySdp.WebUI
+- status: stable
+- based_on:
+  - IMPL-2026-04-27-server-side-pipeline-jobs.md
+  - IMPL-2026-04-29-webui-analysis-ux-fixes.md
+- tags:
+  - api
+  - rest
+  - mcp
+  - fastapi
+  - endpoints
+  - jobs
+  - snapshot
+  - data-query
+- summary: 6个路由组完整端点表（snapshot/jobs/files/data/sdpcli/logs）、步骤依赖关系、MCP暴露的19个只读工具、通用约定（snapshot_id vs snap_index）
+
 ---
 
 ## Maintenance Rules

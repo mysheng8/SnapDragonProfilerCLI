@@ -247,6 +247,66 @@ function setBtn(id, enabled) {
   document.getElementById(id).disabled = !enabled;
 }
 
+// ── Device / package / activity dropdowns ─────────────────────────────────────
+
+async function refreshDeviceList() {
+  const sel = document.getElementById('device-id');
+  try {
+    const res = await apiGet(`${API}/devices`);
+    if (!res.ok) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— auto-select —</option>';
+    (res.data || []).forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.serial;
+      opt.textContent = `${d.serial}  (${d.state})`;
+      if (d.state !== 'device') opt.disabled = true;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  } catch (_) {}
+}
+
+async function refreshPackageList() {
+  const serial = document.getElementById('device-id').value.trim();
+  const sel = document.getElementById('pkg');
+  try {
+    const url = serial ? `${API}/app/packages?serial=${encodeURIComponent(serial)}` : `${API}/app/packages`;
+    const res = await apiGet(url);
+    if (!res.ok) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— select package —</option>';
+    (res.data || []).forEach(pkg => {
+      const opt = document.createElement('option');
+      opt.value = pkg;
+      opt.textContent = pkg;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+    document.getElementById('activity').innerHTML = '<option value="">— default launch —</option>';
+  } catch (_) {}
+}
+
+async function onPkgChange() {
+  const serial  = document.getElementById('device-id').value.trim();
+  const pkg     = document.getElementById('pkg').value.trim();
+  const actSel  = document.getElementById('activity');
+  actSel.innerHTML = '<option value="">— default launch —</option>';
+  if (!pkg) return;
+  try {
+    const url = `${API}/app/activities?package=${encodeURIComponent(pkg)}` +
+                (serial ? `&serial=${encodeURIComponent(serial)}` : '');
+    const res = await apiGet(url);
+    if (!res.ok) return;
+    (res.data || []).forEach(act => {
+      const opt = document.createElement('option');
+      opt.value = act;
+      opt.textContent = act;
+      actSel.appendChild(opt);
+    });
+  } catch (_) {}
+}
+
 // ── Connect ───────────────────────────────────────────────────────────────────
 
 async function doConnect() {
@@ -3122,6 +3182,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start polling device status
   startDevicePoll();
+
+  // Pre-populate device dropdown
+  refreshDeviceList();
 
   // Start polling logs (badge updates when tab is not active)
   startLogPoll();

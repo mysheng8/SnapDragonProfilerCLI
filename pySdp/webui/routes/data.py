@@ -17,7 +17,8 @@ from data import questions as _q
 from data import dashboards as _dash
 from analysis.label_service import generate_label_json
 from analysis.status_service import generate_status_json
-from jobs import pipeline_manager, VALID_STEPS
+
+
 
 
 # ── Pydantic request models ───────────────────────────────────────────────────
@@ -51,73 +52,12 @@ def make_router(db: WorkspaceDB) -> APIRouter:
     """Factory: returns an APIRouter with the db instance injected via closure."""
     router = APIRouter()
 
-    @router.post("/ingest")
-    def ingest(snapshot_dir: str = Query(..., description="Absolute path to snapshot directory")):
-        """Ingest a snapshot directory into DuckDB. Idempotent — safe to call multiple times."""
-        try:
-            result = ingest_snapshot(db, snapshot_dir)
-            return {"ok": True, "snapshot_id": result["snapshot_id"], "counts": result["counts"]}
-        except FileNotFoundError as exc:
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
-        except Exception as exc:
-            _logger_module.get_logger().error(
-                "ingest failed", exc=exc, context={"snapshot_dir": snapshot_dir}
-            )
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
-
-    # ── Pipeline job endpoints ────────────────────────────────────────────────
-
-    @router.post("/pipeline")
-    def start_pipeline(
-        snapshot_dir: str = Query(..., description="Absolute path to snapshot directory"),
-        targets: str = Query(
-            default=",".join(VALID_STEPS),
-            description="Comma-separated ordered steps to run",
-        ),
-    ):
-        """Start a server-side analysis pipeline job. Returns job_id for polling.
-
-        Steps run in background thread; safe to refresh the browser without interruption.
-        """
-        from pathlib import Path
-        if not Path(snapshot_dir).is_dir():
-            return JSONResponse({"ok": False, "error": f"Directory not found: {snapshot_dir}"}, status_code=404)
-
-        steps = [s.strip() for s in targets.split(",") if s.strip() in VALID_STEPS]
-        if not steps:
-            return JSONResponse({"ok": False, "error": "No valid steps specified"}, status_code=400)
-
-        pipeline_manager.purge_expired()
-        job = pipeline_manager.submit(snapshot_dir, steps, db)
-        return {"ok": True, "job_id": job.id, "steps": job.steps}
-
-    @router.get("/pipeline/{job_id}")
-    def get_pipeline_job(job_id: str):
-        """Poll the status of a pipeline job."""
-        job = pipeline_manager.get(job_id)
-        if job is None:
-            return JSONResponse({"ok": False, "error": f"Job not found: {job_id}"}, status_code=404)
-        return {
-            "ok": True,
-            "data": {
-                "job_id":   job.id,
-                "status":   job.status,
-                "phase":    job.phase,
-                "progress": job.progress,
-                "error":    job.error,
-                "result":   job.result,
-            },
-        }
-
-    @router.post("/pipeline/{job_id}/cancel")
-    def cancel_pipeline_job(job_id: str):
-        """Request cancellation of a running pipeline job."""
-        ok = pipeline_manager.cancel(job_id)
-        if not ok:
-            return JSONResponse({"ok": False, "error": f"Job not found or already terminal: {job_id}"}, status_code=404)
-        return {"ok": True}
-
-    @router.get("/snapshots")
+    @router.get("/snapshots", summary="[MCP] List ingested snapshots",
+                operation_id="get_snapshots",
+                description="Return all GPU capture snapshots that have been ingested into the database, "
+                            "ordered by ingestion time (newest first). Each entry includes snapshot_id "
+                            "(use this as the key for all other queries), sdp_name, run_name, "
+                            "snapshot_dir path, and ingested_at timestamp.")
     def list_snapshots():
         """Return all ingested snapshots ordered by ingestion time (newest first)."""
         from pathlib import Path as _Path
@@ -175,27 +115,58 @@ def make_router(db: WorkspaceDB) -> APIRouter:
 
         try:
             rows = db.cursor().execute(
-                "SELECT snapshot_id, sdp_name, run_name, snapshot_dir, "
-                "CAST(ingested_at AS VARCHAR) AS ingested_at "
-                "FROM snapshots ORDER BY ingested_at DESC"
+                """
+                SELECT s.snapshot_id, s.sdp_name, s.run_name, s.snapshot_dir,
+                       CAST(s.ingested_at AS VARCHAR) AS ingested_at,
+                       s.snap_index,
+                       d.screenshot_path, d.screenshot_width, d.screenshot_height,
+                       d.screenshot_size, d.description, d.vlm_model,
+                       d.status AS desc_status, d.error_msg AS desc_error,
+                       CAST(d.generated_at AS VARCHAR) AS desc_generated_at
+                FROM snapshots s
+                LEFT JOIN snapshot_descriptions d ON d.snapshot_id = s.snapshot_id
+                ORDER BY s.ingested_at DESC
+                """
             ).fetchall()
-            data = [
-                {
-                    "snapshot_id":  row[0],
-                    "sdp_name":     row[1],
-                    "run_name":     row[2],
-                    "snapshot_dir": row[3],
-                    "ingested_at":  str(row[4]),
-                    "screenshot":   _find_screenshot(row[3], row[1]) if row[3] else None,
-                }
-                for row in rows
-            ]
+            data = []
+            for row in rows:
+                (snap_id, sdp_name, run_name, snap_dir, ingested_at,
+                 snap_index,
+                 scr_path, scr_w, scr_h, scr_size,
+                 description, vlm_model, desc_status, desc_error, desc_generated_at) = row
+                screenshot = scr_path or (_find_screenshot(snap_dir, sdp_name) if snap_dir else None)
+                data.append({
+                    "snapshot_id":  snap_id,
+                    "snap_index":   snap_index,
+                    "sdp_name":     sdp_name,
+                    "run_name":     run_name,
+                    "snapshot_dir": snap_dir,
+                    "ingested_at":  str(ingested_at),
+                    "screenshot":   screenshot,
+                    "description": {
+                        "text":         description,
+                        "vlm_model":    vlm_model,
+                        "status":       desc_status,
+                        "error":        desc_error,
+                        "generated_at": desc_generated_at,
+                        "width":        scr_w,
+                        "height":       scr_h,
+                        "size":         scr_size,
+                    } if desc_status is not None else None,
+                })
             return {"ok": True, "data": data}
         except Exception as exc:
             _logger_module.get_logger().error("list_snapshots failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/draw_calls")
+    @router.get("/draw_calls", summary="[MCP] List draw calls for a snapshot",
+                operation_id="get_draw_calls",
+                description="Return all GPU draw calls for a snapshot, with label classification and "
+                            "key metrics (clocks, fragments_shaded, memory bytes, shader utilization). "
+                            "Use snapshot_id from /snapshots. "
+                            "Filter by category (e.g. 'Shadow', 'UI', 'Scene', 'VFX', 'Compute') or "
+                            "by reason_tags (comma-separated). Results ordered by api_id. "
+                            "Use min_clocks filter in /query_dcs for clock-sorted results.")
     def draw_calls(
         snapshot_id: int = Query(..., description="Snapshot ID to query"),
         category: str = Query(default=None, description="Filter by label category"),
@@ -212,7 +183,17 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             )
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/dc/{api_id}")
+    @router.get("/dc/{api_id}", summary="[MCP] Get full draw call detail",
+                operation_id="get_dc_detail",
+                description="Return complete information for a single draw call: "
+                            "base parameters (vertex_count, index_count, pipeline_id, api_name), "
+                            "label (category, subcategory, confidence, bottleneck_text, reason_tags), "
+                            "metrics (clocks, fragments_shaded, memory bandwidth, shader/texture percentages), "
+                            "metric_stats (median/min/max across all DCs for heatmap context), "
+                            "shader_stages (stage, entry_point, file_path to HLSL source), "
+                            "textures (dimensions, format, file_path), "
+                            "mesh_file (path to OBJ), "
+                            "render_targets (attachment_type, resource_id, dimensions, format).")
     def dc_detail(
         api_id: int,
         snapshot_id: int = Query(..., description="Snapshot ID to query"),
@@ -268,7 +249,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
 
     # ── Analysis model endpoints ──────────────────────────────────────────────
 
-    @router.get("/models")
+    @router.get("/models", operation_id="get_models", summary="[MCP] List analysis models")
     def list_analysis_models():
         """Return metadata for all registered analysis models."""
         return {"ok": True, "data": _model_registry.list_models()}
@@ -294,7 +275,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
 
     # ── Question CRUD endpoints ───────────────────────────────────────────────
 
-    @router.get("/questions")
+    @router.get("/questions", operation_id="get_questions", summary="[MCP] List questions")
     def list_questions():
         """Return all questions ordered by creation time."""
         try:
@@ -326,7 +307,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             _logger_module.get_logger().error("create_question failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/questions/{question_id}")
+    @router.get("/questions/{question_id}", operation_id="get_question", summary="[MCP] Get a question by ID")
     def get_question(question_id: str):
         """Return a single question by ID."""
         try:
@@ -420,7 +401,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
 
     # ── Dashboard CRUD endpoints ──────────────────────────────────────────────
 
-    @router.get("/dashboards")
+    @router.get("/dashboards", operation_id="get_dashboards", summary="[MCP] List dashboards")
     def list_dashboards():
         """Return all dashboards ordered by creation time."""
         try:
@@ -443,7 +424,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             _logger_module.get_logger().error("create_dashboard failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/dashboards/{dashboard_id}")
+    @router.get("/dashboards/{dashboard_id}", operation_id="get_dashboard", summary="[MCP] Get a dashboard by ID")
     def get_dashboard(dashboard_id: str):
         """Return a single dashboard by ID."""
         try:
@@ -501,7 +482,12 @@ def make_router(db: WorkspaceDB) -> APIRouter:
 
     # ── Label metrics aggregation endpoint ───────────────────────────────────
 
-    @router.get("/available_metrics")
+    @router.get("/available_metrics", summary="[MCP] List available metric columns for a snapshot",
+                operation_id="get_available_metrics",
+                description="Return the list of GPU metric column names that have at least one non-NULL "
+                            "value for the given snapshot. Use this to discover which counters were "
+                            "captured (depends on MetricsWhitelist at capture time). "
+                            "Pass these names to /label_agg or /clock_correlation.")
     def available_metrics(snapshot_id: int = Query(...)):
         """Return list of metric column names that have at least one non-NULL value for this snapshot."""
         from data.query import _snap_where
@@ -526,7 +512,13 @@ def make_router(db: WorkspaceDB) -> APIRouter:
         except Exception as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/label_correlations")
+    @router.get("/label_correlations", summary="[MCP] Per-category correlation between clocks and a metric",
+                operation_id="get_label_correlations",
+                description="Return Pearson r between GPU clocks and a chosen metric, grouped by "
+                            "draw call label category. Identifies which categories have the strongest "
+                            "clock-vs-metric relationship. Returns [{category, r, n}]; r=null if <3 pairs. "
+                            "Metric must be one of the standard GPU counter names (e.g. fragments_shaded, "
+                            "tex_fetch_stall_pct, shaders_busy_pct).")
     def label_correlations(
         snapshot_id: int = Query(...),
         metric: str      = Query("fragments_shaded"),
@@ -598,7 +590,13 @@ def make_router(db: WorkspaceDB) -> APIRouter:
         results.sort(key=lambda x: x["r"] or 0, reverse=True)
         return {"ok": True, "data": results}
 
-    @router.get("/clock_correlation")
+    @router.get("/clock_correlation", summary="[MCP] Correlation between clocks and all metrics",
+                operation_id="get_clock_correlation",
+                description="Return Pearson r between GPU clocks and every other available metric. "
+                            "Use this to find which GPU counters best explain clock usage — high |r| "
+                            "means the metric co-varies with clocks. Without category: requires ≥10 "
+                            "paired values, uses all DCs. With category filter: requires ≥3 pairs, "
+                            "scoped to one label category. Returns [{metric, r, n}] sorted by |r| desc.")
     def clock_correlation(
         snapshot_id: int = Query(...),
         category: str    = Query(default=None, description="Filter to a single label category"),
@@ -675,8 +673,18 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             _logger_module.get_logger().error("clock_correlation failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/label_agg_multi")
-    def label_agg_multi(snapshot_id: int = Query(...)):
+    @router.get(
+        "/label_agg_multi",
+        summary="[MCP] Multi-metric aggregation by label category",
+        description=(
+            "Return per-category aggregation for all 5 statistical functions "
+            "(sum, median, min, max, variance) × all available metric columns in a single query. "
+            "Useful for getting a complete performance breakdown across label categories. "
+            "Response: { ok, columns: [str], data: [{category, dc_count, metricName: {sum,median,min,max,variance}}] }"
+        ),
+        operation_id="get_label_agg_multi",
+    )
+    def label_agg_multi(snapshot_id: int = Query(..., description="Snapshot ID to query; 1 = all snapshots")):
         """Return per-category aggregation for all 5 aggs × all available metrics in one query.
 
         Response shape:
@@ -745,7 +753,7 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             _logger_module.get_logger().error("label_agg_multi failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/label_agg_all")
+    @router.get("/label_agg_all", operation_id="get_label_agg_all", summary="[MCP] Aggregate all metrics by label category")
     def label_agg_all(
         snapshot_id: int = Query(...),
         agg: str = Query("sum"),
@@ -815,11 +823,21 @@ def make_router(db: WorkspaceDB) -> APIRouter:
             _logger_module.get_logger().error("label_agg_all failed", exc=exc)
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
-    @router.get("/label_agg")
+    @router.get(
+        "/label_agg",
+        summary="[MCP] Aggregate a single metric by label category",
+        description=(
+            "Return per-category aggregation of one GPU metric column. "
+            "agg options: sum | avg | median | max | min | variance. "
+            "Returns [{category, value, dc_count}] ordered by value DESC. "
+            "Use metric=clocks (default) for GPU time breakdown, or any other metric column name."
+        ),
+        operation_id="get_label_agg",
+    )
     def label_agg(
-        snapshot_id: int = Query(...),
-        metric: str     = Query("clocks"),
-        agg:    str     = Query("sum"),   # sum | avg | median | max | min | variance
+        snapshot_id: int = Query(..., description="Snapshot ID to query; 1 = all snapshots"),
+        metric: str     = Query("clocks", description="Metric column to aggregate (e.g. clocks, fragments_shaded, read_total_bytes)"),
+        agg:    str     = Query("sum", description="Aggregation function: sum | avg | median | max | min | variance"),
     ):
         """Return per-category aggregation of a single metric column.
 
@@ -900,7 +918,17 @@ def make_router(db: WorkspaceDB) -> APIRouter:
         rows.sort(key=lambda r: r["value"] or 0, reverse=True)
         return {"ok": True, "data": rows}
 
-    @router.get("/label_metrics")
+    @router.get(
+        "/label_metrics",
+        summary="[MCP] Per-label category metric summary",
+        description=(
+            "Return key GPU metric aggregates (sum + avg) grouped by label category. "
+            "Covers: clocks, shaders_busy_pct, tex_fetch_stall_pct, tex_l1/l2_miss_pct, "
+            "fragments_shaded, vertices_shaded, read/write_total_bytes. "
+            "Results ordered by clocks_sum DESC. Use snapshot_id=1 for cross-snapshot view."
+        ),
+        operation_id="get_label_metrics",
+    )
     def label_metrics(
         snapshot_id: int = Query(..., description="Snapshot ID to aggregate metrics for; 1 = all snapshots"),
     ):

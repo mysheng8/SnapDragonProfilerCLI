@@ -16,7 +16,7 @@ import logger as _logger_module
 
 SDPCLI_BASE = os.environ.get("SDPCLI_URL", "http://localhost:5000")
 
-router = APIRouter()
+router = APIRouter(tags=["frontend"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -105,6 +105,23 @@ async def capture(request: Request):
 @router.post("/analysis")
 async def analysis(request: Request):
     return _fwd("POST", "/api/analysis", await _body(request), timeout=60)
+
+
+@router.get("/devices")
+async def list_devices():
+    return _fwd("GET", "/api/devices")
+
+
+@router.get("/app/packages")
+async def list_packages(serial: str = ""):
+    path = "/api/app/packages" + (f"?serial={serial}" if serial else "")
+    return _fwd("GET", path)
+
+
+@router.get("/app/activities")
+async def list_activities(package: str, serial: str = ""):
+    path = f"/api/app/activities?package={package}" + (f"&serial={serial}" if serial else "")
+    return _fwd("GET", path)
 
 
 @router.get("/status")
